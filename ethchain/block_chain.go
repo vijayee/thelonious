@@ -52,7 +52,8 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		root,
 		hash,
 		coinbase,
-		ethutil.BigPow(2, 32),
+//		ethutil.BigPow(2, 32),
+		ethutil.BigPow(2, 12),
 		nil,
 		"")
 
@@ -68,9 +69,9 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		} else {
 			diff.Add(parent.Difficulty, adjust)
 		}
-		block.Difficulty = diff
+		block.Difficulty = ethutil.BigPow(2, 17) //diff
 		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, ethutil.Big1)
-		block.GasLimit = block.CalcGasLimit(bc.CurrentBlock)
+		block.GasLimit = ethutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 
 	}
 
@@ -129,6 +130,22 @@ func (self *BlockChain) GetChainHashesFromHash(hash []byte, max uint64) (chain [
 	return
 }
 
+
+func AddTestNetFunds(block *Block){
+	for _, addr := range []string{
+        "bbbd0256041f7aed3ce278c56ee61492de96d001",
+        "b9398794cafb108622b07d9a01ecbed3857592d5",
+	} {
+		codedAddr := ethutil.Hex2Bytes(addr)
+		account := block.state.GetAccount(codedAddr)
+		account.Balance = ethutil.Big("1606938044258990275541962092341162602522202993782792835301376") //ethutil.BigPow(2, 200)
+		block.state.UpdateStateObject(account)
+	}
+    
+
+}
+
+/*
 func AddTestNetFunds(block *Block) {
 	for _, addr := range []string{
 		"51ba59315b3a95761d0863b05ccc7a7f54703d99",
@@ -146,6 +163,7 @@ func AddTestNetFunds(block *Block) {
 		block.state.UpdateStateObject(account)
 	}
 }
+*/
 
 func (bc *BlockChain) setLastBlock() {
 	// Prep genesis
