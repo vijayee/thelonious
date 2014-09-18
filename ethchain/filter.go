@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/eth-go/ethstate"
 	"github.com/ethereum/eth-go/ethutil"
-	"gopkg.in/qml.v1"
+//	"gopkg.in/qml.v1"
 )
 
 type data struct {
@@ -286,7 +286,7 @@ func makeAltered(v interface{}) (d []data) {
 		for _, item := range slice {
 			d = append(d, makeAltered(item)...)
 		}
-	} else if qList, ok := v.(*qml.List); ok {
+	/*} else if qList, ok := v.(*qml.List); ok {
 		var s []interface{}
 		qList.Convert(&s)
 
@@ -299,7 +299,8 @@ func makeAltered(v interface{}) (d []data) {
 		fmt.Println(m)
 
 		d = makeAltered(m)
-	} else {
+	}*/
+    } else {
 		panic(fmt.Sprintf("makeAltered err (unknown conversion): %T\n", v))
 	}
 

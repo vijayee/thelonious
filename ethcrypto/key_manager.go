@@ -26,8 +26,8 @@ func (k *KeyManager) KeyPair() *KeyPair {
 	return k.keyPair
 }
 
-func (k *KeyManager) KeyRing() *KeyPair {
-	return k.keyPair
+func (k *KeyManager) KeyRing() *KeyRing {
+	return k.keyRing //TODO: push to origin/master!
 }
 
 func (k *KeyManager) PrivateKey() []byte {
