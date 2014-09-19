@@ -88,7 +88,7 @@ func (self *Pipe) Exists(addr []byte) bool {
 	return self.World().Get(addr) != nil
 }
 
-func (self *Pipe) TransactString(key *ethcrypto.KeyPair, rec string, value, gas, price *ethutil.Value, data []byte) ([]byte, error) {
+func (self *Pipe) TransactString(key *ethcrypto.KeyPair, rec string, value, gas, price *ethutil.Value, data string) ([]byte, error) {
 	// Check if an address is stored by this address
 	var hash []byte
 	addr := self.World().Config().Get("NameReg").StorageString(rec).Bytes()
@@ -103,8 +103,9 @@ func (self *Pipe) TransactString(key *ethcrypto.KeyPair, rec string, value, gas,
 	return self.Transact(key, hash, value, gas, price, data)
 }
 
-func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price *ethutil.Value, data []byte) ([]byte, error) {
-	var hash []byte
+// data is a string since it might be already compiled hex
+func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price *ethutil.Value, data string) ([]byte, error) {
+	//var hash []byte
 	var contractCreation bool
 	if rec == nil {
 		contractCreation = true
@@ -113,14 +114,18 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 	var tx *ethchain.Transaction
 	// Compile and assemble the given data
 	if contractCreation {
-		script, err := ethutil.Compile(string(data), false)
-		if err != nil {
-			return nil, err
-		}
-
-		tx = ethchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
+        if ethutil.IsHex(data){
+            script := ethutil.Hex2Bytes(data[2:])
+		    tx = ethchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
+        } else {
+            script, err := ethutil.Compile(data, false)
+            if err != nil {
+                return nil, err
+            }
+		    tx = ethchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
+        } 
 	} else {
-		data := ethutil.StringToByteFunc(string(data), func(s string) (ret []byte) {
+		data := ethutil.StringToByteFunc(data, func(s string) (ret []byte) {
 			slice := strings.Split(s, "\n")
 			for _, dataItem := range slice {
 				d := ethutil.FormatData(dataItem)
@@ -129,7 +134,7 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 			return
 		})
 
-		tx = ethchain.NewTransactionMessage(hash, value.BigInt(), gas.BigInt(), price.BigInt(), data)
+		tx = ethchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), []byte(data))
 	}
 
 	acc := self.stateManager.TransState().GetOrNewStateObject(key.Address())
