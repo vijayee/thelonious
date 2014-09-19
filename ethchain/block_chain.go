@@ -6,6 +6,11 @@ import (
 
 	"github.com/ethereum/eth-go/ethlog"
 	"github.com/ethereum/eth-go/ethutil"
+	"github.com/ethereum/eth-go/ethcrypto"
+	"github.com/ethereum/eth-go/ethstate"
+	"github.com/ethereum/eth-go/ethtrie"
+	"github.com/ethereum/eth-go/ethvm"
+    "fmt"
 )
 
 var chainlogger = ethlog.NewLogger("CHAIN")
@@ -141,9 +146,84 @@ func AddTestNetFunds(block *Block){
 		account.Balance = ethutil.Big("1606938044258990275541962092341162602522202993782792835301376") //ethutil.BigPow(2, 200)
 		block.state.UpdateStateObject(account)
 	}
-    
 
+    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
+    state := block.state
+    contract := state.NewStateObject(addr)
+    contract.InitCode = ethutil.Hex2Bytes("...")
+    contract.State = ethstate.New(ethtrie.New(ethutil.Config.Db, ""))
+    amount := ethutil.Big("12345678987654345678")
+    contract.Balance = amount
+    storage := contract.State.Trie
+    storage.Update("5", "a")
+
+    it := storage.NewIterator()
+    it.Each(func(key string, value *ethutil.Value) {
+        fmt.Println(ethutil.Bytes2Hex([]byte(key)), value)
+    })
+
+    block.state.UpdateStateObject(contract)
+
+    st := block.state
+    c := st.GetAccount(addr)
+    fmt.Println("bal:", c.Balance)
+    store := c.State.Trie
+    it = store.NewIterator()
+    it.Each(func(key string, value *ethutil.Value) {
+        fmt.Println(ethutil.Bytes2Hex([]byte(key)), value)
+    })
+
+
+//    InitContract(addr, []byte(""), block)
 }
+
+//code, err := self.Eval(msg, receiver.Init(), receiver, "init")  n
+func InitContract(addr, script []byte, block *Block){
+    tx := NewContractCreationTx(ethutil.Big("543"), ethutil.Big("0"), ethutil.Big("0"), script)
+    crecv := []byte("00....")
+    state := block.state
+    contract := state.NewStateObject(addr)
+    contract.InitCode = ethutil.Hex2Bytes("...")
+    contract.State = ethstate.New(ethtrie.New(ethutil.Config.Db, ""))
+    amount := ethutil.Big("12345678987654345678")
+    contract.Balance = amount
+
+    fmt.Println("contract:", contract)
+
+    msg := &ethstate.Message{
+        To: crecv, From: []byte(""),
+        Input: script,
+        Origin: []byte(""),
+        Block: block.Hash(),
+        Timestamp: block.Time,
+        Coinbase: block.Coinbase,
+        Number: block.Number,
+        Value: amount,
+    }
+
+    transactor := contract
+    env := NewEnv(state, tx, block)
+    callerClosure := ethvm.NewClosure(msg, transactor, contract, script, ethutil.Big("0"), ethutil.Big("0"))
+
+	vm := ethvm.New(env)
+	vm.Verbose = true
+	vm.Fn = "init"
+
+	ret, _, err := callerClosure.Call(vm, tx.Data)
+
+	if err == nil {
+		// Execute POSTs
+		for e := vm.Queue().Front(); e != nil; e = e.Next() {
+			msg := e.Value.(*ethvm.Message)
+
+			msg.Exec(msg.Addr(), transactor)
+		}
+	}
+    fmt.Println(ret)
+}
+
+
+
 
 /*
 func AddTestNetFunds(block *Block) {
@@ -165,6 +245,21 @@ func AddTestNetFunds(block *Block) {
 }
 */
 
+func (bc *BlockChain) Fuck(thing string){
+    fmt.Println(thing)
+    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
+    block := bc.CurrentBlock
+    st := block.state
+    c := st.GetAccount(addr)
+    fmt.Println("bal:", c.Balance)
+    store := c.State.Trie
+    it := store.NewIterator()
+    it.Each(func(key string, value *ethutil.Value) {
+        fmt.Println(ethutil.Bytes2Hex([]byte(key)), value)
+    })
+
+}
+
 func (bc *BlockChain) setLastBlock() {
 	// Prep genesis
 	AddTestNetFunds(bc.genesisBlock)
@@ -177,6 +272,7 @@ func (bc *BlockChain) setLastBlock() {
 		bc.LastBlockNumber = block.Number.Uint64()
 
 	} else {
+        fmt.Println("trie sync and death")
 		bc.genesisBlock.state.Trie.Sync()
 		// Prepare the genesis block
 		bc.Add(bc.genesisBlock)
@@ -188,6 +284,7 @@ func (bc *BlockChain) setLastBlock() {
 	bc.TD = ethutil.BigD(ethutil.Config.Db.LastKnownTD())
 
 	chainlogger.Infof("Last block (#%d) %x\n", bc.LastBlockNumber, bc.CurrentBlock.Hash())
+
 }
 
 func (bc *BlockChain) SetTotalDifficulty(td *big.Int) {
