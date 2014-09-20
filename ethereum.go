@@ -90,7 +90,20 @@ type Ethereum struct {
 	isUpToDate bool
 
 	filters map[int]*ethchain.Filter
+
+    genesisFunc GenesisFunc // called by setLastBlock
 }
+
+type GenesisFunc func(block *ethchain.Block, eth ethchain.EthManager)
+
+func (e *Ethereum) SetGenesisFunc(f func (block *ethchain.Block, eth ethchain.EthManager)){
+    e.genesisFunc = f
+}
+
+func (e *Ethereum) GenesisFunc(block *ethchain.Block){
+       e.genesisFunc(block, e) 
+}
+
 
 func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool) (*Ethereum, error) {
 	var err error
@@ -133,6 +146,51 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 
 	return ethereum, nil
 }
+
+// call this to be able to pass genesis functions in to set the genesis block without having to modify eth-go any more ...
+func NewEris(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool, genF GenesisFunc) (*Ethereum, error) {
+	var err error
+	var nat NAT
+
+	if usePnp {
+		nat, err = Discover()
+		if err != nil {
+			ethlogger.Debugln("UPnP failed", err)
+		}
+	}
+
+	bootstrapDb(db)
+
+	ethutil.Config.Db = db
+
+	nonce, _ := ethutil.RandomUint64()
+	ethereum := &Ethereum{
+		shutdownChan:   make(chan bool),
+		quit:           make(chan bool),
+		db:             db,
+		peers:          list.New(),
+		Nonce:          nonce,
+		serverCaps:     caps,
+		nat:            nat,
+		keyManager:     keyManager,
+		clientIdentity: clientIdentity,
+		isUpToDate:     true,
+		filters:        make(map[int]*ethchain.Filter),
+	}
+    ethereum.SetGenesisFunc(genF)
+	ethereum.reactor = ethreact.New()
+
+	ethereum.blockPool = NewBlockPool(ethereum)
+	ethereum.txPool = ethchain.NewTxPool(ethereum)
+	ethereum.blockChain = ethchain.NewBlockChain(ethereum)
+	ethereum.stateManager = ethchain.NewStateManager(ethereum)
+
+	// Start the tx pool
+	ethereum.txPool.Start()
+
+	return ethereum, nil
+}
+
 
 func (s *Ethereum) Reactor() *ethreact.ReactorEngine {
 	return s.reactor

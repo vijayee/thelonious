@@ -47,6 +47,7 @@ type EthManager interface {
 	KeyManager() *ethcrypto.KeyManager
 	ClientIdentity() ethwire.ClientIdentity
 	Db() ethutil.Database
+    GenesisFunc(block *Block)
 }
 
 type StateManager struct {

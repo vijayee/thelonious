@@ -3,13 +3,9 @@ package ethchain
 import (
 	"bytes"
 	"math/big"
-    "os"
 	"github.com/ethereum/eth-go/ethlog"
 	"github.com/ethereum/eth-go/ethutil"
 	"github.com/ethereum/eth-go/ethcrypto"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethtrie"
-	"github.com/ethereum/eth-go/ethvm"
     "fmt"
 )
 
@@ -136,146 +132,6 @@ func (self *BlockChain) GetChainHashesFromHash(hash []byte, max uint64) (chain [
 }
 
 
-func AddTestNetFunds(block *Block, eth EthManager){
-	for _, addr := range []string{
-        "bbbd0256041f7aed3ce278c56ee61492de96d001",
-        "b9398794cafb108622b07d9a01ecbed3857592d5",
-	} {
-		codedAddr := ethutil.Hex2Bytes(addr)
-		account := block.state.GetAccount(codedAddr)
-		account.Balance = ethutil.Big("1606938044258990275541962092341162602522202993782792835301376") //ethutil.BigPow(2, 200)
-		block.state.UpdateStateObject(account)
-	}
-
-    GenesisTxs(block, eth)
-}
-
-// doesn't allow code, no vm
-func InsertSimpleContract(block *Block){
-    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
-    fmt.Println("the genesis doug!!!", addr)
-    state := block.state
-    contract := state.NewStateObject(addr)
-    contract.InitCode = ethutil.Hex2Bytes("...")
-    contract.Code = ethutil.Hex2Bytes("600060005460006020023560055700")
-    contract.State = ethstate.New(ethtrie.New(ethutil.Config.Db, ""))
-    amount := ethutil.Big("12345678987654345678")
-    contract.Balance = amount
-    storage := contract.State.Trie
-    storage.Update("5", "a")
-
-    block.state.UpdateStateObject(contract)
-
-}
-
-// add contract to genesis block - uses vm
-func GenesisTxs(block *Block, eth EthManager){
-   
-    // mutan contract 
-    s := `contract.storage[10] = 12
-          return compile { 
-           contract.storage[5] = this.data[0]   
-          }`
-
-    script, err := ethutil.Compile(s, false)
-    if err != nil{
-        fmt.Println("failed compile", err)
-        os.Exit(0)
-    }
-
-    // dummy keys for signing
-    keys := ethcrypto.GenerateNewKeyPair() 
-
-    // create tx
-    tx := NewContractCreationTx(ethutil.Big("543"), ethutil.Big("10000"), ethutil.Big("10000"), script)
-    tx.Sign(keys.PrivateKey)
-
-    txs := Transactions{tx}
-    receipts := []*Receipt{}
-   
-    // new state transition 
-    state := block.State()
-    st := NewStateTransition(ethstate.NewStateObject(block.Coinbase), tx, state, block)
-    st.AddGas(ethutil.Big("1000000")) // gas is silly, but the vm needs it
-    // a slimmed down st.TransitionState() : 
-        addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
-        fmt.Println("man oh man", ethutil.Bytes2Hex(addr))
-        receiver := state.NewStateObject(addr)
-        receiver.InitCode = tx.Data
-        receiver.State = ethstate.New(ethtrie.New(ethutil.Config.Db, ""))
-        sender := state.GetOrNewStateObject(tx.Sender())  
-        value := ethutil.Big("12342")
-
-        msg := state.Manifest().AddMessage(&ethstate.Message{
-            To: receiver.Address(), From: sender.Address(),
-            Input:  tx.Data,
-            Origin: sender.Address(),
-            Block:  block.Hash(), Timestamp: block.Time, Coinbase: block.Coinbase, Number: block.Number,
-            Value: value,
-        })
-        code, err := st.Eval(msg, receiver.Init(), receiver, "init")
-        fmt.Println("Eval error:", err)
-        receiver.Code = code
-        msg.Output = code
-    //end TransitionState
-    state.Update()
-    receipt := &Receipt{tx, ethutil.CopyBytes(state.Root().([]byte)), new(big.Int)}
-    receipts = append(receipts, receipt)
-    block.SetReceipts(receipts, txs)
-    state.Update()  
-
-    t := state.GetStateObject(addr).State.Trie
-    t.Sync() // man oh man!
-}
-
-
-// lame old attempt ...
-func InitContract(addr, script []byte, block *Block){
-
-    tx := NewContractCreationTx(ethutil.Big("543"), ethutil.Big("0"), ethutil.Big("0"), script)
-    crecv := []byte("00....")
-    state := block.state
-    contract := state.NewStateObject(addr)
-    contract.InitCode = ethutil.Hex2Bytes("...")
-    contract.State = ethstate.New(ethtrie.New(ethutil.Config.Db, ""))
-    amount := ethutil.Big("12345678987654345678")
-    contract.Balance = amount
-
-    fmt.Println("contract:", contract)
-
-    msg := &ethstate.Message{
-        To: crecv, From: []byte(""),
-        Input: script,
-        Origin: []byte(""),
-        Block: block.Hash(),
-        Timestamp: block.Time,
-        Coinbase: block.Coinbase,
-        Number: block.Number,
-        Value: amount,
-    }
-
-    transactor := contract
-    env := NewEnv(state, tx, block)
-    callerClosure := ethvm.NewClosure(msg, transactor, contract, script, ethutil.Big("0"), ethutil.Big("0"))
-
-	vm := ethvm.New(env)
-	vm.Verbose = true
-	vm.Fn = "init"
-
-	ret, _, err := callerClosure.Call(vm, tx.Data)
-
-	if err == nil {
-		// Execute POSTs
-		for e := vm.Queue().Front(); e != nil; e = e.Next() {
-			msg := e.Value.(*ethvm.Message)
-
-			msg.Exec(msg.Addr(), transactor)
-		}
-	}
-    fmt.Println(ret)
-}
-
-
 
 
 /*
@@ -315,7 +171,8 @@ func (bc *BlockChain) Fuck(thing string){
 
 func (bc *BlockChain) setLastBlock() {
 	// Prep genesis
-	AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
+    bc.Ethereum.GenesisFunc(bc.genesisBlock)
+	//AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
 
 	data, _ := ethutil.Config.Db.Get([]byte("LastBlock"))
 	if len(data) != 0 {
