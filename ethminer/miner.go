@@ -17,7 +17,7 @@ type Miner struct {
 	ethereum    ethchain.EthManager
 	coinbase    []byte
 	reactChan   chan ethreact.Event
-	txs         ethchain.Transactions
+	txs         ethchain.Transactions // is []*ethchain.Transaction
 	uncles      []*ethchain.Block
 	block       *ethchain.Block
 	powChan     chan []byte
