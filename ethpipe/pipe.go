@@ -1,7 +1,8 @@
 package ethpipe
 
 import (
-	"strings"
+	//"strings"
+    "fmt"
 
 	"github.com/ethereum/eth-go/ethchain"
 	"github.com/ethereum/eth-go/ethcrypto"
@@ -125,6 +126,7 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 		    tx = ethchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
         } 
 	} else {
+        /*
 		data := ethutil.StringToByteFunc(data, func(s string) (ret []byte) {
 			slice := strings.Split(s, "\n")
 			for _, dataItem := range slice {
@@ -133,8 +135,15 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 			}
 			return
 		})
-
-		tx = ethchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), []byte(data))
+        */
+        var d []byte
+        if data[:2] == "0x"{
+            d = ethutil.Hex2Bytes(data[2:]) 
+        }else{
+            d = []byte(data)
+        }
+        fmt.Println("data pre tx:", d)
+		tx = ethchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), d)
 	}
 
 	acc := self.stateManager.TransState().GetOrNewStateObject(key.Address())
