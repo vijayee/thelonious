@@ -74,7 +74,7 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		} else {
 			diff.Add(parent.Difficulty, adjust)
 		}
-		block.Difficulty = ethutil.BigPow(2, 17) //diff
+		block.Difficulty = ethutil.BigPow(2, 12) //diff
 		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, ethutil.Big1)
 		block.GasLimit = ethutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 
@@ -223,6 +223,9 @@ func GenesisTxs(block *Block, eth EthManager){
     receipts = append(receipts, receipt)
     block.SetReceipts(receipts, txs)
     state.Update()  
+
+    t := state.GetStateObject(addr).State.Trie
+    t.Sync() // man oh man!
 }
 
 
