@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/eth-go/ethstate"
 	"github.com/ethereum/eth-go/ethtrie"
 	"github.com/ethereum/eth-go/ethutil"
+	"github.com/obscuren/secp256k1-go"
 )
 
 type BlockInfo struct {
@@ -97,6 +98,10 @@ type Block struct {
 	transactions []*Transaction
 	receipts     []*Receipt
 	TxSha        []byte
+    
+    // signature for verified miners
+    v       byte
+    r, s    []byte
 }
 
 func NewBlockFromBytes(raw []byte) *Block {
@@ -353,6 +358,49 @@ func (block *Block) GetRoot() interface{} {
 func (self *Block) Receipts() []*Receipt {
 	return self.receipts
 }
+
+// blocks need signatures that should match the coinbase
+func (self *Block) Signature(key []byte) []byte{
+    hash := self.Hash()
+    sig, _ := secp256k1.Sign(hash, key)
+    return sig
+}
+
+func (self *Block) Sign(privk []byte) error{
+    sig := self.Signature(privk)
+    self.r = sig[:32]
+    self.s = sig[32:64]
+    self.v = sig[64] + 27
+
+    return nil
+}
+
+func (self *Block) PublicKey() []byte{
+    hash := self.Hash()
+
+    r := ethutil.LeftPadBytes(self.r, 32)
+    s := ethutil.LeftPadBytes(self.s, 32)
+    sig := append(r, s...)
+    sig = append(sig, self.v-27)
+    
+    pubkey, _ := secp256k1.RecoverPubkey(hash, sig)
+
+    return pubkey
+}
+
+func (self *Block) Signer() []byte{
+    if len(self.r) == 0 || len(self.s) == 0 {
+       return []byte("\x00") 
+    }
+    pubkey := self.PublicKey()
+
+    if pubkey[0] != 4{
+        return nil
+    }
+
+    return ethcrypto.Sha3Bin(pubkey[1:])[12:]
+}
+
 
 func (block *Block) header() []interface{} {
 	return []interface{}{

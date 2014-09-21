@@ -131,7 +131,9 @@ func (self *StateTransition) preCheck() (err error) {
 		tx     = self.tx
 		sender = self.Sender()
 	)
-    
+   
+    // state transition only has the genesis block if 
+    // created by Eris 
     if self.genesis != nil && !ethdoug.Validate(sender.Address(), self.genesis.State(), "tx"){
         return InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "tx")
     }

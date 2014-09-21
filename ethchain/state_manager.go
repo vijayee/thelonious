@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/eth-go/ethstate"
 	"github.com/ethereum/eth-go/ethutil"
 	"github.com/ethereum/eth-go/ethwire"
+	"github.com/ethereum/eth-go/ethdoug"
 )
 
 var statelogger = ethlog.NewLogger("STATE")
@@ -308,6 +309,12 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // an uncle or anything that isn't on the current block chain.
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
+
+    if !bytes.Equal(block.Signer(), block.Coinbase) && !ethdoug.Validate(block.Coinbase, sm.bc.Genesis().State(), "miner"){
+        return InvalidPermError(ethutil.Bytes2Hex(block.Coinbase), "miner")
+    }
+
+
 	// TODO
 	// 2. Check if the difficulty is correct
 
