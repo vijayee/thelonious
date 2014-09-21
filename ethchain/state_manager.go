@@ -124,7 +124,7 @@ done:
 		txGas := new(big.Int).Set(tx.Gas)
 
 		cb := state.GetStateObject(coinbase.Address())
-		st := NewStateTransition(cb, tx, state, block)
+		st := NewStateTransitionEris(cb, tx, state, block, self.bc.Genesis()) // ERIS
 		err = st.TransitionState()
 		if err != nil {
 			statelogger.Infoln(err)

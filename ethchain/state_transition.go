@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/eth-go/ethtrie"
 	"github.com/ethereum/eth-go/ethutil"
 	"github.com/ethereum/eth-go/ethvm"
+	"github.com/ethereum/eth-go/ethdoug"
 )
 
 /*
@@ -34,12 +35,17 @@ type StateTransition struct {
 	data               []byte
 	state              *ethstate.State
 	block              *Block
+    genesis            *Block
 
 	cb, rec, sen *ethstate.StateObject
 }
 
 func NewStateTransition(coinbase *ethstate.StateObject, tx *Transaction, state *ethstate.State, block *Block) *StateTransition {
-	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, coinbase, nil, nil}
+	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, nil, coinbase, nil, nil}
+}
+
+func NewStateTransitionEris(coinbase *ethstate.StateObject, tx *Transaction, state *ethstate.State, block *Block, gen *Block) *StateTransition {
+	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, gen, coinbase, nil, nil}
 }
 
 func (self *StateTransition) Coinbase() *ethstate.StateObject {
@@ -125,6 +131,10 @@ func (self *StateTransition) preCheck() (err error) {
 		tx     = self.tx
 		sender = self.Sender()
 	)
+    
+    if self.genesis != nil && !ethdoug.Validate(sender.Address(), self.genesis.State(), "tx"){
+        return InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "tx")
+    }
 
 	// Make sure this transaction's nonce is correct
 	if sender.Nonce != tx.Nonce {
