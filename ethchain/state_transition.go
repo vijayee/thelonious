@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/eth-go/ethtrie"
 	"github.com/ethereum/eth-go/ethutil"
 	"github.com/ethereum/eth-go/ethvm"
-	"github.com/ethereum/eth-go/ethdoug"
 )
 
 /*
@@ -134,7 +133,7 @@ func (self *StateTransition) preCheck() (err error) {
    
     // state transition only has the genesis block if 
     // created by Eris 
-    if self.genesis != nil && !ethdoug.Validate(sender.Address(), self.genesis.State(), "tx"){
+    if self.genesis != nil && !DougValidate(sender.Address(), self.genesis.State(), "tx"){
         return InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "tx")
     }
 
