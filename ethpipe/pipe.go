@@ -137,7 +137,7 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 		})
         */
         var d []byte
-        if data[:2] == "0x"{
+        if len(data) > 0 && data[:2] == "0x"{
             d = ethutil.Hex2Bytes(data[2:]) 
         }else{
             d = []byte(data)
