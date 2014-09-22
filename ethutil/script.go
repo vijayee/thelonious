@@ -6,12 +6,13 @@ import (
 
 	"github.com/obscuren/mutan"
 	"github.com/obscuren/mutan/backends"
-	"github.com/obscuren/serpent-go"
+	//"github.com/obscuren/serpent-go"
 )
 
 // General compile function
 func Compile(script string, silent bool) (ret []byte, err error) {
 	if len(script) > 2 {
+    /*
 		line := strings.Split(script, "\n")[0]
 
 		if len(line) > 1 && line[0:2] == "#!" {
@@ -25,7 +26,7 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 				return byteCode, nil
 			}
 		} else {
-
+        */
 			compiler := mutan.NewCompiler(backend.NewEthereumBackend())
 			compiler.Silent = silent
 			byteCode, errors := compiler.Compile(strings.NewReader(script))
@@ -40,7 +41,7 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 			}
 
 			return byteCode, nil
-		}
+		//}
 	}
 
 	return nil, nil

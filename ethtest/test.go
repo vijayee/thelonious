@@ -11,16 +11,19 @@ import (
 
 // general tester function on an eth node
 // note, you ought to call eth.Start() somewhere in testing()!
-func tester(name string, testing func(eth *EthChain)){
+func tester(name string, testing func(eth *EthChain), end int){
     eth := NewEth()
     eth.Config.Mining = true
     eth.Init()
 
     testing(eth)
-
-    time.Sleep(time.Second*10)
-    fmt.Println("Stopping...")
-    os.Exit(0)
+    
+    if end > 0{
+        time.Sleep(time.Second*time.Duration(end))
+        fmt.Println("Stopping...")
+        os.Exit(0)
+    }
+    eth.Ethereum.WaitForShutdown()
 }
 
 // general callback function after a block is mined

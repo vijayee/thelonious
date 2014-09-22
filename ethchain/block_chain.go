@@ -70,7 +70,7 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		} else {
 			diff.Add(parent.Difficulty, adjust)
 		}
-		block.Difficulty = ethutil.BigPow(2, 12) //diff
+		block.Difficulty = DougDifficulty //ethutil.BigPow(2, 12) //diff
 		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, ethutil.Big1)
 		block.GasLimit = ethutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 

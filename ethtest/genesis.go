@@ -37,7 +37,7 @@ func TestValidate(){
         fmt.Println(ethchain.DougValidate(a1, gen.State(), "miner"))
         fmt.Println(ethchain.DougValidate(a2, gen.State(), "miner"))
         fmt.Println(ethchain.DougValidate(a3, gen.State(), "miner"))
-    })
+    }, 10)
 }
 
 // doesn't start up a node, just loads from db and traverses to genesis
@@ -63,7 +63,7 @@ func TestTraverseGenesis(){
             fmt.Println("genesis hash and prevhash from bc")
             fmt.Println(ethutil.Bytes2Hex(gen.Hash()), ethutil.Bytes2Hex(gen.PrevHash))
         })
-    })
+    }, 10)
 }
 
 func TestGenesisMsg(){
@@ -81,7 +81,7 @@ func TestGenesisMsg(){
                 pretty_print_accounts_chain(eth)
             })
             os.Exit(0)
-    })
+    }, 10)
 
 }
 
@@ -102,7 +102,7 @@ func TestGenesisAccounts(){
             fmt.Println(acct)
             os.Exit(0)
          //})
-    })
+    }, 10)
 
     /*
         //gen := traverse_to_genesis(*(eth.Ethereum.BlockChain()), *latest)

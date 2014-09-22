@@ -23,6 +23,8 @@ func main(){
     switch(*tester){
         case "basic":
             ethtest.TestBasic()
+        case "run":
+            ethtest.Run()
         case "tx":
             ethtest.TestTx()
         case "traverse":

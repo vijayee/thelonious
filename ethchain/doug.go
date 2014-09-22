@@ -13,6 +13,9 @@ import (
 )
 
 var (
+
+    DougDifficulty = ethutil.BigPow(2, 17)
+
     GENDOUG = ethcrypto.Sha3Bin([]byte("the genesis doug"))[12:] //[]byte("\x00"*16 + "DOUG")
     MINERS = "01"
     TXERS = "02"
