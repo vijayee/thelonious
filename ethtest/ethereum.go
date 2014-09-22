@@ -16,53 +16,17 @@ import (
     "os/exec"
     "os/user"
     "strconv"
-    "path"
-    "errors"
     "io/ioutil"
 )
 
-// some global config vars
-// to be set from above
-// move these into default config
 var (
     GoPath = os.Getenv("GOPATH")
     KeyFile = "keys.txt"
-    EthDataDir = path.Join(homeDir(), ".eris-eth")
-    EthPort = "30303"
-    PathToLLL = "/Users/BatBuddha/Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc"
     usr, _ = user.Current() // error?!
-    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "deCerver", "chain", "contracts")
-)
-
-// this is who we are
-const (
-    ClientIdentifier = "Ethereum(PD)"
-    Version = "0.5.17"
-    Identifier = ""
-    KeyStore = "db"
 )
 
 //Logging
-var logger *ethlog.Logger = ethlog.NewLogger("EthChain(PD)")
-
-type ChainConfig struct{
-    Port int        `json:"port"`
-    Mining bool     `json:"mining"`
-    MaxPeers int    `json:"max_peers"`
-    ConfigFile string `json:"config_file"`
-    RootDir string  `json:"root_dir"`
-    Name string     `json:"name"`
-    LogFile string  `json:"log_file"`
-}
-
-// set default config object
-var DefaultConfig = &ChainConfig{ Port : 30303,
-    Mining : false,
-    MaxPeers : 10,
-    RootDir : path.Join(usr.HomeDir, ".ethchain"),
-    Name : "decerver-ethchain",
-    ConfigFile : "config",
-}
+var logger *ethlog.Logger = ethlog.NewLogger("EthChain(deCerver)")
 
 
 // implements decerver.Blockchain
@@ -76,47 +40,41 @@ type EthChain struct{
     chans map[string]chan ethreact.Event
 }
 
-
-// can these methods be functions in decerver that take the modules as argument?
-func (e *EthChain) WriteConfig(config_file string){
-}
-func (e *EthChain) ReadConfig(config_file string){
-}
-func (e *EthChain) SetConfig(config interface{}) error{
-    if s, ok := config.(string); ok{
-        e.ReadConfig(s)
-    } else if s, ok := config.(ChainConfig); ok{
-        e.Config = &s
-    } else {
-        return errors.New("could not set config")
-    }
-    return nil
-}
-
-
-func NewEth() *EthChain{
+// new ethchain with default config
+// it allows you to pass in an etheruem instance
+// btu it will not start a new one otherwise
+// this gives you a chance to set config options after
+//      creating the EthChain
+func NewEth(ethereum *eth.Ethereum) *EthChain{
     e := new(EthChain)
     e.Config = DefaultConfig
+    if ethereum != nil{
+        e.Ethereum = ethereum
+    }
     return e
 }
 
 // initialize an ethchain
+// it may or may not already have an ethereum instance
+// basically gives you a pipe, local keyMang, and reactor
 func (e *EthChain) Init() error{
     // if didn't call NewEth
     if e.Config == nil{
         e.Config = DefaultConfig
     }
-    e.EthConfig()
-    ethereum, pipe, keyManager := NewEthPEth()
-    ethereum.Port = strconv.Itoa(e.Config.Port)
-    ethereum.MaxPeers = e.Config.MaxPeers
-    LoadKeys(KeyFile, keyManager)
+    // if no ethereum instance
+    if e.Ethereum == nil{
+        e.EthConfig()
+        e.NewEthereum()
+    }
+    // public interface
+    pipe := ethpipe.New(e.Ethereum) 
+    // load keys from file. genesis block keys. convenient for testing
+    LoadKeys(KeyFile, e.Ethereum.KeyManager())
 
-
-    e.Ethereum = ethereum
     e.Pipe = pipe
-    e.keyManager = keyManager
-    e.reactor = ethereum.Reactor()
+    e.keyManager = e.Ethereum.KeyManager()
+    e.reactor = e.Ethereum.Reactor()
 
     log.Println(e.Ethereum.Port)
     
@@ -131,36 +89,35 @@ func (ethchain *EthChain) Start(){
     }
 }
 
-// configure an ethereum node
-func (e *EthChain) EthConfig() {
-    ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
-    InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")
-}
-
-// initialize a new ethereum, pipeereum, and keymanager object
-func NewEthPEth() (*eth.Ethereum, *ethpipe.Pipe, *ethcrypto.KeyManager){
-    // create a new ethereum node: init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
+// create a new ethereum instance
+// expects EthConfig to already have been called!
+// init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
+func (e *EthChain) NewEthereum(){
     db := NewDatabase()
 
-    keyManager := NewKeyManager(KeyStore, EthDataDir, db)   
+    keyManager := NewKeyManager(e.Config.KeyStore, e.Config.DataDir, db)
     keyManager.Init("", 0, true)
+    e.keyManager = keyManager
 
-    clientIdentity := NewClientIdentity(ClientIdentifier, Version, Identifier) 
+    clientIdentity := NewClientIdentity(e.Config.ClientIdentifier, e.Config.Version, e.Config.Identifier) 
 
-    ethereum, err := eth.NewEris(db, clientIdentity, keyManager, eth.CapDefault, false, ethchain.GenesisPointer)
+    // create the ethereum obj
+    ethereum, err := eth.NewEris(db, clientIdentity, e.keyManager, eth.CapDefault, false, ethchain.GenesisPointer)
 
-//    data, _ := ethutil.Config.Db.Get([]byte("LastBlock"))   
- //   fmt.Println("last block data", data)
-  //  os.Exit(0)
-
-    //ethereum, err := eth.New(eth.CapDefault, false)
     if err != nil {
         log.Fatal("Could not start node: %s\n", err)
     }
-    // initialize the public ethereum object. this is the interface QML gets, and it's mostly good enough for us to
-    pipe := ethpipe.New(ethereum) 
-    return ethereum, pipe, keyManager
+
+    ethereum.Port = strconv.Itoa(e.Config.Port)
+    ethereum.MaxPeers = e.Config.MaxPeers
+
+    e.Ethereum = ethereum
 }
+
+/*
+    Request Functions
+*/
+
 
 // get=  contract storage
 // everything should be in hex!
@@ -206,7 +163,7 @@ func (e EthChain) Subscribe(addr, event string, ch chan decerver.Update){
     }(eth_ch, ch)
 }
 
-
+// send a message to a contract
 func (e *EthChain) Msg(addr string, data []string){
     packed := PackTxDataArgs(data...)
     fmt.Println("packed", packed)
@@ -218,6 +175,7 @@ func (e *EthChain) Msg(addr string, data []string){
     }
 }
 
+// send a tx
 func (e *EthChain) Tx(addr, amt string){
     keys := e.fetchKeyPair()
     byte_addr := ethutil.Hex2Bytes(addr)
@@ -228,6 +186,30 @@ func (e *EthChain) Tx(addr, amt string){
         log.Fatal("tx err", err)
     }
 }
+
+/*
+    daemon stuff
+*/
+
+func (e *EthChain) StartMining() bool{
+    return StartMining(e.Ethereum)
+}
+
+func (e *EthChain) StopMining() bool{
+    return StopMining(e.Ethereum)
+}
+
+func (e *EthChain) StartListening(){
+
+}
+
+func (e *EthChain) StopListening() {
+    
+}
+
+/*
+    some key management stuff
+*/
 
 func (e *EthChain) FetchAddr() string{
     keypair := e.keyManager.KeyPair()
@@ -250,6 +232,7 @@ func (e *EthChain) FetchPriv() string{
     return e.fetchPriv()
 }
 
+// switch current key
 func (e *EthChain) SetCursor(n int){
     e.keyManager.SetCursor(n)
 }
@@ -257,7 +240,7 @@ func (e *EthChain) SetCursor(n int){
 func (e EthChain) DeployContract(file, lang string) string{
     var script string
     if lang == "lll"{
-        script = CompileLLL(file) // if lll, compile and pass along
+        script = CompileLLL(file, e.Config.LLLPath) // if lll, compile and pass along
     } else if lang == "mutan"{
         s, _ := ioutil.ReadFile(file) // if mutan, pass along and pipe will compile
         script = string(s)
@@ -283,8 +266,8 @@ func (e EthChain) Stop(){
 }
 
 // compile LLL file into evm bytecode 
-func CompileLLL(filename string) string{
-    cmd := exec.Command(PathToLLL, filename)
+func CompileLLL(filename, lll_path string) string{
+    cmd := exec.Command(lll_path, filename)
     var out bytes.Buffer
     cmd.Stdout = &out
     err := cmd.Run()

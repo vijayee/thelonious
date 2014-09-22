@@ -38,7 +38,7 @@ func test_simple_trie(){
 
 
 func test_state_trie(){
-    eth := chain.NewEth()
+    eth := chain.NewEth(nil)
     eth.Init()
 
     gen := eth.Ethereum.BlockChain().Genesis()
@@ -72,7 +72,7 @@ func test_state_trie(){
 
 func test_trie(){
 
-    eth := NewEth()
+    eth := NewEth(nil)
     eth.Init() // necessary for config..
     c := ethstate.NewStateObject([]byte("hithere"))
     trie := c.State.Trie //ethtrie.New(ethutil.Config.Db, "")

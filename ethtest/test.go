@@ -12,7 +12,7 @@ import (
 // general tester function on an eth node
 // note, you ought to call eth.Start() somewhere in testing()!
 func tester(name string, testing func(eth *EthChain), end int){
-    eth := NewEth()
+    eth := NewEth(nil) 
     eth.Config.Mining = true
     eth.Init()
 

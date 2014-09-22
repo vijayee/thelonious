@@ -39,5 +39,7 @@ func main(){
             ethtest.TestMsgStorage()
         case "validate":
             ethtest.TestValidate()
+        case "mining":
+            ethtest.TestStopMining()
     }
 }

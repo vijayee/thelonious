@@ -24,6 +24,10 @@ import (
 	"github.com/eris-ltd/eth-go-mods/ethwire"
 )
 
+// this is basically go-etheruem/utils
+
+// i think for now we only use StartMining, but there's porbably other goodies...
+
 //var logger = ethlog.NewLogger("CLI")
 var interruptCallbacks = []func(os.Signal){}
 
