@@ -25,7 +25,7 @@ import (
 
 const (
 	seedTextFileUri string = "http://www.ethereum.org/servers.poc3.txt"
-	seedNodeAddress        = "54.76.56.74:30303"
+	seedNodeAddress        = "162.218.65.211:30303"
 )
 
 var ethlogger = ethlog.NewLogger("SERV")
@@ -463,7 +463,9 @@ func (s *Ethereum) Seed() {
 			ethlogger.Infoln("Connecting to previous peer ", ip)
 			s.ConnectToPeer(ip)
 		}
-	} else {
+    }
+    s.ConnectToPeer(seedNodeAddress)
+	/* else {
 		ethlogger.Debugln("Retrieving seed nodes")
 
 		// Eth-Go Bootstrapping
@@ -505,7 +507,7 @@ func (s *Ethereum) Seed() {
 
 		// XXX tmp
 		s.ConnectToPeer(seedNodeAddress)
-	}
+	}*/
 }
 
 func (s *Ethereum) peerHandler(listener net.Listener) {

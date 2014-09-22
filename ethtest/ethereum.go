@@ -125,7 +125,7 @@ func (e *EthChain) Init() error{
 
 // start the ethereum node
 func (ethchain *EthChain) Start(){
-    ethchain.Ethereum.Start(false) // ?
+    ethchain.Ethereum.Start(true) // peer seed
     if ethchain.Config.Mining{
         StartMining(ethchain.Ethereum)
     }
