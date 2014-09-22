@@ -1,137 +1,311 @@
 package ethtest
 
 import (
-    "strings"
-    "github.com/eris-ltd/eth-go-mods/ethutil"
-    "github.com/eris-ltd/eth-go-mods/ethtrie"
-    //"reflect"
-    "log"
-    "fmt"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/signal"
+	"path"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"time"
+
+	"bitbucket.org/kardianos/osext"
+	"github.com/eris-ltd/eth-go-mods"
+	"github.com/eris-ltd/eth-go-mods/ethcrypto"
+	"github.com/eris-ltd/eth-go-mods/ethdb"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethminer"
+	"github.com/eris-ltd/eth-go-mods/ethpipe"
+	"github.com/eris-ltd/eth-go-mods/ethrpc"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethwire"
 )
 
-func Hex2Nibbles(h string) []int{
-    base := "0123456789abcdef"
-    nibs := make([]int, 0)
-    for _, v := range h{
-        nibs = append(nibs, strings.IndexByte(base, byte(v)))
-    }
-    return nibs
+//var logger = ethlog.NewLogger("CLI")
+var interruptCallbacks = []func(os.Signal){}
+
+// Register interrupt handlers callbacks
+func RegisterInterrupt(cb func(os.Signal)) {
+	interruptCallbacks = append(interruptCallbacks, cb)
 }
 
-func Nibbles2Hex(nibs []int) string{
-    base := "0123456789abcdef"
-    s := ""
-    for _, k := range nibs{
-        h := base[k]
-        s += string(h)
-    }
-    return s
+// go routine that call interrupt handlers in order of registering
+func HandleInterrupt() {
+	c := make(chan os.Signal, 1)
+	go func() {
+		signal.Notify(c, os.Interrupt)
+		for sig := range c {
+			logger.Errorf("Shutting down (%v) ... \n", sig)
+			RunInterruptCallbacks(sig)
+		}
+	}()
 }
 
-func StripHP(k string) string{
-    h := ethutil.Bytes2Hex([]byte(k))
-    nibs := Hex2Nibbles(h)
-    var n []int
-    if nibs[0] == 1 || nibs[0] == 3{
-        n = nibs[1:]
-    } else{
-        n = nibs[2:]
-    }
-    r := Nibbles2Hex(n)
-    //fmt.Println("strip hp initial hex:", h, "nibs:",  nibs, "new nibs", n, "final hex", r)
-    return r
-
+func RunInterruptCallbacks(sig os.Signal) {
+	for _, cb := range interruptCallbacks {
+		cb(sig)
+	}
 }
 
-func IsTerminator(k string) bool{
-    h := ethutil.Bytes2Hex([]byte(k))
-    nibs := Hex2Nibbles(h)
-    //fmt.Println("termination input:", k, "byte input:", []byte(k), "hex:",  h, "nibs:", nibs)
-    if nibs[0] >= 2{
-        return true
-    }
-    return false
+func AbsolutePath(Datadir string, filename string) string {
+	if path.IsAbs(filename) {
+		return filename
+	}
+	return path.Join(Datadir, filename)
 }
 
-// traverse the trie, accumulating keys
-func ListKeysRecursive(trie ethtrie.Trie, node interface{}, keys *[]string, prefix []byte){
-    cache := trie.Cache()
-    //typ := reflect.TypeOf(node)
-    // either string or list
-    if _, ok := node.(string); ok{
-        s := node.(string)
-        if s != ""{
-            log.Fatal("impossible! a string thats not empty?!", s)
-        }
-    } else if b, ok := node.([]byte); ok{
-        //fmt.Println("byte node:", node)
-        new_node := cache.Get(b)
-        ListKeysRecursive(trie, new_node, keys, prefix)
-
-    } else if _, ok := node.([]interface{}); ok {
-        //fmt.Println("node:", node, typ)
-        n, _ := node.([]interface{})
-        //fmt.Println("length node array", len(n))
-        // either len 2 or 17
-        if len(n) == 2{
-            k := ""
-
-            // awful...
-            if k, ok = n[0].(string); !ok{
-                if kk, ok := n[0].([]uint8); !ok{
-                    k = string(n[0].(uint8))
-                } else{
-                    k = string(kk)
-                }
-            }
-            if IsTerminator(k){
-                // this is a key-val where we have the rest of the key and the actual value
-                kk := StripHP(k)
-                key := append(prefix, []byte(kk)...)
-                //fmt.Println("FOUND TERMINATOR!!!!", ethutil.Bytes2Hex([]byte(k)), kk, string(prefix), string(key))
-                *keys = append(*keys, string(key))
-            } else {
-                // key-val where the val is a hash to lookup
-                kk := StripHP(k)
-                prefix = append(prefix, []byte(kk)...)
-                v := n[1].([]byte)
-                //fmt.Println("MOVING ON TO HASH", "prefix:", string(prefix), "value:", ethutil.Bytes2Hex(v))
-                new_node := cache.Get(v)
-                ListKeysRecursive(trie, new_node, keys, prefix)
-            }
-            
-        } else if len(n) == 17{
-            for i, _ := range n{
-                new_node := n[i]
-                if i < 16{
-                    p := append(prefix, "0123456789abcdef"[i])
-                    ListKeysRecursive(trie, new_node, keys, p)
-                } else{
-                    ListKeysRecursive(trie, new_node, keys, prefix)
-                }
-            }
-
-        } else {
-            log.Fatal("impossible node array size")
-        }
-
-    } else if n, ok := node.(*ethutil.Value); ok{
-            ListKeysRecursive(trie, n.Val, keys, prefix)
-    } else{
-        //log.Fatal("what type?", typ)
-        return
-    }
-
+func openLogFile(Datadir string, filename string) *os.File {
+	path := AbsolutePath(Datadir, filename)
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))
+	}
+	return file
 }
 
-// get all keys in the trie
-func GetAddressList(trie ethtrie.Trie) []string{
-    addrs := new([]string)
-    cache := trie.Cache()
-    node := cache.Get(trie.Root.([]byte)) // returns ethutil.Value
-    ListKeysRecursive(trie, node.Val, addrs, []byte{})
-    fmt.Println(*addrs)
-    return *addrs
-
+func confirm(message string) bool {
+	fmt.Println(message, "Are you sure? (y/n)")
+	var r string
+	fmt.Scanln(&r)
+	for ; ; fmt.Scanln(&r) {
+		if r == "n" || r == "y" {
+			break
+		} else {
+			fmt.Printf("Yes or no?", r)
+		}
+	}
+	return r == "y"
 }
 
+func InitDataDir(Datadir string) {
+	_, err := os.Stat(Datadir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Printf("Data directory '%s' doesn't exist, creating it\n", Datadir)
+			os.Mkdir(Datadir, 0777)
+		}
+	}
+}
+
+func InitLogging(Datadir string, LogFile string, LogLevel int, DebugFile string) {
+	var writer io.Writer
+	if LogFile == "" {
+		writer = os.Stdout
+	} else {
+		writer = openLogFile(Datadir, LogFile)
+	}
+	ethlog.AddLogSystem(ethlog.NewStdLogSystem(writer, log.LstdFlags, ethlog.LogLevel(LogLevel)))
+	if DebugFile != "" {
+		writer = openLogFile(Datadir, DebugFile)
+		ethlog.AddLogSystem(ethlog.NewStdLogSystem(writer, log.LstdFlags, ethlog.DebugLevel))
+	}
+}
+
+func InitConfig(ConfigFile string, Datadir string, EnvPrefix string) *ethutil.ConfigManager {
+	InitDataDir(Datadir)
+	return ethutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
+}
+
+func exit(err error) {
+	status := 0
+	if err != nil {
+		fmt.Println(err)
+		logger.Errorln("Fatal: ", err)
+		status = 1
+	}
+	ethlog.Flush()
+	os.Exit(status)
+}
+
+func NewDatabase() ethutil.Database {
+	db, err := ethdb.NewLDBDatabase("database")
+	if err != nil {
+		exit(err)
+	}
+	return db
+}
+
+func NewClientIdentity(clientIdentifier, version, customIdentifier string) *ethwire.SimpleClientIdentity {
+	logger.Infoln("identity created")
+	return ethwire.NewSimpleClientIdentity(clientIdentifier, version, customIdentifier)
+}
+
+func NewEthereum(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Ethereum {
+	ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, usePnp)
+	if err != nil {
+		logger.Fatalln("eth start err:", err)
+	}
+	ethereum.Port = OutboundPort
+	ethereum.MaxPeers = MaxPeer
+	return ethereum
+}
+
+func StartEthereum(ethereum *eth.Ethereum, UseSeed bool) {
+	logger.Infof("Starting %s", ethereum.ClientIdentity())
+	ethereum.Start(UseSeed)
+	RegisterInterrupt(func(sig os.Signal) {
+		ethereum.Stop()
+		ethlog.Flush()
+	})
+}
+
+func ShowGenesis(ethereum *eth.Ethereum) {
+	logger.Infoln(ethereum.BlockChain().Genesis())
+	exit(nil)
+}
+
+func NewKeyManager(KeyStore string, Datadir string, db ethutil.Database) *ethcrypto.KeyManager {
+	var keyManager *ethcrypto.KeyManager
+	switch {
+	case KeyStore == "db":
+		keyManager = ethcrypto.NewDBKeyManager(db)
+	case KeyStore == "file":
+		keyManager = ethcrypto.NewFileKeyManager(Datadir)
+	default:
+		exit(fmt.Errorf("unknown keystore type: %s", KeyStore))
+	}
+	return keyManager
+}
+
+func DefaultAssetPath() string {
+	var assetPath string
+	// If the current working directory is the go-ethereum dir
+	// assume a debug build and use the source directory as
+	// asset directory.
+	pwd, _ := os.Getwd()
+	if pwd == path.Join(os.Getenv("GOPATH"), "src", "github.com", "ethereum", "go-ethereum", "ethereal") {
+		assetPath = path.Join(pwd, "assets")
+	} else {
+		switch runtime.GOOS {
+		case "darwin":
+			// Get Binary Directory
+			exedir, _ := osext.ExecutableFolder()
+			assetPath = filepath.Join(exedir, "../Resources")
+		case "linux":
+			assetPath = "/usr/share/ethereal"
+		case "windows":
+			assetPath = "./assets"
+		default:
+			assetPath = "."
+		}
+	}
+	return assetPath
+}
+
+func KeyTasks(keyManager *ethcrypto.KeyManager, KeyRing string, GenAddr bool, SecretFile string, ExportDir string, NonInteractive bool) {
+
+	var err error
+	switch {
+	case GenAddr:
+		if NonInteractive || confirm("This action overwrites your old private key.") {
+			err = keyManager.Init(KeyRing, 0, true)
+		}
+		exit(err)
+	case len(SecretFile) > 0:
+		SecretFile = ethutil.ExpandHomePath(SecretFile)
+
+		if NonInteractive || confirm("This action overwrites your old private key.") {
+			err = keyManager.InitFromSecretsFile(KeyRing, 0, SecretFile)
+		}
+		exit(err)
+	case len(ExportDir) > 0:
+		err = keyManager.Init(KeyRing, 0, false)
+		if err == nil {
+			err = keyManager.Export(ExportDir)
+		}
+		exit(err)
+	default:
+		// Creates a keypair if none exists
+		err = keyManager.Init(KeyRing, 0, false)
+		if err != nil {
+			exit(err)
+		}
+	}
+}
+
+func StartRpc(ethereum *eth.Ethereum, RpcPort int) {
+	var err error
+	ethereum.RpcServer, err = ethrpc.NewJsonRpcServer(ethpipe.NewJSPipe(ethereum), RpcPort)
+	if err != nil {
+		logger.Errorf("Could not start RPC interface (port %v): %v", RpcPort, err)
+	} else {
+		go ethereum.RpcServer.Start()
+	}
+}
+
+var miner *ethminer.Miner
+
+func GetMiner() *ethminer.Miner {
+	return miner
+}
+
+func StartMining(ethereum *eth.Ethereum) bool {
+	if !ethereum.Mining {
+		ethereum.Mining = true
+		addr := ethereum.KeyManager().Address()
+
+		go func() {
+			logger.Infoln("Start mining")
+			if miner == nil {
+				miner = ethminer.NewDefaultMiner(addr, ethereum)
+			}
+			// Give it some time to connect with peers
+			time.Sleep(3 * time.Second)
+			for !ethereum.IsUpToDate() {
+				time.Sleep(5 * time.Second)
+			}
+			miner.Start()
+		}()
+		RegisterInterrupt(func(os.Signal) {
+			StopMining(ethereum)
+		})
+		return true
+	}
+	return false
+}
+
+func FormatTransactionData(data string) []byte {
+	d := ethutil.StringToByteFunc(data, func(s string) (ret []byte) {
+		slice := regexp.MustCompile("\\n|\\s").Split(s, 1000000000)
+		for _, dataItem := range slice {
+			d := ethutil.FormatData(dataItem)
+			ret = append(ret, d...)
+		}
+		return
+	})
+
+	return d
+}
+
+func StopMining(ethereum *eth.Ethereum) bool {
+	if ethereum.Mining && miner != nil {
+		miner.Stop()
+		logger.Infoln("Stopped mining")
+		ethereum.Mining = false
+
+		return true
+	}
+
+	return false
+}
+
+// Replay block
+func BlockDo(ethereum *eth.Ethereum, hash []byte) error {
+	block := ethereum.BlockChain().GetBlock(hash)
+	if block == nil {
+		return fmt.Errorf("unknown block %x", hash)
+	}
+
+	parent := ethereum.BlockChain().GetBlock(block.PrevHash)
+
+	_, err := ethereum.StateManager().ApplyDiff(parent.State(), parent, block)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}

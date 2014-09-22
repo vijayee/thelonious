@@ -9,7 +9,6 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethcrypto"
     "github.com/eris-ltd/eth-go-mods/ethchain"
     "github.com/eris-ltd/eth-go-mods/ethreact"
-    "github.com/ethereum/go-ethereum/utils"
     "log"
     "bytes"
     "fmt"
@@ -128,25 +127,25 @@ func (e *EthChain) Init() error{
 func (ethchain *EthChain) Start(){
     ethchain.Ethereum.Start(false) // ?
     if ethchain.Config.Mining{
-        utils.StartMining(ethchain.Ethereum)
+        StartMining(ethchain.Ethereum)
     }
 }
 
 // configure an ethereum node
 func (e *EthChain) EthConfig() {
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
-    utils.InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")
+    InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")
 }
 
 // initialize a new ethereum, pipeereum, and keymanager object
 func NewEthPEth() (*eth.Ethereum, *ethpipe.Pipe, *ethcrypto.KeyManager){
     // create a new ethereum node: init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
-    db := utils.NewDatabase()
+    db := NewDatabase()
 
-    keyManager := utils.NewKeyManager(KeyStore, EthDataDir, db)   
+    keyManager := NewKeyManager(KeyStore, EthDataDir, db)   
     keyManager.Init("", 0, true)
 
-    clientIdentity := utils.NewClientIdentity(ClientIdentifier, Version, Identifier) 
+    clientIdentity := NewClientIdentity(ClientIdentifier, Version, Identifier) 
 
     ethereum, err := eth.NewEris(db, clientIdentity, keyManager, eth.CapDefault, false, ethchain.GenesisPointer)
 
