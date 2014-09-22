@@ -1,6 +1,19 @@
 # Eth Mods
 
-This library should contain all of the modifications we make to th-go Because of how oworks the libs we build here should be a one for one trade with the th-golibs.
+Ethan: Since I don't know about Casey's git sequence below, everything for now is in branch eris. So to play
+```
+    go get github.com/eris-ltd/eth-go-mods
+    cd $GOPATH/src/github.com/eris-ltd/eth-go-mods
+    git checkout eris
+```
+
+Doug stuff is in `ethchain/doug.go`, and there's a couple functions suffixed with `Eris`. The old `deCerver/chain` is now in `ethtest` (see ethtest/README.md for details), which is also the bones of decerver interface to eth-go.
+
+Run a simple node with `go run ethtest/tests/main.go -t run`
+
+--------------------------------------------------
+
+This library should contain all of the modifications we make to eth-go. Because of how go works the libs we build here should be a one for one trade with the th-golibs.
 
 To build on EI's mods to the Core Ethereum-Go libraries:
 
