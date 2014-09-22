@@ -3,8 +3,8 @@ package ethchain
 import (
 	"math/big"
 
-	"github.com/ethereum/eth-go/ethcrypto"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethcrypto"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 /*

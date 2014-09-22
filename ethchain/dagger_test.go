@@ -1,7 +1,7 @@
 package ethchain
 
 import (
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 	"math/big"
 	"testing"
 )

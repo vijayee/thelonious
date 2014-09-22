@@ -3,8 +3,8 @@ package ethchain
 /*
 import (
 	_ "fmt"
-	"github.com/ethereum/eth-go/ethdb"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethdb"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 	"math/big"
 	"testing"
 )

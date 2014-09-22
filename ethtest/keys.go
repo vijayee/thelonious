@@ -1,9 +1,9 @@
 package ethtest
 
 import (
-    "github.com/ethereum/eth-go/ethutil"
-    "github.com/ethereum/eth-go/ethcrypto"
-    //"github.com/ethereum/eth-go/ethpipe"
+    "github.com/eris-ltd/eth-go-mods/ethutil"
+    "github.com/eris-ltd/eth-go-mods/ethcrypto"
+    //"github.com/eris-ltd/eth-go-mods/ethpipe"
     "io/ioutil"
     "strings"
     "log"

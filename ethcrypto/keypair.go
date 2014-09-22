@@ -1,7 +1,7 @@
 package ethcrypto
 
 import (
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 	"github.com/obscuren/secp256k1-go"
 	"strings"
 )

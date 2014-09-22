@@ -12,7 +12,7 @@ import (
 	"testing"
 	_ "time"
 
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 const LONG_WORD = "1234567890abcdefghijklmnopqrstuvwxxzABCEFGHIJKLMNOPQRSTUVWXYZ"

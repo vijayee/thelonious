@@ -4,12 +4,12 @@ import (
 	//"strings"
     "fmt"
 
-	"github.com/ethereum/eth-go/ethchain"
-	"github.com/ethereum/eth-go/ethcrypto"
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethutil"
-	"github.com/ethereum/eth-go/ethvm"
+	"github.com/eris-ltd/eth-go-mods/ethchain"
+	"github.com/eris-ltd/eth-go-mods/ethcrypto"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethvm"
 )
 
 var logger = ethlog.NewLogger("PIPE")

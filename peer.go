@@ -12,10 +12,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/eth-go/ethchain"
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethutil"
-	"github.com/ethereum/eth-go/ethwire"
+	"github.com/eris-ltd/eth-go-mods/ethchain"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethwire"
 )
 
 var peerlogger = ethlog.NewLogger("PEER")

@@ -3,9 +3,9 @@ package ethstate
 import (
 	"math/big"
 
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethtrie"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethtrie"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 var statelogger = ethlog.NewLogger("STATE")

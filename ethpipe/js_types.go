@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ethereum/eth-go/ethchain"
-	"github.com/ethereum/eth-go/ethcrypto"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethchain"
+	"github.com/eris-ltd/eth-go-mods/ethcrypto"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 // Block interface exposed to QML

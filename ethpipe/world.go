@@ -3,7 +3,7 @@ package ethpipe
 import (
 	"container/list"
 
-	"github.com/ethereum/eth-go/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
 )
 
 type World struct {

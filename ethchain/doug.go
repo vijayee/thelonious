@@ -6,10 +6,10 @@ import (
     "math/big"
     "path"
     "io/ioutil"
-    "github.com/ethereum/eth-go/ethutil"    
-    "github.com/ethereum/eth-go/ethcrypto"    
-    "github.com/ethereum/eth-go/ethstate"    
-    "github.com/ethereum/eth-go/ethtrie"    
+    "github.com/eris-ltd/eth-go-mods/ethutil"    
+    "github.com/eris-ltd/eth-go-mods/ethcrypto"    
+    "github.com/eris-ltd/eth-go-mods/ethstate"    
+    "github.com/eris-ltd/eth-go-mods/ethtrie"    
 )
 
 var (

@@ -1,7 +1,7 @@
 package ethcrypto
 
 import (
-	"github.com/ethereum/eth-go/ethdb"
+	"github.com/eris-ltd/eth-go-mods/ethdb"
 	// "io/ioutil"
 	"fmt"
 	"os"

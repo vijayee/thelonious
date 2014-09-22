@@ -7,9 +7,9 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethwire"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethwire"
 )
 
 var txplogger = ethlog.NewLogger("TXP")

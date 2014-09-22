@@ -3,7 +3,7 @@ package ethchain
 import (
 	"math/big"
 
-	"github.com/ethereum/eth-go/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
 )
 
 type VMEnv struct {

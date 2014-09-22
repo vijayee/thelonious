@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/eth-go/ethpipe"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethpipe"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 type EthereumApi struct {

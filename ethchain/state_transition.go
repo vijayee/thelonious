@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethtrie"
-	"github.com/ethereum/eth-go/ethutil"
-	"github.com/ethereum/eth-go/ethvm"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethtrie"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethvm"
 )
 
 /*

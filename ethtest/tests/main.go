@@ -1,7 +1,7 @@
 package main
 
 import (
-    "github.com/ethereum/eth-go/ethtest"
+    "github.com/eris-ltd/eth-go-mods/ethtest"
     "flag"
     "os"
 )   

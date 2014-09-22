@@ -2,8 +2,8 @@ package ethtest
 
 import (
     "strings"
-    "github.com/ethereum/eth-go/ethutil"
-    "github.com/ethereum/eth-go/ethtrie"
+    "github.com/eris-ltd/eth-go-mods/ethutil"
+    "github.com/eris-ltd/eth-go-mods/ethtrie"
     //"reflect"
     "log"
     "fmt"

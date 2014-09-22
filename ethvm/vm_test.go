@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 type TestEnv struct {

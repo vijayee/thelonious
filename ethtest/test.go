@@ -4,9 +4,9 @@ import (
     "fmt"
     "time"
     "os"
-    "github.com/ethereum/eth-go/ethchain"
-    "github.com/ethereum/eth-go/ethreact"
-    "github.com/ethereum/eth-go/ethutil"
+    "github.com/eris-ltd/eth-go-mods/ethchain"
+    "github.com/eris-ltd/eth-go-mods/ethreact"
+    "github.com/eris-ltd/eth-go-mods/ethutil"
 )   
 
 // general tester function on an eth node

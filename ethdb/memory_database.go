@@ -2,7 +2,7 @@ package ethdb
 
 import (
 	"fmt"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 /*

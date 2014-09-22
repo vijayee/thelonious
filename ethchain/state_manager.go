@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/eth-go/ethcrypto"
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethreact"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethutil"
-	"github.com/ethereum/eth-go/ethwire"
+	"github.com/eris-ltd/eth-go-mods/ethcrypto"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethreact"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethwire"
 )
 
 var statelogger = ethlog.NewLogger("STATE")

@@ -3,9 +3,9 @@ package ethpipe
 import (
 	"testing"
 
-	"github.com/ethereum/eth-go/ethcrypto"
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethcrypto"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 func Val(v interface{}) *ethutil.Value {

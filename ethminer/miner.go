@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/ethereum/eth-go/ethchain"
-	"github.com/ethereum/eth-go/ethlog"
-	"github.com/ethereum/eth-go/ethreact"
-	"github.com/ethereum/eth-go/ethwire"
+	"github.com/eris-ltd/eth-go-mods/ethchain"
+	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/eth-go-mods/ethreact"
+	"github.com/eris-ltd/eth-go-mods/ethwire"
 )
 
 var logger = ethlog.NewLogger("MINER")

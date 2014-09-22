@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/eth-go/ethchain"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethchain"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 type block struct {

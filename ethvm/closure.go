@@ -5,8 +5,8 @@ package ethvm
 import (
 	"math/big"
 
-	"github.com/ethereum/eth-go/ethstate"
-	"github.com/ethereum/eth-go/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/eth-go-mods/ethutil"
 )
 
 type ClosureRef interface {
