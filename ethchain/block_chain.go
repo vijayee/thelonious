@@ -187,6 +187,7 @@ func (bc *BlockChain) setLastBlock() {
 		bc.Add(bc.genesisBlock)
 		fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 		bc.Ethereum.Db().Put(fk, make([]byte, 255))
+		bc.CurrentBlock = bc.genesisBlock
 	}
 
 	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
@@ -225,10 +226,13 @@ func (bc *BlockChain) GetBlock(hash []byte) *Block {
 
 func (self *BlockChain) GetBlockByNumber(num uint64) *Block {
 	block := self.CurrentBlock
-	for ; block.Number.Uint64() != num; block = self.GetBlock(block.PrevHash) {
+	for ; block != nil; block = self.GetBlock(block.PrevHash) {
+		if block.Number.Uint64() == num {
+			break
+		}
 	}
 
-	if block.Number.Uint64() == 0 && num != 0 {
+	if block != nil && block.Number.Uint64() == 0 && num != 0 {
 		return nil
 	}
 
