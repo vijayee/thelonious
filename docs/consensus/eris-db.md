@@ -78,9 +78,11 @@ We can go even further with efficiency as follows:
     - blocks are broadcasts to the other decervers, which note the signature and commit the block (they have already seen many of the transactions)
     - decervers are to expect a new block from the leader every T seconds (if no txs come in T seconds, the leader should submit an empty heartbeat block)
     - if T seconds pass before a new block, a decerver will begin PoW mining. This way, we maintain availability, but it slows down somewhat. When the leader is brought back up, it can catch up with the new blocks, and then start broadcasting blocks again.
+            - this may be mitigated easily if there is a local decerver and all txs go through it (unless it fails). Then there's no way things can happen which it does not know about. However, if it fails, we must again rely on the network
 
 
 Notes
+-----
     - this model is highly efficient in the absence of failures, and maintains high consistency and availability.
     - security guarantees still depend on genesis permissions
     - writes should regardless be writen/replicated to the local server until there is confirmation that they have been replicated across the network (ie. in the blockchain).
