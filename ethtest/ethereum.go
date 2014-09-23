@@ -10,10 +10,8 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethchain"
     "github.com/eris-ltd/eth-go-mods/ethreact"
     "log"
-    "bytes"
     "fmt"
     "os"
-    "os/exec"
     "os/user"
     "strconv"
     "io/ioutil"
@@ -240,7 +238,7 @@ func (e *EthChain) SetCursor(n int){
 func (e EthChain) DeployContract(file, lang string) string{
     var script string
     if lang == "lll"{
-        script = CompileLLL(file, e.Config.LLLPath) // if lll, compile and pass along
+        script = CompileLLL(file) // if lll, compile and pass along
     } else if lang == "mutan"{
         s, _ := ioutil.ReadFile(file) // if mutan, pass along and pipe will compile
         script = string(s)
@@ -266,23 +264,14 @@ func (e EthChain) Stop(){
 }
 
 // compile LLL file into evm bytecode 
-func CompileLLL(filename, lll_path string) string{
-    fmt.Println("filename", filename, lll_path)
-    cmd := exec.Command(lll_path, filename)
-    var out bytes.Buffer
-    cmd.Stdout = &out
-    err := cmd.Run()
-    if err != nil {
-        logger.Infoln("Couldn't compile!!", err)
+// returns hex
+func CompileLLL(filename string) string{
+    code, err := ethutil.CompileLLL(filename)
+    if err != nil{
+        fmt.Println("error compiling lll!", err)
         return ""
     }
-    //outstr := strings.Split(out.String(), "\n")
-    outstr := out.String()
-    for l:=len(outstr);outstr[l-1] == '\n';l--{
-        outstr = outstr[:l-1]
-    }
-    return "0x"+outstr
-    //return ethutil.Hex2Bytes(outstr)
+    return "0x"+ethutil.Bytes2Hex(code)
 }
 
 // some convenience functions

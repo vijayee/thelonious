@@ -6,12 +6,17 @@ import (
     "path"
     "os/exec"
     "bytes"
+    "log"
+    "io/ioutil"
+    "net/http"
 	"github.com/obscuren/mutan"
 	"github.com/obscuren/mutan/backends"
     
 	//"github.com/obscuren/serpent-go"
 )
 
+// this can be overwritten by higher-level constructs
+// ethtest/config.go will reset it from config file
 var PathToLLL = path.Join("/Users/BatBuddha/Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc")
 
 // General compile function
@@ -65,6 +70,31 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 // compile LLL file into evm bytecode 
 func CompileLLL(filename string) ([]byte, error){
     fmt.Println("filename", filename, PathToLLL)
+    // if we don't have the lllc locally, use the server
+    if PathToLLL == "NETCALL"{
+            //url := "http://ps.erisindustries.com/compile"
+            url := "http://162.218.65.211:9999/compile"
+            code, err  := ioutil.ReadFile(filename)
+            if err != nil{
+                log.Println("failed to read file", err)
+                return nil, err
+            }
+            codeString := string(code)
+            var json = []byte(`{"code":"` + Bytes2Hex([]byte(codeString)) +  `"}`)
+            req, err := http.NewRequest("POST", url, bytes.NewBuffer(json))
+            //req.Header.Set("X-Custom-Header", "myvalue")
+            req.Header.Set("Content-Type", "application/json")
+
+            client := &http.Client{}
+            resp, err := client.Do(req)
+            if err != nil{
+                log.Println("failed!", err)
+                return nil, err
+            }
+            defer resp.Body.Close()
+            body, err := ioutil.ReadAll(resp.Body)
+            return body, nil
+   }
     cmd := exec.Command(PathToLLL, filename)
     var out bytes.Buffer
     cmd.Stdout = &out
