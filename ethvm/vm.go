@@ -764,6 +764,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			// Generate a new address
 			addr := ethcrypto.CreateAddress(closure.Address(), closure.object.Nonce)
 			for i := uint64(0); self.env.State().GetStateObject(addr) != nil; i++ {
+                //TODO: is this missing an addr = 
 				ethcrypto.CreateAddress(closure.Address(), closure.object.Nonce+i)
 			}
 			closure.object.Nonce++
@@ -771,6 +772,11 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			self.Printf(" (*) %x", addr).Endl()
 
 			closure.UseGas(closure.Gas)
+
+            // this is necessary to preset the code
+            // when exec is called, it looks for this code!
+            obj := self.env.State().GetOrNewStateObject(addr)
+            obj.Code = input
 
 			msg := NewMessage(self, addr, input, gas, closure.Price, value)
 			ret, err := msg.Exec(addr, closure)
@@ -782,6 +788,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 				self.Printf("CREATE err %v", err)
 			} else {
+                fmt.Println("msg.object.Code = ", ret)
 				msg.object.Code = ret
 
 				stack.Push(ethutil.BigD(addr))
