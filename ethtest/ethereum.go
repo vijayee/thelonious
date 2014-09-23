@@ -267,6 +267,7 @@ func (e EthChain) Stop(){
 
 // compile LLL file into evm bytecode 
 func CompileLLL(filename, lll_path string) string{
+    fmt.Println("filename", filename, lll_path)
     cmd := exec.Command(lll_path, filename)
     var out bytes.Buffer
     cmd.Stdout = &out

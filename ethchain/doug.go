@@ -12,6 +12,13 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethtrie"    
 )
 
+func GenesisPointer(block *Block, eth EthManager){
+    //GenesisTxs(block, eth)
+    //Valids(block, eth)
+    GenesisTxsByDoug(block, eth)
+}
+
+
 var (
 
     DougDifficulty = ethutil.BigPow(2, 17)
@@ -21,7 +28,7 @@ var (
     TXERS = "02"
 
     GoPath = os.Getenv("GOPATH")
-    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "deCerver", "chain", "contracts")
+    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts")
 )
 
 func DougValidate(addr []byte, state *ethstate.State, role string) bool{
@@ -46,25 +53,26 @@ func DougValidate(addr []byte, state *ethstate.State, role string) bool{
     return !valid.IsNil()
 }
 
-func GenesisPointer(block *Block, eth EthManager){
-    //GenesisTxs(block, eth)
-    Valids(block, eth)
-}
-
 // create a new tx from a script, with dummy keypair
 func NewGenesisContract(scriptFile string) *Transaction{
-    // now load a contract and compile
-    s, err := ioutil.ReadFile(scriptFile)
-    if err != nil{
-        fmt.Println("could not load contract!", scriptFile, err)
-        os.Exit(0)
+    // if mutan, load the script. else, pass file name
+    var s string
+    if scriptFile[len(scriptFile)-3:] == ".mu"{
+        r, err := ioutil.ReadFile(scriptFile)
+        if err != nil{
+            fmt.Println("could not load contract!", scriptFile, err)
+            os.Exit(0)
+        }
+        s = string(r)
+    } else{
+        s = scriptFile
     }
-    script, err := ethutil.Compile(string(s), false)
+    script, err := ethutil.Compile(string(s), false) 
     if err != nil{
         fmt.Println("failed compile", err)
         os.Exit(0)
     }
-
+    fmt.Println("script: ", script)
     // dummy keys for signing
     keys := ethcrypto.GenerateNewKeyPair() 
 
@@ -79,10 +87,11 @@ func NewGenesisContract(scriptFile string) *Transaction{
 func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
     state := block.State()
     st := NewStateTransition(ethstate.NewStateObject(block.Coinbase), tx, state, block)
-    st.AddGas(ethutil.Big("1000000")) // gas is silly, but the vm needs it
+    st.AddGas(ethutil.Big("10000000000000000000000000000000000000000000000000000000000000000000000000000000000")) // gas is silly, but the vm needs it
 
     fmt.Println("man oh man", ethutil.Bytes2Hex(addr))
     receiver := state.NewStateObject(addr)
+    receiver.Balance = ethutil.Big("123456789098765432")
     receiver.InitCode = tx.Data
     receiver.State = ethstate.New(ethtrie.New(ethutil.Config.Db, ""))
     sender := state.GetOrNewStateObject(tx.Sender())  
@@ -119,10 +128,7 @@ func GenesisTxs(block *Block, eth EthManager){
         "bbbd0256041f7aed3ce278c56ee61492de96d001",
         "b9398794cafb108622b07d9a01ecbed3857592d5",
 	} {
-		codedAddr := ethutil.Hex2Bytes(addr)
-		account := block.State().GetAccount(codedAddr)
-		account.Balance = ethutil.Big("1606938044258990275541962092341162602522202993782792835301376") //ethutil.BigPow(2, 200)
-		block.State().UpdateStateObject(account)
+        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
 	}
 
     txs := Transactions{}
@@ -140,6 +146,14 @@ func GenesisTxs(block *Block, eth EthManager){
     block.State().Sync()  
 }
 
+
+func AddAccount(addr, balance string, block *Block){
+    codedAddr := ethutil.Hex2Bytes(addr)
+    account := block.State().GetAccount(codedAddr)
+    account.Balance = ethutil.Big(balance) //ethutil.BigPow(2, 200)
+    block.State().UpdateStateObject(account)
+}
+
 // doug and lists of valid miners/txers
 func Valids(block *Block, eth EthManager){
     addrs := []string{
@@ -148,10 +162,7 @@ func Valids(block *Block, eth EthManager){
     }
     // private keys for these are stored in keys.txt
 	for _, addr := range addrs{
-		codedAddr := ethutil.Hex2Bytes(addr)
-		account := block.State().GetAccount(codedAddr)
-		account.Balance = ethutil.Big("1606938044258990275541962092341162602522202993782792835301376") //ethutil.BigPow(2, 200)
-		block.State().UpdateStateObject(account)
+        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
 	}
   
     // set up main contract addrs
@@ -176,3 +187,32 @@ func Valids(block *Block, eth EthManager){
     block.State().Update()  
     block.State().Sync()
 }
+
+// add addresses and a simple contract
+func GenesisTxsByDoug(block *Block, eth EthManager){
+    // private keys for these are stored in keys.txt
+	for _, addr := range []string{
+        "bbbd0256041f7aed3ce278c56ee61492de96d001",
+        "b9398794cafb108622b07d9a01ecbed3857592d5",
+	} {
+        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
+	}
+
+    fmt.Println("TXS BY DOUG!!")
+
+    txs := Transactions{}
+    receipts := []*Receipt{}
+
+    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
+    tx := NewGenesisContract(path.Join(ContractPath, "test.lll"))
+    fmt.Println(tx.String())
+    receipt := SimpleTransitionState(addr, block, tx)
+
+    txs = append(txs, tx) 
+    receipts = append(receipts, receipt)
+
+    block.SetReceipts(receipts, txs)
+    block.State().Update()  
+    block.State().Sync()  
+}
+

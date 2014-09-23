@@ -37,9 +37,9 @@ func TestGetStorage(){
     tester("get storage", func(eth *EthChain){
         eth.Start()
         fmt.Println("addR", eth.FetchAddr())    
-        //c := "./test.lll"
-        contract_addr := eth.DeployContract("contract.storage[5]=21", "")
-        //contract_addr := eth.DeployContract(c, "lll")
+        c := "test.lll"
+        //contract_addr := eth.DeployContract("contract.storage[5]=21", "")
+        contract_addr := eth.DeployContract(path.Join(eth.Config.ContractPath, c), "lll")
         fmt.Println("contract addr", contract_addr)
         callback("get storage", eth, func(){
             fmt.Println("####RESPONSE####")

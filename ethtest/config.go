@@ -35,7 +35,7 @@ var DefaultConfig = &ChainConfig{
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
         LLLPath: path.Join(homeDir(), "Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc"),
-        ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "deCerver", "chain", "contracts"),
+        ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts"),
         ClientIdentifier: "Ethereum(deCerver)",
         Version: "0.5.17",
         Identifier: "",
