@@ -51,6 +51,7 @@ const (
 	GASPRICE     = 0x3a
 	EXTCODECOPY  = 0x3b
 	EXTCODESIZE  = 0x3c
+    CALLSTACK    = 0x3d
 
 	// 0x40 range - block operations
 	PREVHASH   = 0x40
@@ -198,6 +199,7 @@ var opCodeToString = map[OpCode]string{
 	CODESIZE:     "CODESIZE",
 	CODECOPY:     "CODECOPY",
 	GASPRICE:     "TXGASPRICE",
+    CALLSTACK:    "CALLSTACK",
 
 	// 0x40 range - block operations
 	PREVHASH:    "PREVHASH",

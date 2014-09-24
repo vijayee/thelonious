@@ -37,6 +37,8 @@ type Vm struct {
 	Recoverable bool
 
 	queue *list.List
+
+    callStack *[][]byte // list of addrs
 }
 
 type Environment interface {
@@ -63,7 +65,7 @@ func New(env Environment) *Vm {
 		lt = LogTyDiff
 	}
 
-	return &Vm{env: env, logTy: lt, Recoverable: true, queue: list.New()}
+	return &Vm{env: env, logTy: lt, Recoverable: true, queue: list.New(), callStack: new([][]byte)}
 }
 
 func calcMemSize(off, l *big.Int) *big.Int {
@@ -519,6 +521,19 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(ethutil.BigD(origin))
 
 			self.Printf(" => %x", origin)
+        case CALLSTACK:
+            require(1)
+            var addr []byte
+            frame := stack.Pop()
+            framen := frame.Uint64()
+            if int(framen) > len(*self.callStack)-1{
+                stack.Push(big.NewInt(0))
+            } else{
+                addr = (*self.callStack)[framen]
+                stack.Push(ethutil.BigD(addr))
+            }
+            
+            self.Printf(" => %x", addr) 
 		case CALLER:
 			caller := closure.caller.Address()
 			stack.Push(ethutil.BigD(caller))
@@ -1003,10 +1018,16 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 		// Retrieve the executing code
 		code := self.vm.env.State().GetCode(codeAddr)
 
+        // Put the new address on the call stack
+        *self.vm.callStack = append(*self.vm.callStack, codeAddr)
+
 		// Create a new callable closure
 		c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
 		// Executer the closure and get the return value (if any)
 		ret, _, err = c.Call(self.vm, self.input)
+
+        // Remove the last address from the callstack
+        *self.vm.callStack = (*self.vm.callStack)[:len(*self.vm.callStack)-1]
 
 		msg.Output = ret
 

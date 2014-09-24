@@ -61,7 +61,7 @@ func (e *EthChain) SetConfig(config interface{}) error{
 
 // configure an ethereum node
 func (e *EthChain) EthConfig() {
-    ethutil.PathToLLL = "NETCALL" //e.Config.LLLPath
+    ethutil.PathToLLL = e.Config.LLLPath
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
     InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")
 }
