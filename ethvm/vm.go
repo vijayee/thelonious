@@ -534,6 +534,8 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
             }
             
             self.Printf(" => %x", addr) 
+        case CALLSTACKSIZE:
+            stack.Push(len(*self.callStack))
 		case CALLER:
 			caller := closure.caller.Address()
 			stack.Push(ethutil.BigD(caller))
@@ -1019,6 +1021,10 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 		code := self.vm.env.State().GetCode(codeAddr)
 
         // Put the new address on the call stack
+        // if it's empty, add the caller's address as well
+        if len(*self.vm.callStack) == 0{
+            *self.vm.callStack = append(*self.vm.callStack, caller.Address())
+        }
         *self.vm.callStack = append(*self.vm.callStack, codeAddr)
 
 		// Create a new callable closure
@@ -1028,6 +1034,7 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 
         // Remove the last address from the callstack
         *self.vm.callStack = (*self.vm.callStack)[:len(*self.vm.callStack)-1]
+        // note that the original callers address will never be removed. is this even an issue? TODO
 
 		msg.Output = ret
 

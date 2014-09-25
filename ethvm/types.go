@@ -52,6 +52,7 @@ const (
 	EXTCODECOPY  = 0x3b
 	EXTCODESIZE  = 0x3c
     CALLSTACK    = 0x3d
+    CALLSTACKSIZE    = 0x3e
 
 	// 0x40 range - block operations
 	PREVHASH   = 0x40
@@ -200,6 +201,7 @@ var opCodeToString = map[OpCode]string{
 	CODECOPY:     "CODECOPY",
 	GASPRICE:     "TXGASPRICE",
     CALLSTACK:    "CALLSTACK",
+    CALLSTACKSIZE:    "CALLSTACKSIZE",
 
 	// 0x40 range - block operations
 	PREVHASH:    "PREVHASH",
@@ -359,6 +361,7 @@ var OpCodes = map[string]byte{
 	"EXTCODECOPY":  0x3b,
 	"EXTCODESIZE":  0x3c,
     "CALLSTACK":    0x3d,
+    "CALLSTACKSIZE":    0x3e,
 
 	// 0x40 range - block operations
 	"PREVHASH":   0x40,
