@@ -3,6 +3,8 @@ package ethchain
 import (
     "fmt"
     "path"
+    "os"
+    "io/ioutil"
     "github.com/eris-ltd/eth-go-mods/ethutil"    
     "github.com/eris-ltd/eth-go-mods/ethcrypto"    
 )
@@ -16,6 +18,69 @@ var ADDRS = []string{
         "bbbd0256041f7aed3ce278c56ee61492de96d001",                                  
         "b9398794cafb108622b07d9a01ecbed3857592d5", 
     }
+
+type Permission{
+    Tx int  `json:"tx"`
+    Mining int  `json:"mining"`
+    Create int  `json:"create"`
+}
+
+type Account struct{
+    Address string  `json:"addr"`
+    Balance string  `json:"balance"`
+    Permissions Permission  `json:"permissions"`
+}
+
+type Genesis struct{
+    Address string  `json:"address"`
+    Accounts map[string]Account `json:"accounts"`
+    Doug string `json:"doug"`
+
+    f string // other things to do
+
+    block *Block
+    eth EthManager
+}
+
+// load the genesis block info from genesis.json
+func LoadGenesis() *Genesis{
+    b, err := ioutil.ReadFile(GenesisConfig)
+    if err != nil{
+        fmt.Println("err reading genesis.json", err)
+        os.Exit(0)
+    }
+
+    g := new(Genesis)
+    err := json.Unmarshall(b, g)
+    if err != nil{
+        fmt.Println("error unmarshalling genesis.json", err)
+        os.Exit(0)
+    }
+
+    return g
+}
+
+// deploy the genesis block
+func (g *Genesis) Deploy(block *Block, eth EthManager, f string){
+    for addr, account := range g.Accounts{
+        AddAccount(addr, account.Balance, block)
+    }
+
+    txs := Transactions{}
+    receipts := []*Receipt{}
+
+    GENDOUG = g.Address 
+    tx := NewGenesisContract(path.Join(ContractPath, g.Doug))
+    fmt.Println(tx.String())
+    receipt := SimpleTransitionState(GENDOUG, block, tx)
+
+    txs = append(txs, tx) 
+    receipts = append(receipts, receipt)
+
+    block.SetReceipts(receipts, txs)
+    block.State().Update()  
+    block.State().Sync()  
+}
 
 
 // add addresses

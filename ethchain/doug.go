@@ -22,10 +22,14 @@ var (
 
     GoPath = os.Getenv("GOPATH")
     ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts")
+    GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
 )
 
 // point us to the right genesis function
 func GenesisPointer(block *Block, eth EthManager, f string){
+    g := LoadGenesis()
+    g.Deploy(block, eth, f)
+    /*
     fmt.Println("genesis pointer", f)
     switch(f){
         case "txs-by-doug":
@@ -37,6 +41,7 @@ func GenesisPointer(block *Block, eth EthManager, f string){
     }
     //GenesisTxs(block, eth)
     //Valids(block, eth)
+    */
 }
 
 // use genesis block to validate addr's role
