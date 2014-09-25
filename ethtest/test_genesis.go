@@ -24,9 +24,9 @@ func traverse_to_genesis(curchain *ethchain.BlockChain, curblock *ethchain.Block
     }
 }
 
-func TestValidate(){
-    tester("validate", func(eth *EthChain){
-        pretty_print_accounts_chain(eth)
+func (t *Test) TestValidate(){
+    t.tester("validate", func(eth *EthChain){
+        PrettyPrintChainAccounts(eth)
         gen := eth.Ethereum.BlockChain().Genesis()
         a1 := ethutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
         a2 := ethutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
@@ -41,44 +41,32 @@ func TestValidate(){
 }
 
 // doesn't start up a node, just loads from db and traverses to genesis
-// run test basic to mine for a bit ...
-func TestTraverseGenesis(){
-    tester("traverse to genesis", func(eth *EthChain){
-        fmt.Println("in tester")
+func (t *Test) TestTraverseGenesis(){
+    t.tester("traverse to genesis", func(eth *EthChain){
         eth.Start()
-        callback("traverse_to_genesis", eth, func(){
-            var prevhash string
-            var curhash string
+        t.callback("traverse_to_genesis", eth, func(){
             curchain := eth.Ethereum.BlockChain()
             curblock := curchain.CurrentBlock
-            fmt.Println("ready to traverse")
             gen_tr := traverse_to_genesis(curchain, curblock)
             gen := curchain.Genesis()
-            fmt.Println("full gen after loop")
-            fmt.Println(gen_tr)
-            fmt.Println("full gen from bc")
-            fmt.Println(gen)
-            fmt.Println("genesis hash and prev hash after loop:")
-            fmt.Println(curhash, prevhash)
-            fmt.Println("genesis hash and prevhash from bc")
-            fmt.Println(ethutil.Bytes2Hex(gen.Hash()), ethutil.Bytes2Hex(gen.PrevHash))
+            check_recovered(gen.String(), gen_tr.String())
         })
     }, 10)
 }
 
-func TestGenesisMsg(){
-    tester("genesis msg", func(eth *EthChain){
+// test sending a message to the genesis doug
+func (t *Test) TestGenesisMsg(){
+    t.tester("genesis msg", func(eth *EthChain){
         eth.Start()
-        //pretty_print_accounts_chain(eth)
-            addr := "2b36a39892af8e0b63042d8cead877517cd62c48"
-            eth.SetCursor(2)
+            addr := ethchain.GENDOUG //"2b36a39892af8e0b63042d8cead877517cd62c48"
+            //eth.SetCursor(2)
             eth.Msg(addr, []string{"55"})
-            callback("get storage", eth, func(){
+            t.callback("get storage", eth, func(){
                 fmt.Println("####RESPONSE####")
                 fmt.Println(eth.GetStorageAt(addr, "5"))
                 storage := eth.GetStorage(addr)
                 fmt.Println(storage)
-                pretty_print_accounts_chain(eth)
+                PrettyPrintChainAccounts(eth)
             })
             os.Exit(0)
     }, 10)
@@ -87,14 +75,14 @@ func TestGenesisMsg(){
 
 
 // add a contract account to the genesis block
-func TestGenesisAccounts(){
-    tester("genesis contract", func(eth *EthChain){
+func (t *Test) TestGenesisAccounts(){
+    t.tester("genesis contract", func(eth *EthChain){
         //eth.Start()
-        //callback("genesis", eth, func(){
+        //t.callback"genesis", eth, func(){
             curchain := eth.Ethereum.BlockChain()
             block := curchain.CurrentBlock
             //block = curchain.Genesis()
-            pretty_print_accounts_block(block)
+            PrettyPrintBlockAccounts(block)
             os.Exit(0)
             fmt.Println(eth.GetStorageAt("a92e33077d317c1d838f7270d9fe3e1c4399f997", "7b"))
             latest := eth.Ethereum.BlockChain().CurrentBlock

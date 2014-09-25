@@ -22,6 +22,7 @@ type ChainConfig struct{
     Version string  `json:"version"`
     Identifier string `json:"id"`
     KeyStore string `json:"keystore"`
+    GenesisPointer string `json:"genesis_func"`
 }
 
 // set default config object
@@ -34,12 +35,14 @@ var DefaultConfig = &ChainConfig{
         Name : "decerver-ethchain",
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
-        LLLPath: path.Join(homeDir(), "Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc"),
+        //LLLPath: path.Join(homeDir(), "Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc"),
+        LLLPath: "NETCALL",
         ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts"),
         ClientIdentifier: "Ethereum(deCerver)",
         Version: "0.5.17",
         Identifier: "",
         KeyStore: "db",
+        GenesisPointer: "txs-by-doug",
 }
 
 

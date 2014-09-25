@@ -143,7 +143,7 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
         }else{
             d = []byte(data)
         }
-        fmt.Println("data pre tx:", d)
+        fmt.Println("data pre tx:", d, len(d))
 		tx = ethchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), d)
 	}
 

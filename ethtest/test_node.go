@@ -7,9 +7,9 @@ import (
     "time"
 )
 
-
-func TestBasic(){
-    tester("basic", func(eth *EthChain){
+// start the node, start mining, quit
+func (t *Test) TestBasic(){
+    t.tester("basic", func(eth *EthChain){
         // eth.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
         fmt.Println("mining addresS", eth.FetchAddr())
         eth.Start()
@@ -17,24 +17,18 @@ func TestBasic(){
     }, 10)
 }
 
-func TestBig(){
-    a := ethutil.NewValue("100000000000")
-    fmt.Println("a, bigint", a, a.BigInt())
-    // doesnt work! must do: 
-    a = ethutil.NewValue(ethutil.Big("100000000000"))
-    fmt.Println("a, bigint", a, a.BigInt())
-}
-
-func Run(){
-    tester("basic", func(eth *EthChain){
+// run a node
+func (t* Test) TestRun(){
+    t.tester("basic", func(eth *EthChain){
         // eth.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
         fmt.Println("mining addresS", eth.FetchAddr())
         eth.Start()
     }, 0)
 }
 
-func TestStopMining(){
-    tester("mining", func(eth *EthChain){
+// mine, stop mining, start mining
+func (t *Test) TestStopMining(){
+    t.tester("mining", func(eth *EthChain){
         fmt.Println("mining addresS", eth.FetchAddr())
         eth.Start()
         time.Sleep(time.Second*10)
@@ -45,3 +39,13 @@ func TestStopMining(){
         eth.StartMining()        
     }, 30)
 }
+
+// note about big nums and values...
+func (t *Test) TestBig(){
+    a := ethutil.NewValue("100000000000")
+    fmt.Println("a, bigint", a, a.BigInt())
+    // doesnt work! must do: 
+    a = ethutil.NewValue(ethutil.Big("100000000000"))
+    fmt.Println("a, bigint", a, a.BigInt())
+}
+

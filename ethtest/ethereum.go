@@ -7,7 +7,6 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethpipe"
     "github.com/eris-ltd/eth-go-mods/ethlog"
     "github.com/eris-ltd/eth-go-mods/ethcrypto"
-    "github.com/eris-ltd/eth-go-mods/ethchain"
     "github.com/eris-ltd/eth-go-mods/ethreact"
     "log"
     "fmt"
@@ -36,6 +35,7 @@ type EthChain struct{
     keyManager *ethcrypto.KeyManager
     reactor *ethreact.ReactorEngine
     chans map[string]chan ethreact.Event
+    GenesisFunc string // name of the genesis function to use
 }
 
 // new ethchain with default config
@@ -100,7 +100,7 @@ func (e *EthChain) NewEthereum(){
     clientIdentity := NewClientIdentity(e.Config.ClientIdentifier, e.Config.Version, e.Config.Identifier) 
 
     // create the ethereum obj
-    ethereum, err := eth.NewEris(db, clientIdentity, e.keyManager, eth.CapDefault, false, ethchain.GenesisPointer)
+    ethereum, err := eth.NewEris(db, clientIdentity, e.keyManager, eth.CapDefault, false, e.Config.GenesisPointer)
 
     if err != nil {
         log.Fatal("Could not start node: %s\n", err)
@@ -298,12 +298,18 @@ func SHA3(tohash string) string{
 // pack data into acceptable format for transaction
 // TODO: make sure this is ok ...
 func PackTxDataArgs(args ... string) string{
+    fmt.Println("pack data:", args)
     ret := *new([]byte)
     for _, s := range args{
         if s[:2] == "0x"{
-            x := ethutil.Hex2Bytes(s[2:])
+            t := s[2:]
+            if len(t) % 2 == 1{
+                t = "0"+t
+            }
+            x := ethutil.Hex2Bytes(t)
+            fmt.Println(x)
             l := len(x)
-            ret = append(ret, ethutil.RightPadBytes(x, 32*((l + 31)/32))...)
+            ret = append(ret, ethutil.LeftPadBytes(x, 32*((l + 31)/32))...)
         }else{
             x := []byte(s)
             l := len(x)

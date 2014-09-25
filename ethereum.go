@@ -91,19 +91,14 @@ type Ethereum struct {
 
 	filters map[int]*ethchain.Filter
 
-    genesisFunc GenesisFunc // called by setLastBlock
+    genesisPointer string // name of genesis func to use
 }
 
-type GenesisFunc func(block *ethchain.Block, eth ethchain.EthManager)
-
-func (e *Ethereum) SetGenesisFunc(f func (block *ethchain.Block, eth ethchain.EthManager)){
-    e.genesisFunc = f
-}
-
+// called by setLastBlock. The function it will result in depends on
+// e.GenesisPointer string
 func (e *Ethereum) GenesisFunc(block *ethchain.Block){
-       e.genesisFunc(block, e) 
+       ethchain.GenesisPointer(block, e, e.genesisPointer) 
 }
-
 
 func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool) (*Ethereum, error) {
 	var err error
@@ -147,8 +142,7 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 	return ethereum, nil
 }
 
-// call this to be able to pass genesis functions in to set the genesis block without having to modify eth-go any more ...
-func NewEris(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool, genF GenesisFunc) (*Ethereum, error) {
+func NewEris(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool, genesisPointer string) (*Ethereum, error) {
 	var err error
 	var nat NAT
 
@@ -176,8 +170,8 @@ func NewEris(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyMana
 		clientIdentity: clientIdentity,
 		isUpToDate:     true,
 		filters:        make(map[int]*ethchain.Filter),
+        genesisPointer: genesisPointer,
 	}
-    ethereum.SetGenesisFunc(genF)
 	ethereum.reactor = ethreact.New()
 
 	ethereum.blockPool = NewBlockPool(ethereum)

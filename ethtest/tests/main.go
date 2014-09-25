@@ -8,6 +8,8 @@ import (
 
 var (
     tester = flag.String("t", "", "pick a test: basic, tx, traverse, genesis, genesis-msg, get-storage, msg-storage")
+    genesis = flag.String("g", "", "pick a genesis functin:")
+    blocks = flag.Int("n", 10, "num blocks to wait before shutdown")
 )
 
 
@@ -20,26 +22,7 @@ func main(){
         os.Exit(0)
     }
 
-    switch(*tester){
-        case "basic":
-            ethtest.TestBasic()
-        case "run":
-            ethtest.Run()
-        case "tx":
-            ethtest.TestTx()
-        case "traverse":
-            ethtest.TestTraverseGenesis()
-        case "genesis":
-            ethtest.TestGenesisAccounts()
-        case "genesis-msg":
-            ethtest.TestGenesisMsg()
-        case "get-storage":
-            ethtest.TestGetStorage()
-        case "msg-storage":
-            ethtest.TestMsgStorage()
-        case "validate":
-            ethtest.TestValidate()
-        case "mining":
-            ethtest.TestStopMining()
-    }
+    T := ethtest.NewTester(*tester, *genesis, *blocks)
+    T.Run()
+
 }

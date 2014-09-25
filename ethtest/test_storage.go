@@ -6,88 +6,81 @@ import (
     "fmt"
     "math/big"
     "path"
+    "io/ioutil"
+    "os"
+    "time"
 )
 
-
-func TestMsgStorage(){
-    tester("msg storage", func(eth *EthChain){
+// contract that stores a single value during init
+func (t *Test) TestSimpleStorage(){
+    t.tester("simple storage", func(eth *EthChain){
         eth.Start()
-        contract_addr := eth.DeployContract(path.Join(ethchain.ContractPath, "genesis.mu"), "mutan")
-        fmt.Println("contract addr", contract_addr)
-        callback("get storage", eth, func(){
-            fmt.Println("####RESPONSE####")
-            fmt.Println(eth.GetStorageAt(contract_addr, "5"))
-            storage := eth.GetStorage(contract_addr)
-            fmt.Println(storage)
-            eth.Msg(contract_addr, []string{"21"})
-            callback("get storage", eth, func(){
-                fmt.Println("####RESPONSE####")
-                fmt.Println(eth.GetStorageAt(contract_addr, "5"))
-                storage := eth.GetStorage(contract_addr)
-                fmt.Println(storage)
-                pretty_print_accounts_chain(eth)
-            })
-        })
-
-    }, 10)
-}
-
-// add a contract account to the genesis block
-func TestGetStorage(){
-    tester("get storage", func(eth *EthChain){
-        eth.Start()
-        fmt.Println("addR", eth.FetchAddr())    
-        c := "test.lll"
-        //contract_addr := eth.DeployContract("contract.storage[5]=21", "")
-        contract_addr := eth.DeployContract(path.Join(eth.Config.ContractPath, c), "lll")
-        fmt.Println("contract addr", contract_addr)
-        callback("get storage", eth, func(){
-            fmt.Println("####RESPONSE####")
-            fmt.Println(eth.GetStorageAt(contract_addr, "5"))
-            storage := eth.GetStorage(contract_addr)
-            if len(storage) == 0{
-                fmt.Println("Failed to store a value!")
-            } else{
-                fmt.Println("Value stored successfuly")
-                fmt.Println(storage)
+        // set up test parameters and code
+        key := "0x5"
+        value := "0x400"
+        code := fmt.Sprintf(`
+            {
+                ;; store a value
+                [[%s]]%s
             }
-            pretty_print_accounts_chain(eth)
+        `, key, value)
+        fmt.Println("Code:\n", code)
+        // write code to file and deploy
+        c := "lll/simple-storage.lll"
+        p := path.Join(eth.Config.ContractPath, c)
+        err := ioutil.WriteFile(p, []byte(code), 0644)
+        if err != nil{
+            fmt.Println("write file failed", err)
+            os.Exit(0)
+        }
+        contract_addr := eth.DeployContract(p, "lll")
+        // callback when block is mined
+        t.callback("simple storage", eth, func(){
+            recovered := "0x" + eth.GetStorageAt(contract_addr, key)
+            check_recovered(value, recovered)
         })
         //eth.Ethereum.WaitForShutdown()
     }, 10)
 }
 
+// test a simple key-value store contract
+func (t *Test) TestMsgStorage(){
+    t.tester("msg storage", func(eth *EthChain){
+        eth.Start()
+        contract_addr := eth.DeployContract(path.Join(ethchain.ContractPath, "lll/keyval.lll"), "lll")
+        t.callback("deploy key-value", eth, func(){
+            key := "0x21"
+            value := "0x400"
+            time.Sleep(time.Nanosecond) // needed or else subscribe channels block and are skipped ... TODO: why?!
+            eth.Msg(contract_addr, []string{key, value})
+            t.callback("test key-value", eth, func(){
+                recovered := "0x"+eth.GetStorageAt(contract_addr, key)
+                check_recovered(value, recovered)
+            })
+        })
 
-func TestTx(){
-    tester("basic tx", func(eth *EthChain){
+    }, 30)
+}
+
+// test simple tx
+func (t *Test) TestTx(){
+    t.tester("basic tx", func(eth *EthChain){
         eth.Start()
         addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
         addr_bytes := ethutil.Hex2Bytes(addr)
         amount := "567890"
         old_balance := eth.Pipe.Balance(addr_bytes)
-        eth.SetCursor(0)
+        //eth.SetCursor(0)
         eth.Tx(addr, amount)
-        callback("get balance", eth, func(){
-            fmt.Println("####RESPONSE####")
+        t.callback("get balance", eth, func(){
             new_balance := eth.Pipe.Balance(addr_bytes)
-            fmt.Println("new balance", new_balance.BigInt())
-
             old := old_balance.BigInt()
             am := ethutil.Big(amount)
-            fmt.Println("amount", am)
-            fmt.Println("old", old)
             n := new(big.Int)
-            n = n.Add(old, am) // TODO!!!!
+            n.Add(old, am)
             newb := ethutil.BigD(new_balance.Bytes())
-            if n.Cmp(newb) != 0{ 
-                fmt.Println("SIMPLE TX FAILED!")
-                fmt.Println("expected", n, "got", newb)
-            } else {
-                fmt.Println("Simple tx passed")
-            }
+            check_recovered(n.String(), newb.String())
         })
         //eth.Ethereum.WaitForShutdown()
     }, 10)
 }
-
-
