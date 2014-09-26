@@ -423,7 +423,12 @@ func (s *Ethereum) ReapDeadPeerHandler() {
 func (s *Ethereum) Start(seed bool) {
 	s.reactor.Start()
 	// Bind to addr and port
-	ln, err := net.Listen("tcp", ":"+s.Port)
+    laddr, err := net.ResolveTCPAddr("tcp", ":"+s.Port)
+    if err != nil{
+		ethlogger.Warnf("Invalid TCP Addr! Connection listening disabled. Acting as client")
+		s.listening = false
+    }
+	ln, err := net.ListenTCP("tcp", laddr)
 	if err != nil {
 		ethlogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
 		s.listening = false
@@ -432,7 +437,7 @@ func (s *Ethereum) Start(seed bool) {
 		// Starting accepting connections
 		ethlogger.Infoln("Ready and accepting connections")
 		// Start the peer handler
-		go s.peerHandler(ln)
+		go s.peerHandler(*ln)
 	}
 
 	if s.nat != nil {
@@ -504,17 +509,27 @@ func (s *Ethereum) Seed() {
 	}*/
 }
 
-func (s *Ethereum) peerHandler(listener net.Listener) {
+func (s *Ethereum) peerHandler(listener net.TCPListener) {
+out:
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			ethlogger.Debugln(err)
-
-			continue
-		}
-
-		go s.AddPeer(conn)
+        select{
+        case <- s.quit:
+            break out
+        default:
+            // accept must timeout so we can catch quits
+            listener.SetDeadline(time.Now().Add(1e9))
+            conn, err := listener.Accept()
+            if err != nil {
+                //ignore timeout errors
+                if !strings.Contains(err.Error(), "timeout"){
+                    ethlogger.Debugln(err)
+                }
+                continue
+            } 
+            go s.AddPeer(conn) 
+        }
 	}
+    listener.Close()
 }
 
 func (s *Ethereum) Stop() {
@@ -535,6 +550,7 @@ func (s *Ethereum) Stop() {
 		p.Stop()
 	})
 
+    fmt.Println("firing quit close")
 	close(s.quit)
 
 	if s.RpcServer != nil {
