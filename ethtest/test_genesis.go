@@ -74,6 +74,19 @@ func (t *Test) TestGenesisAccounts(){
     }, 0)
 }
 
+// print the genesis state
+func (t *Test) TestBlockNum(){
+
+    t.tester("block num", func(eth *EthChain){
+        curchain := eth.Ethereum.BlockChain()
+        block := curchain.CurrentBlock
+        fmt.Println(curchain.LastBlockNumber)
+        fmt.Println(block.Number)
+        fmt.Println(curchain.Genesis().Number)
+        os.Exit(0)
+    }, 0)
+}
+
 
 // follow the prevhashes back to genesis
 func traverse_to_genesis(curchain *ethchain.BlockChain, curblock *ethchain.Block) *ethchain.Block{

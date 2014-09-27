@@ -59,6 +59,8 @@ func (t *Test) Run(){
             t.TestStopMining()
         case "listening":
             t.TestStopListening()
+        case "blocknum":
+            t.TestBlockNum()
         case "callstack":
             t.TestCallStack()
         case "all":

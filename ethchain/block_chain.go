@@ -287,7 +287,9 @@ func (bc *BlockChain) BlockInfo(block *Block) BlockInfo {
 
 // Unexported method for writing extra non-essential block info to the db
 func (bc *BlockChain) writeBlockInfo(block *Block) {
-	bc.LastBlockNumber++
+    if block.Number.Cmp(big.NewInt(0)) != 0{
+	    bc.LastBlockNumber++
+    }
 	bi := BlockInfo{Number: bc.LastBlockNumber, Hash: block.Hash(), Parent: block.PrevHash, TD: bc.TD}
 
 	// For now we use the block hash with the words "info" appended as key
