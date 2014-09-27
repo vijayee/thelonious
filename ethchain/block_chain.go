@@ -2,6 +2,7 @@ package ethchain
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"github.com/eris-ltd/eth-go-mods/ethlog"
 	"github.com/eris-ltd/eth-go-mods/ethutil"
@@ -215,6 +216,26 @@ func (bc *BlockChain) Add(block *Block) {
 	ethutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
 }
 
+func (self *BlockChain) CalcTotalDiff(block *Block) (*big.Int, error) {
+	parent := self.GetBlock(block.PrevHash)
+	if parent == nil {
+		return nil, fmt.Errorf("Unable to calculate total diff without known parent %x", block.PrevHash)
+	}
+
+	parentTd := parent.BlockInfo().TD
+
+	uncleDiff := new(big.Int)
+	for _, uncle := range block.Uncles {
+		uncleDiff = uncleDiff.Add(uncleDiff, uncle.Difficulty)
+	}
+
+	td := new(big.Int)
+	td = td.Add(parentTd, uncleDiff)
+	td = td.Add(td, block.Difficulty)
+
+	return td, nil
+}
+
 func (bc *BlockChain) GetBlock(hash []byte) *Block {
 	data, _ := ethutil.Config.Db.Get(hash)
 	if len(data) == 0 {
@@ -239,6 +260,16 @@ func (self *BlockChain) GetBlockByNumber(num uint64) *Block {
 	return block
 }
 
+func (self *BlockChain) GetBlockBack(num uint64) *Block {
+	block := self.CurrentBlock
+
+	for ; num != 0 && block != nil; num-- {
+		block = self.GetBlock(block.PrevHash)
+	}
+
+	return block
+}
+
 func (bc *BlockChain) BlockInfoByHash(hash []byte) BlockInfo {
 	bi := BlockInfo{}
 	data, _ := ethutil.Config.Db.Get(append(hash, []byte("Info")...))
@@ -258,7 +289,7 @@ func (bc *BlockChain) BlockInfo(block *Block) BlockInfo {
 // Unexported method for writing extra non-essential block info to the db
 func (bc *BlockChain) writeBlockInfo(block *Block) {
 	bc.LastBlockNumber++
-	bi := BlockInfo{Number: bc.LastBlockNumber, Hash: block.Hash(), Parent: block.PrevHash}
+	bi := BlockInfo{Number: bc.LastBlockNumber, Hash: block.Hash(), Parent: block.PrevHash, TD: bc.TD}
 
 	// For now we use the block hash with the words "info" appended as key
 	ethutil.Config.Db.Put(append(block.Hash(), []byte("Info")...), bi.RlpEncode())
