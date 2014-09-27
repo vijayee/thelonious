@@ -1,0 +1,29 @@
+{
+    "address":"0000000000THISISDOUG",
+    "accounts":
+        {
+            "bbbd0256041f7aed3ce278c56ee61492de96d001":
+                {
+                    "balance":"12345678909876543212345678",
+                    "permissions":
+                        {
+                            "tx":1,
+                            "mining":1,
+                            "create":1
+                        }
+                },
+            "b9398794cafb108622b07d9a01ecbed3857592d5":
+                {
+                    "balance":"12345678909876543212345678",
+                    "permissions":
+                        {
+                            "tx":1,
+                            "mining":1,
+                            "create":1
+                        }
+                }
+        },
+    "doug":"lll/fake-doug-valid.lll"
+}
+
+

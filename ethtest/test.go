@@ -3,24 +3,37 @@ package ethtest
 import (
     "fmt"
     "time"
-    "os"
     "github.com/eris-ltd/eth-go-mods/ethchain"
     "github.com/eris-ltd/eth-go-mods/ethreact"
     "github.com/eris-ltd/eth-go-mods/ethutil"
+    "github.com/eris-ltd/eth-go-mods/ethstate"
+    "os"
 )   
 
 // environment object for running tests
+// one tester obj, will run many tests (sequentially)
 type Test struct{
-    testerFunc string
     genesis string
     blocks int
+    eth *EthChain
+       
+    // test specific 
+    testerFunc string
+    success bool
+    err     error
+
+    gendougaddr string //hex address
 
     reactor *ethreact.ReactorEngine
+
+    failed []string // failed tests
 }
 
 func NewTester(tester, genesis string, blocks int) *Test{
-    return &Test{tester, genesis, blocks, nil}
+    return &Test{testerFunc:tester, genesis:genesis, blocks:blocks, failed:[]string{}}
 }
+
+var options = []string{"tx", "genesis-msg", "simple-storage", "msg-storage"} //"traverse"} //, mining, validate
 
 func (t *Test) Run(){
     switch(t.testerFunc){
@@ -44,15 +57,41 @@ func (t *Test) Run(){
             t.TestValidate()
         case "mining":
             t.TestStopMining()
+        case "all":
+            t.eth = NewEth(nil)
+            rootdir := t.eth.Config.RootDir
+            for _, testf := range options{
+                fmt.Println("running next test function: ", testf)
+                fmt.Println("delete ~/.ethchain", rootdir)
+                os.Remove(rootdir)
+                time.Sleep(time.Second*2)
+                t.testerFunc = testf
+                t.success = false
+                t.Run()
+                if !t.success{
+                    t.failed = append(t.failed, t.testerFunc)
+                }
+            }
+            fmt.Println("failed tests:", len(t.failed), "/", len(options))
+            fmt.Println("failed:", t.failed)
     }
+    fmt.Println(t.success)
 }
 
 // general tester function on an eth node
 // note, you ought to call eth.Start() somewhere in testing()!
 func (t *Test) tester(name string, testing func(eth *EthChain), end int){
-    eth := NewEth(nil) 
+    eth := t.eth
+    if eth == nil{
+        eth = NewEth(nil) 
+        t.eth = eth
+    } 
+
     eth.Config.Mining = true
     eth.Config.GenesisPointer = t.genesis
+    ethchain.SETDOUG = t.genesis
+    ethchain.GENDOUG = []byte("0000000000THISISDOUG")
+    t.gendougaddr = ethutil.Bytes2Hex(ethchain.GENDOUG)
     eth.Init()
 
     t.reactor = eth.Ethereum.Reactor()
@@ -61,22 +100,36 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
     
     if end > 0{
         time.Sleep(time.Second*time.Duration(end))
-        fmt.Println("Stopping...")
-        os.Exit(0)
     }
-    eth.Ethereum.WaitForShutdown()
+    fmt.Println("Stopping...")
+    eth.Stop()
+    t.eth = nil
+    time.Sleep(time.Second*3)
 }
 
-// general callback function after a block is mined
-// fires once an exits
-func (t *Test) callback(name string, eth *EthChain, caller func()){
+func (t *Test) callback(name string, eth *EthChain, caller func()) {
     ch := make(chan ethreact.Event, 1)
     t.reactor.Subscribe("newBlock", ch)
     _ = <- ch
     fmt.Println("####RESPONSE: "+ name +  " ####")
     caller()
-    os.Exit(0)
 } 
+
+
+func PrettyPrintAccount(obj *ethstate.StateObject){
+    fmt.Println("Address", obj.Address) //ethutil.Bytes2Hex([]byte(addr)))
+    fmt.Println("\tNonce", obj.Nonce)
+    fmt.Println("\tBalance", obj.Balance)
+    if true { // only if contract, but how?!
+        fmt.Println("\tInit", ethutil.Bytes2Hex(obj.InitCode))
+        fmt.Println("\tCode", ethutil.Bytes2Hex(obj.Code))
+        fmt.Println("\tStorage:")
+        obj.EachStorage(func(key string, val *ethutil.Value){
+            val.Decode()
+            fmt.Println("\t\t", ethutil.Bytes2Hex([]byte(key)), "\t:\t", ethutil.Bytes2Hex([]byte(val.Str())))
+        }) 
+    }
+}
 
 // print all accounts and storage in a block
 func PrettyPrintBlockAccounts(block *ethchain.Block){
@@ -86,18 +139,7 @@ func PrettyPrintBlockAccounts(block *ethchain.Block){
         addr := ethutil.Address([]byte(key))
 //        obj := ethstate.NewStateObjectFromBytes(addr, value.Bytes())
         obj := block.State().GetAccount(addr)
-        fmt.Println("Address", ethutil.Bytes2Hex([]byte(addr)))
-        fmt.Println("\tNonce", obj.Nonce)
-        fmt.Println("\tBalance", obj.Balance)
-        if true { // only if contract, but how?!
-            fmt.Println("\tInit", ethutil.Bytes2Hex(obj.InitCode))
-            fmt.Println("\tCode", ethutil.Bytes2Hex(obj.Code))
-            fmt.Println("\tStorage:")
-            obj.EachStorage(func(key string, val *ethutil.Value){
-                val.Decode()
-                fmt.Println("\t\t", ethutil.Bytes2Hex([]byte(key)), "\t:\t", ethutil.Bytes2Hex([]byte(val.Str())))
-            }) 
-        }
+        PrettyPrintAccount(obj)
     })
 }
 
@@ -109,11 +151,13 @@ func PrettyPrintChainAccounts(eth *EthChain){
 }
 
 // compare expected and recovered vals
-func check_recovered(expected, recovered string){
+func check_recovered(expected, recovered string) bool{
     if recovered == expected{
         fmt.Println("Test passed")
+        return true
     } else{
         fmt.Println("Test failed. Expected", expected, "Recovered", recovered)
+        return false
     }
 }
 

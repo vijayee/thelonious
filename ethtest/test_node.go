@@ -37,7 +37,7 @@ func (t *Test) TestStopMining(){
         time.Sleep(time.Second*10)
         fmt.Println("starting mining again")
         eth.StartMining()        
-    }, 30)
+    }, 5)
 }
 
 // note about big nums and values...

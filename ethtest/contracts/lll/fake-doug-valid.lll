@@ -1,0 +1,19 @@
+{
+  [[0x0]] (caller)
+  [[0x1]] (create 0 0 (lll
+           {
+               [[0xbbbd0256041f7aed3ce278c56ee61492de96d001]]0x1
+               [[0xb9398794cafb108622b07d9a01ecbed3857592d5]]0x1
+           }
+           0))
+  [[0x2]] (create 0 0 (lll
+           {
+               [[0xbbbd0256041f7aed3ce278c56ee61492de96d001]]0x1
+               [[0xb9398794cafb108622b07d9a01ecbed3857592d5]]0x1
+           }
+           0))
+  (return 0 (lll
+    [[99]]75
+  0))
+}
+

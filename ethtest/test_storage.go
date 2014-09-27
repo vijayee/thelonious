@@ -11,6 +11,13 @@ import (
     "time"
 )
 
+/*
+    TestSimpleStorage
+    TestMsgStorage
+    TestTx
+*/
+
+
 // contract that stores a single value during init
 func (t *Test) TestSimpleStorage(){
     t.tester("simple storage", func(eth *EthChain){
@@ -37,10 +44,9 @@ func (t *Test) TestSimpleStorage(){
         // callback when block is mined
         t.callback("simple storage", eth, func(){
             recovered := "0x" + eth.GetStorageAt(contract_addr, key)
-            check_recovered(value, recovered)
+            t.success = check_recovered(value, recovered)
         })
-        //eth.Ethereum.WaitForShutdown()
-    }, 10)
+    }, 0)
 }
 
 // test a simple key-value store contract
@@ -55,11 +61,11 @@ func (t *Test) TestMsgStorage(){
             eth.Msg(contract_addr, []string{key, value})
             t.callback("test key-value", eth, func(){
                 recovered := "0x"+eth.GetStorageAt(contract_addr, key)
-                check_recovered(value, recovered)
+                t.success = check_recovered(value, recovered)
             })
         })
 
-    }, 30)
+    }, 0)
 }
 
 // test simple tx
@@ -79,8 +85,8 @@ func (t *Test) TestTx(){
             n := new(big.Int)
             n.Add(old, am)
             newb := ethutil.BigD(new_balance.Bytes())
-            check_recovered(n.String(), newb.String())
+            t.success = check_recovered(n.String(), newb.String())
         })
         //eth.Ethereum.WaitForShutdown()
-    }, 10)
+    }, 0)
 }
