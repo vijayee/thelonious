@@ -65,6 +65,7 @@ func (e *EthChain) Init() error{
         e.EthConfig()
         e.NewEthereum()
     }
+
     // public interface
     pipe := ethpipe.New(e.Ethereum) 
     // load keys from file. genesis block keys. convenient for testing
@@ -82,6 +83,7 @@ func (e *EthChain) Init() error{
 // start the ethereum node
 func (ethchain *EthChain) Start(){
     ethchain.Ethereum.Start(true) // peer seed
+
     if ethchain.Config.Mining{
         StartMining(ethchain.Ethereum)
     }
@@ -100,7 +102,8 @@ func (e *EthChain) NewEthereum(){
     clientIdentity := NewClientIdentity(e.Config.ClientIdentifier, e.Config.Version, e.Config.Identifier) 
 
     // create the ethereum obj
-    ethereum, err := eth.NewEris(db, clientIdentity, e.keyManager, eth.CapDefault, false, e.Config.GenesisPointer)
+    //ethereum, err := eth.NewEris(db, clientIdentity, e.keyManager, eth.CapDefault, false, e.Config.GenesisPointer)
+    ethereum, err := eth.New(db, clientIdentity, e.keyManager, eth.CapDefault, false)
 
     if err != nil {
         log.Fatal("Could not start node: %s\n", err)
@@ -260,7 +263,12 @@ func (e EthChain) DeployContract(file, lang string) string{
     return ethutil.Bytes2Hex(contract_addr)
 }
 
-func (e EthChain) Stop(){
+func (e *EthChain) Stop(){
+    e.StopMining()
+    fmt.Println("stopped mining")
+    e.Ethereum.Stop()
+    fmt.Println("stopped ethereum")
+    e = &EthChain{Config: e.Config}
 }
 
 // compile LLL file into evm bytecode 

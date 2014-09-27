@@ -247,6 +247,7 @@ func GetMiner() *ethminer.Miner {
 }
 
 func StartMining(ethereum *eth.Ethereum) bool {
+
 	if !ethereum.Mining {
 		ethereum.Mining = true
 		addr := ethereum.KeyManager().Address()
@@ -289,7 +290,7 @@ func StopMining(ethereum *eth.Ethereum) bool {
 		miner.Stop()
 		logger.Infoln("Stopped mining")
 		ethereum.Mining = false
-
+        miner = nil
 		return true
 	}
 
