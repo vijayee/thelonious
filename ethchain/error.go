@@ -115,3 +115,10 @@ func IsOutOfGasErr(err error) bool {
 	return ok
 }
 
+
+type TxFail struct {
+    tx *Transaction
+    err error
+}
+
+
