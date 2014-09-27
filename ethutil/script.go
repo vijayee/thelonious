@@ -23,8 +23,8 @@ var PathToLLL = path.Join("/Users/BatBuddha/Programming/goApps/src/github.com/pr
 // compiles lll or mu according to extension on script
 // script must be a file name!
 func Compile(script string, silent bool) (ret []byte, err error) {
-    fmt.Println("script", script, script[len(script)-4:])
 	if len(script) > 2 {
+        fmt.Println("script", script, script[len(script)-4:])
         l := len(script)
         if script[l-4:] == ".lll"{
             fmt.Println("LLL")

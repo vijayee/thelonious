@@ -57,6 +57,8 @@ func (t *Test) Run(){
             t.TestValidate()
         case "mining":
             t.TestStopMining()
+        case "callstack":
+            t.TestCallStack()
         case "all":
             t.eth = NewEth(nil)
             rootdir := t.eth.Config.RootDir
@@ -117,7 +119,7 @@ func (t *Test) callback(name string, eth *EthChain, caller func()) {
 
 
 func PrettyPrintAccount(obj *ethstate.StateObject){
-    fmt.Println("Address", obj.Address) //ethutil.Bytes2Hex([]byte(addr)))
+    fmt.Println("Address", ethutil.Bytes2Hex(obj.Address())) //ethutil.Bytes2Hex([]byte(addr)))
     fmt.Println("\tNonce", obj.Nonce)
     fmt.Println("\tBalance", obj.Balance)
     if true { // only if contract, but how?!

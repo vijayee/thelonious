@@ -120,6 +120,20 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		}
 	)
 
+    // Put the new address on the call stack
+    // if it's empty, add the caller's address as well ... (ORIGIN)
+    if len(*self.callStack) == 0{
+        *self.callStack = append(*self.callStack, closure.caller.Address())
+    }
+    *self.callStack = append(*self.callStack, closure.Address())
+
+    // Remove the last address from the callstack
+    defer func(){
+        *self.callStack = (*self.callStack)[:len(*self.callStack)-1]
+        // note that the original callers address will never be removed. is this even an issue? TODO
+        // TODO: deal with POSTs
+    }()
+
 	for {
 		prevStep = step
 		// The base for all big integer arithmetic
@@ -522,6 +536,12 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			self.Printf(" => %x", origin)
         case CALLSTACK:
+            /*
+                CALLSTACK looks like: [origin, c1, c2, ..., cn]
+                (CALLSTACK 0) == (ORIGIN)
+                (CALLSTACKSIZE) == n
+                (CALLSTACK (CALLSTACKSIZE)) == current
+            */
             require(1)
             var addr []byte
             frame := stack.Pop()
@@ -535,7 +555,11 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
             
             self.Printf(" => %x", addr) 
         case CALLSTACKSIZE:
-            stack.Push(len(*self.callStack))
+            l := len(*self.callStack)
+            if l > 0{
+                l = l-1
+            }
+            stack.Push(big.NewInt(int64(l)))
 		case CALLER:
 			caller := closure.caller.Address()
 			stack.Push(ethutil.BigD(caller))
@@ -1020,21 +1044,10 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 		// Retrieve the executing code
 		code := self.vm.env.State().GetCode(codeAddr)
 
-        // Put the new address on the call stack
-        // if it's empty, add the caller's address as well
-        if len(*self.vm.callStack) == 0{
-            *self.vm.callStack = append(*self.vm.callStack, caller.Address())
-        }
-        *self.vm.callStack = append(*self.vm.callStack, codeAddr)
-
 		// Create a new callable closure
 		c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
 		// Executer the closure and get the return value (if any)
 		ret, _, err = c.Call(self.vm, self.input)
-
-        // Remove the last address from the callstack
-        *self.vm.callStack = (*self.vm.callStack)[:len(*self.vm.callStack)-1]
-        // note that the original callers address will never be removed. is this even an issue? TODO
 
 		msg.Output = ret
 
