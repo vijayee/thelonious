@@ -20,6 +20,8 @@ import (
 var PathToLLL = path.Join("/Users/BatBuddha/Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc")
 
 // General compile function
+// compiles lll or mu according to extension on script
+// script must be a file name!
 func Compile(script string, silent bool) (ret []byte, err error) {
     fmt.Println("script", script, script[len(script)-4:])
 	if len(script) > 2 {
@@ -33,7 +35,7 @@ func Compile(script string, silent bool) (ret []byte, err error) {
             return byteCode, nil
             
              
-    /*
+        /*
 		line := strings.Split(script, "\n")[0]
 		if len(line) > 1 && line[0:2] == "#!" {
 			switch line {
@@ -46,7 +48,7 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 				return byteCode, nil
 			}
             */
-		} else {
+		} else if script[l-2:] == ".mu"{
 			compiler := mutan.NewCompiler(backend.NewEthereumBackend())
 			compiler.Silent = silent
 			byteCode, errors := compiler.Compile(strings.NewReader(script))
@@ -61,7 +63,9 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 			}
 
 			return byteCode, nil
-		}
+		} else{
+            //
+        }
 	}
 
 	return nil, nil
