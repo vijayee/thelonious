@@ -14,37 +14,42 @@ import (
 
 var (
 
-    DougDifficulty = ethutil.BigPow(2, 12) 
+    DougDifficulty = ethutil.BigPow(2, 12)  // for mining speed
 
-    GENDOUG []byte = nil
+    GENDOUG []byte = nil // dougs address
     MINERS = "01"
     TXERS = "02"
+
+    SETDOUG = "" // lets us set the doug contract post config load
+    SETDOUGADDR []byte = nil // lets us set the doug contract addr post config load
 
     GoPath = os.Getenv("GOPATH")
     ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts")
     GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
 )
 
-// point us to the right genesis function
-func GenesisPointer(block *Block, eth EthManager, f string){
+// this is what gets called by NewEris() to launch a genesis block
+// do what you gotta do from here
+// ie. Load a genesis.json and deploy
+func GenesisPointer(block *Block, eth EthManager){
     g := LoadGenesis()
-    g.Deploy(block, eth, f)
-    /*
-    fmt.Println("genesis pointer", f)
-    switch(f){
-        case "txs-by-doug":
-            fmt.Println("txs by foug")
-            GenesisTxsByDoug(block, eth)
-        default:
-            GenesisSimple(block, eth)
 
+    // check doug address validity (addr length is at least 20)
+    if len(g.Address) > 20 {
+        if g.Address[:2] == "0x"{
+            GENDOUG = ethutil.Hex2Bytes(g.Address[2:])
+        } else{
+            GENDOUG = []byte(g.Address)
+        }
+        GENDOUG = GENDOUG[:20]
     }
-    //GenesisTxs(block, eth)
-    //Valids(block, eth)
-    */
+
+    // f might be useful if we want to do something special?
+    g.Deploy(block, eth)
 }
 
 // use genesis block to validate addr's role
+// TODO: bring up to date
 func DougValidate(addr []byte, state *ethstate.State, role string) bool{
     if GENDOUG == nil{
         return true
@@ -62,10 +67,12 @@ func DougValidate(addr []byte, state *ethstate.State, role string) bool{
             return false
     }
 
-    caddr := genDoug.GetAddr(ethutil.Hex2Bytes(N))
+    
+    caddr := genDoug.GetStorage(ethutil.BigD(ethutil.Hex2Bytes(N)))
     c := state.GetOrNewStateObject(caddr.Bytes())
 
-    valid := c.GetAddr(addr)
+    valid := c.GetStorage(ethutil.BigD(addr))
+    fmt.Println(valid)
 
     return !valid.IsNil()
 }

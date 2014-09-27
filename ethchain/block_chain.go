@@ -171,7 +171,7 @@ func (bc *BlockChain) Fuck(thing string){
 
 func (bc *BlockChain) setLastBlock() {
 	// Prep genesis
-    bc.Ethereum.GenesisFunc(bc.genesisBlock)
+    GenesisPointer(bc.genesisBlock, bc.Ethereum)
 	//AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
 
 	data, _ := ethutil.Config.Db.Get([]byte("LastBlock"))

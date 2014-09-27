@@ -90,14 +90,6 @@ type Ethereum struct {
 	isUpToDate bool
 
 	filters map[int]*ethchain.Filter
-
-    genesisPointer string // name of genesis func to use
-}
-
-// called by setLastBlock. The function it will result in depends on
-// e.GenesisPointer string
-func (e *Ethereum) GenesisFunc(block *ethchain.Block){
-       ethchain.GenesisPointer(block, e, e.genesisPointer) 
 }
 
 func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool) (*Ethereum, error) {
@@ -141,50 +133,6 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 
 	return ethereum, nil
 }
-
-func NewEris(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool, genesisPointer string) (*Ethereum, error) {
-	var err error
-	var nat NAT
-
-	if usePnp {
-		nat, err = Discover()
-		if err != nil {
-			ethlogger.Debugln("UPnP failed", err)
-		}
-	}
-
-	bootstrapDb(db)
-
-	ethutil.Config.Db = db
-
-	nonce, _ := ethutil.RandomUint64()
-	ethereum := &Ethereum{
-		shutdownChan:   make(chan bool),
-		quit:           make(chan bool),
-		db:             db,
-		peers:          list.New(),
-		Nonce:          nonce,
-		serverCaps:     caps,
-		nat:            nat,
-		keyManager:     keyManager,
-		clientIdentity: clientIdentity,
-		isUpToDate:     true,
-		filters:        make(map[int]*ethchain.Filter),
-        genesisPointer: genesisPointer,
-	}
-	ethereum.reactor = ethreact.New()
-
-	ethereum.blockPool = NewBlockPool(ethereum)
-	ethereum.txPool = ethchain.NewTxPool(ethereum)
-	ethereum.blockChain = ethchain.NewBlockChain(ethereum)
-	ethereum.stateManager = ethchain.NewStateManager(ethereum)
-
-	// Start the tx pool
-	ethereum.txPool.Start()
-
-	return ethereum, nil
-}
-
 
 func (s *Ethereum) Reactor() *ethreact.ReactorEngine {
 	return s.reactor
@@ -550,7 +498,6 @@ func (s *Ethereum) Stop() {
 		p.Stop()
 	})
 
-    fmt.Println("firing quit close")
 	close(s.quit)
 
 	if s.RpcServer != nil {

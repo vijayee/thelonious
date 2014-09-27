@@ -5,21 +5,18 @@ import (
     "path"
     "os"
     "io/ioutil"
+    "encoding/json"
     "github.com/eris-ltd/eth-go-mods/ethutil"    
     "github.com/eris-ltd/eth-go-mods/ethcrypto"    
+    "time"
 )
 
 /*
-    functions for setting the genesis block
+    configure a new genesis block from genesis.json
+    deploy the genesis
 */
 
-// for testing. the keys are in keys.txt.
-var ADDRS = []string{
-        "bbbd0256041f7aed3ce278c56ee61492de96d001",                                  
-        "b9398794cafb108622b07d9a01ecbed3857592d5", 
-    }
-
-type Permission{
+type Permission struct{
     Tx int  `json:"tx"`
     Mining int  `json:"mining"`
     Create int  `json:"create"`
@@ -31,7 +28,7 @@ type Account struct{
     Permissions Permission  `json:"permissions"`
 }
 
-type Genesis struct{
+type GenesisJSON struct{
     Address string  `json:"address"`
     Accounts map[string]Account `json:"accounts"`
     Doug string `json:"doug"`
@@ -43,25 +40,34 @@ type Genesis struct{
 }
 
 // load the genesis block info from genesis.json
-func LoadGenesis() *Genesis{
+func LoadGenesis() *GenesisJSON{
     b, err := ioutil.ReadFile(GenesisConfig)
     if err != nil{
         fmt.Println("err reading genesis.json", err)
         os.Exit(0)
     }
 
-    g := new(Genesis)
-    err := json.Unmarshall(b, g)
+    g := new(GenesisJSON)
+    err = json.Unmarshal(b, g)
     if err != nil{
         fmt.Println("error unmarshalling genesis.json", err)
         os.Exit(0)
+    }
+
+    if SETDOUG != ""{
+        g.Doug = SETDOUG
+    }
+    if GENDOUG != nil{
+        g.Address = string(GENDOUG)
     }
 
     return g
 }
 
 // deploy the genesis block
-func (g *Genesis) Deploy(block *Block, eth EthManager, f string){
+func (g *GenesisJSON) Deploy(block *Block, eth EthManager){
+    fmt.Println("###DEPLOYING DOUG", ethutil.Bytes2Hex(GENDOUG), g.Doug)
+    time.Sleep(time.Second*2)
     for addr, account := range g.Accounts{
         AddAccount(addr, account.Balance, block)
     }
@@ -69,7 +75,6 @@ func (g *Genesis) Deploy(block *Block, eth EthManager, f string){
     txs := Transactions{}
     receipts := []*Receipt{}
 
-    GENDOUG = g.Address 
     tx := NewGenesisContract(path.Join(ContractPath, g.Doug))
     fmt.Println(tx.String())
     receipt := SimpleTransitionState(GENDOUG, block, tx)
@@ -82,6 +87,32 @@ func (g *Genesis) Deploy(block *Block, eth EthManager, f string){
     block.State().Sync()  
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+    These functions all deploy specific doug styles
+    We're generalizing the functionality to genesis.json
+    Hope to be rid of them soon ;)
+    Though might be useful to keep some around...
+*/
+
+
+// for testing. the keys are in keys.txt.
+var ADDRS = []string{
+        "bbbd0256041f7aed3ce278c56ee61492de96d001",                                 
+        "b9398794cafb108622b07d9a01ecbed3857592d5", 
+    }
 
 // add addresses
 func GenesisSimple(block *Block, eth EthManager){
@@ -146,12 +177,8 @@ func AddAccount(addr, balance string, block *Block){
 
 // doug and lists of valid miners/txers
 func Valids(block *Block, eth EthManager){
-    addrs := []string{
-        "bbbd0256041f7aed3ce278c56ee61492de96d001",
-        "b9398794cafb108622b07d9a01ecbed3857592d5",
-    }
     // private keys for these are stored in keys.txt
-	for _, addr := range addrs{
+	for _, addr := range ADDRS{
         AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
 	}
   
@@ -169,11 +196,11 @@ func Valids(block *Block, eth EthManager){
     Doug.SetAddr([]byte("\x01"), txers)
     Doug.SetAddr([]byte("\x02"), miners)
     // add permitted transactors to txers contract 
-    for _, a := range addrs{
+    for _, a := range ADDRS{
         Txers.SetAddr(ethutil.Hex2Bytes(a), 1)
     }
     // add permitted miners to miners contract 
-    Miners.SetAddr(ethutil.Hex2Bytes(addrs[0]), 1)
+    Miners.SetAddr(ethutil.Hex2Bytes(ADDRS[0]), 1)
 
     block.State().Update()  
     block.State().Sync()
@@ -182,10 +209,7 @@ func Valids(block *Block, eth EthManager){
 // add addresses and a simple contract
 func GenesisTxsByDoug(block *Block, eth EthManager){
     // private keys for these are stored in keys.txt
-	for _, addr := range []string{
-        "bbbd0256041f7aed3ce278c56ee61492de96d001",
-        "b9398794cafb108622b07d9a01ecbed3857592d5",
-	} {
+	for _, addr := range ADDRS{
         AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
 	}
 
