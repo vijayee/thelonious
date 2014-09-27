@@ -40,6 +40,20 @@ func (t *Test) TestStopMining(){
     }, 5)
 }
 
+// mine, stop mining, start mining
+func (t *Test) TestStopListening(){
+    t.tester("mining", func(eth *EthChain){
+        eth.Config.Mining = false
+        eth.Start()
+        time.Sleep(time.Second*1)
+        fmt.Println("stopping listening")
+        eth.StopListening()
+        time.Sleep(time.Second*1)
+        fmt.Println("starting listening again")
+        eth.StartListening()
+    }, 3)
+}
+
 // note about big nums and values...
 func (t *Test) TestBig(){
     a := ethutil.NewValue("100000000000")

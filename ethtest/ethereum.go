@@ -201,11 +201,11 @@ func (e *EthChain) StopMining() bool{
 }
 
 func (e *EthChain) StartListening(){
-
+    e.Ethereum.StartListening()
 }
 
 func (e *EthChain) StopListening() {
-    
+    e.Ethereum.StopListening()
 }
 
 /*

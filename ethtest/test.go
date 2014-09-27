@@ -57,6 +57,8 @@ func (t *Test) Run(){
             t.TestValidate()
         case "mining":
             t.TestStopMining()
+        case "listening":
+            t.TestStopListening()
         case "callstack":
             t.TestCallStack()
         case "all":

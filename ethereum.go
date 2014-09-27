@@ -45,6 +45,7 @@ type Ethereum struct {
 	// Channel for shutting down the ethereum
 	shutdownChan chan bool
 	quit         chan bool
+    peerQuit     chan bool // shut down the peerHandler
 
 	// DB interface
 	db ethutil.Database
@@ -111,6 +112,7 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 	ethereum := &Ethereum{
 		shutdownChan:   make(chan bool),
 		quit:           make(chan bool),
+		peerQuit:       make(chan bool),
 		db:             db,
 		peers:          list.New(),
 		Nonce:          nonce,
@@ -371,22 +373,7 @@ func (s *Ethereum) ReapDeadPeerHandler() {
 func (s *Ethereum) Start(seed bool) {
 	s.reactor.Start()
 	// Bind to addr and port
-    laddr, err := net.ResolveTCPAddr("tcp", ":"+s.Port)
-    if err != nil{
-		ethlogger.Warnf("Invalid TCP Addr! Connection listening disabled. Acting as client")
-		s.listening = false
-    }
-	ln, err := net.ListenTCP("tcp", laddr)
-	if err != nil {
-		ethlogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
-		s.listening = false
-	} else {
-		s.listening = true
-		// Starting accepting connections
-		ethlogger.Infoln("Ready and accepting connections")
-		// Start the peer handler
-		go s.peerHandler(*ln)
-	}
+    s.StartListening()
 
 	if s.nat != nil {
 		go s.upnpUpdateThread()
@@ -457,11 +444,37 @@ func (s *Ethereum) Seed() {
 	}*/
 }
 
+func (s *Ethereum) StartListening(){
+    laddr, err := net.ResolveTCPAddr("tcp", ":"+s.Port)
+    if err != nil{
+		ethlogger.Warnf("Invalid TCP Addr! Connection listening disabled. Acting as client")
+		s.listening = false
+    }
+	ln, err := net.ListenTCP("tcp", laddr)
+	if err != nil {
+		ethlogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
+		s.listening = false
+	} else {
+		s.listening = true
+		// Starting accepting connections
+		ethlogger.Infoln("Ready and accepting connections")
+		// Start the peer handler
+        go s.peerHandler(*ln)
+	}
+
+}
+
+func (s *Ethereum) StopListening(){
+    s.peerQuit <- true
+}
+
 func (s *Ethereum) peerHandler(listener net.TCPListener) {
 out:
 	for {
         select{
         case <- s.quit:
+            break out
+        case <- s.peerQuit:
             break out
         default:
             // accept must timeout so we can catch quits
