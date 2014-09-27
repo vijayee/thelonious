@@ -10,15 +10,14 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethcrypto"    
     "github.com/eris-ltd/eth-go-mods/ethstate"    
     "github.com/eris-ltd/eth-go-mods/ethtrie"    
+    "github.com/eris-ltd/eth-go-mods/ethdoug"
 )
 
 var (
 
     DougDifficulty = ethutil.BigPow(2, 12)  // for mining speed
 
-    GENDOUG []byte = nil // dougs address
-    MINERS = "01"
-    TXERS = "02"
+    GENDOUG = ethdoug.GENDOUG
 
     SETDOUG = "" // lets us set the doug contract post config load
     SETDOUGADDR []byte = nil // lets us set the doug contract addr post config load
@@ -46,35 +45,6 @@ func GenesisPointer(block *Block, eth EthManager){
 
     // f might be useful if we want to do something special?
     g.Deploy(block, eth)
-}
-
-// use genesis block to validate addr's role
-// TODO: bring up to date
-func DougValidate(addr []byte, state *ethstate.State, role string) bool{
-    if GENDOUG == nil{
-        return true
-    }
-    //fmt.Println("validating addr for role", role)
-    genDoug := state.GetStateObject(GENDOUG)
-
-    var N string
-    switch(role){
-        case "tx":
-            N = TXERS
-        case "miner":
-            N = MINERS
-        default:
-            return false
-    }
-
-    
-    caddr := genDoug.GetStorage(ethutil.BigD(ethutil.Hex2Bytes(N)))
-    c := state.GetOrNewStateObject(caddr.Bytes())
-
-    valid := c.GetStorage(ethutil.BigD(addr))
-    fmt.Println(valid)
-
-    return !valid.IsNil()
 }
 
 // create a new tx from a script, with dummy keypair

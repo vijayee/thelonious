@@ -3,6 +3,7 @@ package ethtest
 import (
     "github.com/eris-ltd/eth-go-mods/ethutil"
     "github.com/eris-ltd/eth-go-mods/ethchain"
+    "github.com/eris-ltd/eth-go-mods/ethdoug"
     "os"
     "fmt"
 )
@@ -24,12 +25,12 @@ func (t *Test) TestValidate(){
         a1 := ethutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
         a2 := ethutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
         a3 := ethutil.Hex2Bytes("cced0756041f7aed3ce278c56ee638bade96d001")
-        fmt.Println(ethchain.DougValidate(a1, gen.State(), "tx"))
-        fmt.Println(ethchain.DougValidate(a2, gen.State(), "tx"))
-        fmt.Println(ethchain.DougValidate(a3, gen.State(), "tx"))
-        fmt.Println(ethchain.DougValidate(a1, gen.State(), "miner"))
-        fmt.Println(ethchain.DougValidate(a2, gen.State(), "miner"))
-        fmt.Println(ethchain.DougValidate(a3, gen.State(), "miner"))
+        fmt.Println(ethdoug.DougValidate(a1, gen.State(), "tx"))
+        fmt.Println(ethdoug.DougValidate(a2, gen.State(), "tx"))
+        fmt.Println(ethdoug.DougValidate(a3, gen.State(), "tx"))
+        fmt.Println(ethdoug.DougValidate(a1, gen.State(), "miner"))
+        fmt.Println(ethdoug.DougValidate(a2, gen.State(), "miner"))
+        fmt.Println(ethdoug.DougValidate(a3, gen.State(), "miner"))
     }, 0)
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/eris-ltd/eth-go-mods/ethcrypto"
 	"github.com/eris-ltd/eth-go-mods/ethstate"
 	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/eth-go-mods/ethdoug"
 )
 
 type Debugger interface {
@@ -237,6 +238,12 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			newMemSize = ethutil.BigMax(x, y)
 		case CREATE:
+			origin := self.env.Origin()
+            valid := ethdoug.DougValidate(origin, self.env.State(), "create") 
+            if !valid{
+                err := ethdoug.InvalidPermError(ethutil.Bytes2Hex(origin), "create")
+			    return closure.Return(nil), err
+            }
 			require(3)
 			gas.Set(GasCreate)
 
