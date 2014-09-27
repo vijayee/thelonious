@@ -27,7 +27,7 @@ const (
 	minGasPrice = 1000000
 )
 
-var MinGasPrice = big.NewInt(10000000000000)
+var MinGasPrice = big.NewInt(1000)
 
 type TxMsg struct {
 	Tx   *Transaction
