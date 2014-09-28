@@ -61,6 +61,8 @@ func (t *Test) Run(){
             t.TestStopListening()
         case "blocknum":
             t.TestBlockNum()
+        case "restart":
+            t.TestRestart()
         case "callstack":
             t.TestCallStack()
         case "all":

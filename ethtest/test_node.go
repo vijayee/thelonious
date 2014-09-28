@@ -54,6 +54,21 @@ func (t *Test) TestStopListening(){
     }, 3)
 }
 
+func (t *Test) TestRestart(){
+    eth := NewEth(nil)
+    eth.Config.Mining = true
+    eth.Init()
+    eth.Start()
+    time.Sleep(time.Second*5)
+    eth.Stop()
+    time.Sleep(time.Second*5)
+    eth = NewEth(nil)
+    eth.Config.Mining = true
+    eth.Init()
+    eth.Start()
+    time.Sleep(time.Second*5)
+}
+
 // note about big nums and values...
 func (t *Test) TestBig(){
     a := ethutil.NewValue("100000000000")

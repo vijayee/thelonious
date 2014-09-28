@@ -66,5 +66,7 @@ func (e *EthChain) SetConfig(config interface{}) error{
 func (e *EthChain) EthConfig() {
     ethutil.PathToLLL = e.Config.LLLPath
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
+    // data dir, logfile, log level, debug file
     InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")
+
 }

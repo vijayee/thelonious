@@ -269,6 +269,7 @@ func (e *EthChain) Stop(){
     e.Ethereum.Stop()
     fmt.Println("stopped ethereum")
     e = &EthChain{Config: e.Config}
+    ethlog.Reset()
 }
 
 // compile LLL file into evm bytecode 

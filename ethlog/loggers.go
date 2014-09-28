@@ -96,6 +96,7 @@ func Reset() {
 		default:
 		}
 		<-status
+        logSystems = nil
 	}
 }
 
