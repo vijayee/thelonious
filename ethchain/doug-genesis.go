@@ -9,11 +9,13 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethutil"    
     "github.com/eris-ltd/eth-go-mods/ethcrypto"    
     "time"
+    "strconv"
 )
 
 /*
     configure a new genesis block from genesis.json
     deploy the genesis
+    something of a shell for epm
 */
 
 type Permission struct{
@@ -34,9 +36,6 @@ type GenesisJSON struct{
     Doug string `json:"doug"`
 
     f string // other things to do
-
-    block *Block
-    eth EthManager
 }
 
 // load the genesis block info from genesis.json
@@ -68,28 +67,118 @@ func LoadGenesis() *GenesisJSON{
 func (g *GenesisJSON) Deploy(block *Block, eth EthManager){
     fmt.Println("###DEPLOYING DOUG", ethutil.Bytes2Hex(GENDOUG), g.Doug)
     time.Sleep(time.Second*2)
-    for addr, account := range g.Accounts{
-        AddAccount(addr, account.Balance, block)
-    }
+
+    // dummy keys for signing
+    keys := ethcrypto.GenerateNewKeyPair() 
 
     txs := Transactions{}
     receipts := []*Receipt{}
 
+    // create the genesis doug
     tx := NewGenesisContract(path.Join(ContractPath, g.Doug))
-    fmt.Println(tx.String())
+    tx.Sign(keys.PrivateKey)
     receipt := SimpleTransitionState(GENDOUG, block, tx)
-
     txs = append(txs, tx) 
     receipts = append(receipts, receipt)
 
+    chainlogger.Debugln("done genesis. setting perms...")
+    txs = Transactions{}
+    receipts = []*Receipt{}
+
+
+    time.Sleep(time.Second*4)
+    // set balances and permissions
+    for addr, account := range g.Accounts{
+        // direct state modification to create accounts and balances
+        AddAccount(addr, account.Balance, block)
+        // issue txs to set perms
+        ts, rs := SetPerms(addr, account, block, keys)
+        txs = append(txs, ts...)
+        receipts = append(receipts, rs...)
+    }
+    // update and commit state
     block.SetReceipts(receipts, txs)
     block.State().Update()  
     block.State().Sync()  
 }
 
+// set balance of an account (does not commit)
+func AddAccount(addr, balance string, block *Block){
+    codedAddr := ethutil.Hex2Bytes(addr)
+    account := block.State().GetAccount(codedAddr)
+    account.Balance = ethutil.Big(balance) //ethutil.BigPow(2, 200)
+    block.State().UpdateStateObject(account)
+}
 
+// make and apply an administrative tx (simplified vm processing)
+// addr is typically gendoug
+func MakeApplyTx(codePath string, addr, data []byte, keys *ethcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
+    var tx *Transaction
+    if codePath != ""{
+        tx = NewGenesisContract(codePath)        
+    } else{
+        fmt.Println("new msg!")
+        tx = NewTransactionMessage(addr, ethutil.Big("0"), ethutil.Big("10000"), ethutil.Big("10000"), data)
+    }
 
+    tx.Sign(keys.PrivateKey)
+    fmt.Println(tx.String())
+    receipt := SimpleTransitionState(addr, block, tx)
+    
+    return tx, receipt
+}
 
+// set permissions for an account
+// assumes we are talking to gendoug
+func SetPerms(addr string, account Account, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
+    hexAddr := addr 
+    if addr[:2] != "0x"{
+        hexAddr = "0x"+addr
+    }
+
+    txs := Transactions{}
+    receipts := []*Receipt{}
+
+    data := PackTxDataArgs("setperm", "tx", hexAddr, "0x"+strconv.Itoa(account.Permissions.Tx))
+    fmt.Println("datahex:", ethutil.Bytes2Hex(data))
+    tx, rec := MakeApplyTx("", GENDOUG, data, keys, block)
+    txs = append(txs, tx)
+    receipts = append(receipts, rec)
+
+    data = PackTxDataArgs("setperm", "mine", hexAddr, "0x"+strconv.Itoa(account.Permissions.Mining))
+    tx, rec = MakeApplyTx("", GENDOUG, data, keys, block)
+    txs = append(txs, tx)
+    receipts = append(receipts, rec)
+
+    data = PackTxDataArgs("setperm", "create", hexAddr, "0x"+strconv.Itoa( account.Permissions.Create))
+    tx, rec = MakeApplyTx("", GENDOUG, data, keys, block)
+    txs = append(txs, tx)
+    receipts = append(receipts, rec)
+    return txs, receipts
+}
+
+// this needs a proper home
+func PackTxDataArgs(args ... string) []byte{
+    fmt.Println("pack data:", args)
+    ret := *new([]byte)
+    for _, s := range args{
+        if s[:2] == "0x"{
+            t := s[2:]
+            if len(t) % 2 == 1{
+                t = "0"+t
+            }
+            x := ethutil.Hex2Bytes(t)
+            fmt.Println(x)
+            l := len(x)
+            ret = append(ret, ethutil.LeftPadBytes(x, 32*((l + 31)/32))...)
+        }else{
+            x := []byte(s)
+            l := len(x)
+            ret = append(ret, ethutil.RightPadBytes(x, 32*((l + 31)/32))...)
+        }
+    }
+   return ret
+}
 
 
 
@@ -105,6 +194,7 @@ func (g *GenesisJSON) Deploy(block *Block, eth EthManager){
     We're generalizing the functionality to genesis.json
     Hope to be rid of them soon ;)
     Though might be useful to keep some around...
+    They're probably all broken ...
 */
 
 
@@ -167,13 +257,6 @@ func GenesisKeyVal(block *Block, eth EthManager){
     block.State().Sync()  
 }
 
-
-func AddAccount(addr, balance string, block *Block){
-    codedAddr := ethutil.Hex2Bytes(addr)
-    account := block.State().GetAccount(codedAddr)
-    account.Balance = ethutil.Big(balance) //ethutil.BigPow(2, 200)
-    block.State().UpdateStateObject(account)
-}
 
 // doug and lists of valid miners/txers
 func Valids(block *Block, eth EthManager){
