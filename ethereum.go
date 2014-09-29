@@ -81,6 +81,8 @@ type Ethereum struct {
 
 	listening bool
 
+    listener net.Listener
+
 	reactor *ethreact.ReactorEngine
 
 	RpcServer *ethrpc.JsonRpcServer
@@ -113,7 +115,7 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 	ethereum := &Ethereum{
 		shutdownChan:   make(chan bool),
 		quit:           make(chan bool),
-		peerQuit:       make(chan bool),
+		peerQuit:       make(chan bool, 1),
 		db:             db,
 		peers:          list.New(),
 		Nonce:          nonce,
@@ -389,7 +391,6 @@ func (s *Ethereum) ReapDeadPeerHandler() {
 func (s *Ethereum) Start(seed bool) {
 	s.reactor.Start()
 	s.blockPool.Start()
-	// Bind to addr and port
     s.StartListening()
 
 	if s.nat != nil {
@@ -462,52 +463,47 @@ func (s *Ethereum) Seed() {
 }
 
 func (s *Ethereum) StartListening(){
-    laddr, err := net.ResolveTCPAddr("tcp", ":"+s.Port)
-    if err != nil{
-		ethlogger.Warnf("Invalid TCP Addr! Connection listening disabled. Acting as client")
-		s.listening = false
-    }
-	ln, err := net.ListenTCP("tcp", laddr)
+    ln, err := net.Listen("tcp", ":"+s.Port)
 	if err != nil {
 		ethlogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
 		s.listening = false
 	} else {
 		s.listening = true
+        // add listener to ethereum so we can close it later
+        s.listener = ln
 		// Starting accepting connections
 		ethlogger.Infoln("Ready and accepting connections")
 		// Start the peer handler
-        go s.peerHandler(*ln)
+        go s.peerHandler(ln)
 	}
-
 }
 
+// use to toggle listening
 func (s *Ethereum) StopListening(){
     s.peerQuit <- true
+    // does not kill already established peer go routines (just stops listening)
+    s.listener.Close()
 }
 
-func (s *Ethereum) peerHandler(listener net.TCPListener) {
+func (s *Ethereum) peerHandler(listener net.Listener) {
 out:
 	for {
         select{
         case <- s.quit:
             break out
-        case <- s.peerQuit:
+        case <- s.peerQuit: // so we can quit the listener without quiting the whole node
             break out
         default:
-            // accept must timeout so we can catch quits
-            listener.SetDeadline(time.Now().Add(1e9))
+            // to stop, call s.listener.Close(). if a quit/peerQuit has been fired, itll catch and exit the loop
             conn, err := listener.Accept()
             if err != nil {
-                //ignore timeout errors
-                if !strings.Contains(err.Error(), "timeout"){
-                    ethlogger.Debugln(err)
-                }
+                ethlogger.Debugln(err)
                 continue
             } 
             go s.AddPeer(conn) 
         }
 	}
-    listener.Close()
+    //listener.Close()
 }
 
 func (s *Ethereum) Stop() {
@@ -529,6 +525,8 @@ func (s *Ethereum) Stop() {
 	})
 
 	close(s.quit)
+
+    s.listener.Close() // release the listening port
 
 	if s.RpcServer != nil {
 		s.RpcServer.Stop()
