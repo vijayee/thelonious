@@ -5,14 +5,11 @@ package ethutil
 import (
 	"fmt"
 	"strings"
+    "errors"
     "path"
-    "os/exec"
-    "bytes"
-    "log"
-    "io/ioutil"
-    "net/http"
 	"github.com/obscuren/mutan"
 	"github.com/obscuren/mutan/backends"
+	"github.com/project-douglas/lllc-server"
     
 	//"github.com/obscuren/serpent-go"
 )
@@ -79,43 +76,19 @@ func CompileLLL(filename string) ([]byte, error){
     // if we don't have the lllc locally, use the server
     if PathToLLL == "NETCALL"{
             //url := "http://ps.erisindustries.com/compile"
-            url := "http://162.218.65.211:9999/compile"
-            code, err  := ioutil.ReadFile(filename)
+            lllcserver.URL = "http://162.218.65.211:9999/compile"
+            resp, err := lllcserver.CompileLLLClient([]string{filename})
+            // check for internal error
             if err != nil{
-                log.Println("failed to read file", err)
-                return nil, err
+                return nil, err    
             }
-            codeString := string(code)
-            var json = []byte(`{"code":"` + Bytes2Hex([]byte(codeString)) +  `"}`)
-            req, err := http.NewRequest("POST", url, bytes.NewBuffer(json))
-            //req.Header.Set("X-Custom-Header", "myvalue")
-            req.Header.Set("Content-Type", "application/json")
-
-            client := &http.Client{}
-            resp, err := client.Do(req)
-            if err != nil{
-                log.Println("failed!", err)
-                return nil, err
+            // check for compilation error
+            if resp.Error[0] != ""{
+                return nil, errors.New(resp.Error[0]) 
             }
-            defer resp.Body.Close()
-            body, err := ioutil.ReadAll(resp.Body)
-            return body, nil
-   }
-    cmd := exec.Command(PathToLLL, filename)
-    var out bytes.Buffer
-    cmd.Stdout = &out
-    err := cmd.Run()
-    if err != nil {
-        fmt.Println("Couldn't compile!!", err)
-        return nil, err
+            return resp.Bytecode[0], nil
     }
-    //outstr := strings.Split(out.String(), "\n")
-    outstr := out.String()
-    for l:=len(outstr);outstr[l-1] == '\n';l--{
-        outstr = outstr[:l-1]
-    }
-    fmt.Println("script hex", outstr)
-    //return "0x"+outstr, nil
-    return Hex2Bytes(outstr), nil
+    lllcserver.PathToLLL = PathToLLL
+    return lllcserver.CompileLLLWrapper(filename)
 }
 
