@@ -46,7 +46,7 @@ func Run(){
     // data dir, logfile, log level, debug file
     utils.InitLogging("./datadir", "", 5, "")
     e := NewEthereum()
-    e.Start(true)
+    e.Start(false)
     utils.StartMining(e)
     e.WaitForShutdown()
 }
