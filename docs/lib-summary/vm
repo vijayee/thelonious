@@ -11,6 +11,8 @@ msg is a vm, closure, addr, input, gas/price/val, obj
 closure.Call
     - vm.RunClosure(c)
 
+RunClosure
+    -
 
 
 CREATE

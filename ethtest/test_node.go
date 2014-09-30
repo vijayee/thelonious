@@ -23,6 +23,7 @@ func (t* Test) TestRun(){
         // eth.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
         fmt.Println("mining addresS", eth.FetchAddr())
         eth.Start()
+        eth.Ethereum.WaitForShutdown()
     }, 0)
 }
 

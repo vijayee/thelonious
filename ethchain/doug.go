@@ -13,7 +13,7 @@ import (
 
 var (
 
-    DougDifficulty = ethutil.BigPow(2, 12)  // for mining speed
+    DougDifficulty = ethutil.BigPow(2, 17)  // for mining speed
 
     DougPath = "" // lets us set the doug contract post config load
 

@@ -8,7 +8,7 @@
                     "permissions":
                         {
                             "tx":1,
-                            "mining":0,
+                            "mining":1,
                             "create":1
                         }
                 },
