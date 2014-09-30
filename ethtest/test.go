@@ -95,7 +95,7 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
         t.eth = eth
     } 
 
-    //eth.Config.Mining = true
+    eth.Config.Mining = true
     eth.Config.GenesisPointer = t.genesis
     ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
     ethchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly

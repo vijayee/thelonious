@@ -85,8 +85,6 @@ func (ethchain *EthChain) Start(){
     ethchain.Ethereum.Start(true) // peer seed
 
     if ethchain.Config.Mining{
-        fmt.Println("mining on")
-        os.Exit(0)
         StartMining(ethchain.Ethereum)
     }
 }
