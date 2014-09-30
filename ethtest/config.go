@@ -4,6 +4,7 @@ import (
     "errors"
     "path"
     "github.com/eris-ltd/eth-go-mods/ethutil"
+    "github.com/eris-ltd/eth-go-mods/ethchain"
 )
 
 
@@ -35,9 +36,10 @@ var DefaultConfig = &ChainConfig{
         Name : "decerver-ethchain",
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
-        //LLLPath: path.Join(homeDir(), "Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc"),
-        LLLPath: "NETCALL",
-        ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts"),
+        LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
+        //LLLPath: "NETCALL",
+       // ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts"),
+        ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib"),
         ClientIdentifier: "Ethereum(deCerver)",
         Version: "0.5.17",
         Identifier: "",
@@ -65,6 +67,7 @@ func (e *EthChain) SetConfig(config interface{}) error{
 // configure an ethereum node
 func (e *EthChain) EthConfig() {
     ethutil.PathToLLL = e.Config.LLLPath
+    ethchain.ContractPath = e.Config.ContractPath
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
     // data dir, logfile, log level, debug file
     InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")
