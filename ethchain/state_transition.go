@@ -8,7 +8,6 @@ import (
 	"github.com/eris-ltd/eth-go-mods/ethtrie"
 	"github.com/eris-ltd/eth-go-mods/ethutil"
 	"github.com/eris-ltd/eth-go-mods/ethvm"
-	"github.com/eris-ltd/eth-go-mods/ethdoug"
 )
 
 /*
@@ -134,8 +133,8 @@ func (self *StateTransition) preCheck() (err error) {
    
     // state transition only has the genesis block if 
     // created by Eris 
-    if self.genesis != nil && !ethdoug.DougValidate(sender.Address(), self.genesis.State(), "tx"){
-        return ethdoug.InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "tx")
+    if self.genesis != nil && !DougValidate(sender.Address(), self.genesis.State(), "tx"){
+        return InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "tx")
     }
 
 	// Make sure this transaction's nonce is correct

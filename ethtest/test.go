@@ -97,8 +97,8 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
 
     eth.Config.Mining = true
     eth.Config.GenesisPointer = t.genesis
-    ethchain.SETDOUG = t.genesis
-    ethchain.GENDOUG = []byte("0000000000THISISDOUG")
+    ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    ethchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
     t.gendougaddr = ethutil.Bytes2Hex(ethchain.GENDOUG)
     eth.Init()
 

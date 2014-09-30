@@ -15,7 +15,6 @@ import (
 	"github.com/eris-ltd/eth-go-mods/ethstate"
 	"github.com/eris-ltd/eth-go-mods/ethutil"
 	"github.com/eris-ltd/eth-go-mods/ethwire"
-	"github.com/eris-ltd/eth-go-mods/ethdoug"
 )
 
 var statelogger = ethlog.NewLogger("STATE")
@@ -309,8 +308,8 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
 
-    if !bytes.Equal(block.Signer(), block.Coinbase) && !ethdoug.DougValidate(block.Coinbase, sm.bc.Genesis().State(), "miner"){
-        return ethdoug.InvalidPermError(ethutil.Bytes2Hex(block.Coinbase), "miner")
+    if !bytes.Equal(block.Signer(), block.Coinbase) && !DougValidate(block.Coinbase, sm.bc.Genesis().State(), "mine"){
+        return InvalidPermError(ethutil.Bytes2Hex(block.Coinbase), "mine")
     }
 
 

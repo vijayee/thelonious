@@ -8,7 +8,7 @@
                     "permissions":
                         {
                             "tx":1,
-                            "mining":1,
+                            "mining":0,
                             "create":1
                         }
                 },
@@ -23,7 +23,8 @@
                         }
                 }
         },
-    "doug":"lll/fake-doug-valid.lll"
+    "doug":"Genesis DOUG/Genesis-DOUG.lll",
+    "model":"dennis"
 }
 
 

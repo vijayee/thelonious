@@ -9,17 +9,13 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethutil"    
     "github.com/eris-ltd/eth-go-mods/ethstate"    
     "github.com/eris-ltd/eth-go-mods/ethtrie"    
-    "github.com/eris-ltd/eth-go-mods/ethdoug"
 )
 
 var (
 
     DougDifficulty = ethutil.BigPow(2, 12)  // for mining speed
 
-    GENDOUG = ethdoug.GENDOUG
-
-    SETDOUG = "" // lets us set the doug contract post config load
-    SETDOUGADDR []byte = nil // lets us set the doug contract addr post config load
+    DougPath = "" // lets us set the doug contract post config load
 
     GoPath = os.Getenv("GOPATH")
     ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts")
@@ -28,7 +24,7 @@ var (
 
 // called by setLastBlock when a new blockchain is created
 // ie. Load a genesis.json and deploy
-func GenesisPointer(block *Block, eth EthManager){
+func GenesisPointer(block *Block){
     g := LoadGenesis()
 
     // check doug address validity (addr length is at least 20)
@@ -41,8 +37,9 @@ func GenesisPointer(block *Block, eth EthManager){
         GENDOUG = GENDOUG[:20]
     }
 
-    // f might be useful if we want to do something special?
-    g.Deploy(block, eth)
+    fmt.Println("PRE DEPLOY")
+    fmt.Println("GENDOUG", GENDOUG)
+    g.Deploy(block)
 }
 
 
@@ -82,8 +79,6 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
     st := NewStateTransition(ethstate.NewStateObject(block.Coinbase), tx, state, block)
     st.AddGas(ethutil.Big("10000000000000000000000000000000000000000000000000000000000000000000000000000000000")) // gas is silly, but the vm needs it
 
-    fmt.Println("man oh man", ethutil.Bytes2Hex(addr))
-
     var script []byte
     receiver := state.GetOrNewStateObject(addr)
     if tx.CreatesContract(){    
@@ -105,13 +100,12 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
         Block:  block.Hash(), Timestamp: block.Time, Coinbase: block.Coinbase, Number: block.Number,
         Value: value,
     })
-    fmt.Println("ready to eval")
+    // TODO: this should switch on creates contract (init vs code) ?
     ret, err := st.Eval(msg, script, receiver, "init")
     if err != nil{
         fmt.Println("Eval error in simple transition state:", err)
         os.Exit(0)
     }
-    fmt.Println("done eval")
     if tx.CreatesContract(){
         receiver.Code = ret
     }

@@ -92,3 +92,25 @@ func CompileLLL(filename string) ([]byte, error){
     return lllcserver.CompileLLLWrapper(filename)
 }
 
+// strings and hex only
+func PackTxDataArgs(args ... string) []byte{
+    fmt.Println("pack data:", args)
+    ret := *new([]byte)
+    for _, s := range args{
+        if s[:2] == "0x"{
+            t := s[2:]
+            if len(t) % 2 == 1{
+                t = "0"+t
+            }
+            x := Hex2Bytes(t)
+            fmt.Println(x)
+            l := len(x)
+            ret = append(ret, LeftPadBytes(x, 32*((l + 31)/32))...)
+        }else{
+            x := []byte(s)
+            l := len(x)
+            ret = append(ret, RightPadBytes(x, 32*((l + 31)/32))...)
+        }
+    }
+   return ret
+}

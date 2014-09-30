@@ -32,3 +32,4 @@ func (self *VMEnv) Difficulty() *big.Int   { return self.block.Difficulty }
 func (self *VMEnv) BlockHash() []byte      { return self.block.Hash() }
 func (self *VMEnv) Value() *big.Int        { return self.value }
 func (self *VMEnv) State() *ethstate.State { return self.state }
+func (self *VMEnv) DougValidate(addr []byte, state *ethstate.State, role string) bool{ return ethchain.DougValidate(addr, state, role)}

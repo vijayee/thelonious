@@ -120,6 +120,13 @@ func Hex2Bytes(str string) []byte {
 	return h
 }
 
+func UserHex2Bytes(str string) []byte{
+    if str[:2] == "0x"{
+        str = str[2:]
+    }
+    return Hex2Bytes(str)
+}
+
 func StringToByteFunc(str string, cb func(str string) []byte) (ret []byte) {
 	if len(str) > 1 && str[0:2] == "0x" && !strings.Contains(str, "\n") {
 		ret = Hex2Bytes(str[2:])
