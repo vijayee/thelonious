@@ -198,20 +198,13 @@ func (m *GenDougModel) SetPermissions(addr []byte, account Account, block *Block
     txs := Transactions{}
     receipts := []*Receipt{}
 
-    data := ethutil.PackTxDataArgs("setperm", "tx", "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa(account.Permissions.Tx))
-    tx, rec := MakeApplyTx("", GENDOUG, data, keys, block)
-    txs = append(txs, tx)
-    receipts = append(receipts, rec)
-
-    data = ethutil.PackTxDataArgs("setperm", "mine", "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa(account.Permissions.Mining))
-    tx, rec = MakeApplyTx("", GENDOUG, data, keys, block)
-    txs = append(txs, tx)
-    receipts = append(receipts, rec)
-
-    data = ethutil.PackTxDataArgs("setperm", "create", "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa( account.Permissions.Create))
-    tx, rec = MakeApplyTx("", GENDOUG, data, keys, block)
-    txs = append(txs, tx)
-    receipts = append(receipts, rec)
+    for perm, val := range account.Permissions{
+        data := ethutil.PackTxDataArgs("setperm", perm, "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
+        tx, rec := MakeApplyTx("", GENDOUG, data, keys, block)
+        txs = append(txs, tx)
+        receipts = append(receipts, rec)
+    }
+    //fmt.Println(account.Permissions)
     return txs, receipts
 }
 

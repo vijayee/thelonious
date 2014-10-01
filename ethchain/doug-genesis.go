@@ -17,16 +17,10 @@ import (
     something of a shell for epm
 */
 
-type Permission struct{
-    Tx int  `json:"tx"`
-    Mining int  `json:"mining"`
-    Create int  `json:"create"`
-}
-
 type Account struct{
     Address []byte // this one won't come in under json (the address will be out of scope). we'll set it later
     Balance string  `json:"balance"`
-    Permissions Permission  `json:"permissions"`
+    Permissions map[string]int `json:"permissions"`
 }
 
 type GenesisJSON struct{
