@@ -128,18 +128,21 @@ done:
 		err = st.TransitionState()
 		if err != nil {
 			statelogger.Infoln(err)
-            self.Ethereum.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 			switch {
 			case IsNonceErr(err):
 				err = nil // ignore error
+                self.Ethereum.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 				continue
 			case IsGasLimitErr(err):
 				unhandled = txs[i:]
-
+                for _, t := range unhandled{
+                    self.Ethereum.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
+                }
 				break done
 			default:
-				statelogger.Infoln(err)
+				statelogger.Infoln("this tx registered an error and may have failed:", err)
 				err = nil
+                // TODO: should this have a tx:fail ?
 				//return nil, nil, nil, err
 			}
 		}
