@@ -112,7 +112,22 @@ Eval
 
 
 
+New Transactions
+
+QueueTransaction
+    - pushes tx onto pool.queueChan
+
+queueHandler
+    - tx <- pool.queueCHan
+        - get tx hash, check if already seen
+        - validate tx
+        - pool.addTransaction
+
+addTransaction
+    - add tx to back of pool
+    - broadcast tx to peers
 
 
-
-
+// Note the tx is not actually processed until block processing
+// TransitionState only called by ProcessTransactions
+// ProcessTransactions only called by miner and in ApplyDiff
