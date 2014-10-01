@@ -18,7 +18,7 @@ var (
     DougPath = "" // lets us set the doug contract post config load
 
     GoPath = os.Getenv("GOPATH")
-    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts")
+    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib")
     GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
 )
 

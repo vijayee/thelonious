@@ -117,8 +117,8 @@ func IsOutOfGasErr(err error) bool {
 
 
 type TxFail struct {
-    tx *Transaction
-    err error
+    Tx *Transaction
+    Err error
 }
 
 type InvalidPermErr struct{

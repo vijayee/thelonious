@@ -16,7 +16,7 @@ import (
 
 // this can be overwritten by higher-level constructs
 // ethtest/config.go will reset it from config file
-var PathToLLL = path.Join("/Users/BatBuddha/Programming/goApps/src/github.com/project-douglas/cpp-ethereum/build/lllc/lllc")
+var PathToLLL = path.Join("/Users/BatBuddha/cpp-ethereum/build/lllc/lllc")
 
 // General compile function
 // compiles lll or mu according to extension on script

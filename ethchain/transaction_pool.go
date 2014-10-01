@@ -150,7 +150,7 @@ out:
 			err := pool.ValidateTransaction(tx)
 			if err != nil {
 				txplogger.Debugln("Validating Tx failed", err)
-                pool.Ethereum.Reactor().Post("newTx:pre:fail", TxFail{tx, err})
+                pool.Ethereum.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
 			} else {
 				// Call blocking version.
 				pool.addTransaction(tx)

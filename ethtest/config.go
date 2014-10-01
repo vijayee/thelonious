@@ -14,6 +14,7 @@ type ChainConfig struct{
     MaxPeers int    `json:"max_peers"`
     ConfigFile string `json:"config_file"`
     RootDir string  `json:"root_dir"`
+    KeyFile string  `json:"key_file"`
     Name string     `json:"name"`
     LogFile string  `json:"log_file"`
     DataDir string `json:"data_dir"`
@@ -33,11 +34,12 @@ var DefaultConfig = &ChainConfig{
         MaxPeers : 10,
         ConfigFile : "config",
         RootDir : path.Join(usr.HomeDir, ".ethchain"),
+        KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "keys.txt"),
         Name : "decerver-ethchain",
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
-        LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
-        //LLLPath: "NETCALL",
+       // LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
+        LLLPath: "NETCALL",
        // ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts"),
         ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib"),
         ClientIdentifier: "Ethereum(deCerver)",

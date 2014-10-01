@@ -128,7 +128,7 @@ done:
 		err = st.TransitionState()
 		if err != nil {
 			statelogger.Infoln(err)
-            self.Ethereum.Reactor().Post("newTx:post:fail", TxFail{tx, err})
+            self.Ethereum.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 			switch {
 			case IsNonceErr(err):
 				err = nil // ignore error

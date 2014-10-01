@@ -18,7 +18,6 @@ import (
 
 var (
     GoPath = os.Getenv("GOPATH")
-    KeyFile = "keys.txt"
     usr, _ = user.Current() // error?!
 )
 
@@ -69,7 +68,7 @@ func (e *EthChain) Init() error{
     // public interface
     pipe := ethpipe.New(e.Ethereum) 
     // load keys from file. genesis block keys. convenient for testing
-    LoadKeys(KeyFile, e.Ethereum.KeyManager())
+    LoadKeys(e.Config.KeyFile, e.Ethereum.KeyManager())
 
     e.Pipe = pipe
     e.keyManager = e.Ethereum.KeyManager()
