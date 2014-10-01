@@ -47,6 +47,16 @@ func (t *Test) TestTraverseGenesis(){
     }, 0)
 }
 
+// doesn't start up a node, just loads from db and traverses to genesis
+func (t *Test) TestMaxGas(){
+    t.tester("max gas", func(eth *EthChain){
+        //eth.Start()
+        v := ethchain.DougValue("maxgas", eth.Ethereum.BlockChain().CurrentBlock.State())
+        fmt.Println(v)
+        os.Exit(0)
+    }, 0)
+}
+
 // test sending a message to the genesis doug
 func (t *Test) TestGenesisMsg(){
     //t.genesis = "lll/fake-doug-msg.lll"

@@ -130,6 +130,12 @@ func (self *StateTransition) preCheck() (err error) {
 		tx     = self.tx
 		sender = self.Sender()
 	)
+
+    /*
+        preCheck() should be a proxy for calling a doug permissions model
+        the permissions model will check all the things
+        else, default to base ethereum permissions model
+    */
    
     // state transition only has the genesis block if 
     // created by Eris 
@@ -141,6 +147,13 @@ func (self *StateTransition) preCheck() (err error) {
 	if sender.Nonce != tx.Nonce {
 		return NonceError(tx.Nonce, sender.Nonce)
 	}
+
+    // Tx should not exceed max gas per tx
+    gas := self.tx.GasValue()
+    max := ethutil.BigD(DougValue("maxgas", self.block.State()))
+    if gas.Cmp(max) > 0{
+        return GasLimitTxError(max, gas)
+    }
 
 	// Pre-pay gas / Buy gas of the coinbase account
 	if err = self.BuyGas(); err != nil {

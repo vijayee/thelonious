@@ -79,6 +79,23 @@ func GasLimitError(is, max *big.Int) *GasLimitErr {
 	return &GasLimitErr{Message: fmt.Sprintf("GasLimit error. Max %s, transaction would take it to %s", max, is), Is: is, Max: max}
 }
 
+type GasLimitTxErr struct {
+	Message string
+	Is, Max *big.Int
+}
+
+func IsGasLimitTxErr(err error) bool {
+	_, ok := err.(*GasLimitTxErr)
+
+	return ok
+}
+func (err *GasLimitTxErr) Error() string {
+	return err.Message
+}
+func GasLimitTxError(is, max *big.Int) *GasLimitTxErr {
+	return &GasLimitTxErr{Message: fmt.Sprintf("GasLimitTx error. Max %s, transaction would take %s", max, is), Is: is, Max: max}
+}
+
 type NonceErr struct {
 	Message string
 	Is, Exp uint64

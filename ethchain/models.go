@@ -35,6 +35,7 @@ type PermModel interface{
     PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error)
     Permission(addr []byte, perm string, state *ethstate.State) bool
     SetPermissions(addr []byte, account Account, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt)
+    Value(key string, state *ethstate.State) []byte
 }
 
 func SetDougModel(model string){
@@ -61,6 +62,10 @@ func DougValidate(addr []byte, state *ethstate.State, role string) bool{
     return Model.Permission(addr, role, state)
 }
 
+// look up a special doug param
+func DougValue(key string, state *ethstate.State) []byte{
+    return Model.Value(key, state)
+}
 
 
 
@@ -120,6 +125,9 @@ func (m *FakeModel) SetPermissions(addr []byte, account Account, block *Block, k
     return nil, nil
 }
 
+func (m *FakeModel) Value(key string, state *ethstate.State) []byte{
+    return nil
+}
 
 // the proper genesis doug, ala Dr. McKinnon
 type GenDougModel struct{
@@ -134,6 +142,7 @@ func (m *GenDougModel) Doug() []byte{
     return m.doug
 }
 
+
 func (m *GenDougModel) PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error) {
     base := new(big.Int)
     gen := state.GetStateObject(m.doug)
@@ -146,15 +155,8 @@ func (m *GenDougModel) PermLocator(addr []byte, perm string, state *ethstate.Sta
     // get locator (specifies position and row)
     locator := gen.GetStorage(locatorLocator).Bytes()
 
-    /*
-    fmt.Println("offset", ethutil.Bytes2Hex(offset.Bytes()))
-    fmt.Println("permBig", ethutil.Bytes2Hex(permBig.Bytes()))
-    fmt.Println("locatorLocator", ethutil.Bytes2Hex(locatorLocator.Bytes()))
-    fmt.Println("locator", ethutil.Bytes2Hex(locator))
+    //PrintHelp(map[string]interface{}{"offset":offset, "permBig":permBig, "locloc":locatorLocator, "loc":locator}, gen)
 
-    gen.EachStorage(func(k string, v *ethutil.Value){
-        fmt.Println(ethutil.Bytes2Hex([]byte(k)), ethutil.Bytes2Hex(v.Bytes()))
-    })*/
     if len(locator) == 0{
         return nil, errors.New("could not find locator")
     }
@@ -212,3 +214,38 @@ func (m *GenDougModel) SetPermissions(addr []byte, account Account, block *Block
     receipts = append(receipts, rec)
     return txs, receipts
 }
+
+func (m *GenDougModel) Value(key string, state *ethstate.State) []byte{
+    // right now, just maxgas, sigh sigh sigh
+    base := new(big.Int)
+    genDoug := state.GetStateObject(m.Doug())
+    offset := genDoug.GetStorage(ethutil.Big("7")).BigInt()
+    keyBig := ethutil.BigD(ethutil.RightPadBytes([]byte(key), 32))
+    keyOffSet := base.Add(keyBig, base.Mul(offset, big.NewInt(2)))
+    val := genDoug.GetStorage(keyOffSet)
+
+    //PrintHelp(map[string]interface{}{"offset":offset, "keybig":keyBig, "val":val}, genDoug)
+    return val.Bytes()
+}
+
+
+func PrintHelp(m map[string]interface{}, obj *ethstate.StateObject){
+    for k, v := range m{
+        if vv, ok := v.(*ethutil.Value); ok{
+            fmt.Println(k, ethutil.Bytes2Hex(vv.Bytes()))
+        } else if vv, ok := v.(*big.Int); ok{
+            fmt.Println(k, ethutil.Bytes2Hex(vv.Bytes()))
+        } else if vv, ok := v.([]byte); ok{
+            fmt.Println(k, ethutil.Bytes2Hex(vv))
+        }
+    }
+    obj.EachStorage(func(k string, v *ethutil.Value){
+        fmt.Println(ethutil.Bytes2Hex([]byte(k)), ethutil.Bytes2Hex(v.Bytes()))
+    })
+}
+
+
+
+
+
+

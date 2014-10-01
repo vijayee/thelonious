@@ -65,6 +65,8 @@ func (t *Test) Run(){
             t.TestRestart()
         case "callstack":
             t.TestCallStack()
+        case "maxgas":
+            t.TestMaxGas()
         case "all":
             t.eth = NewEth(nil)
             rootdir := t.eth.Config.RootDir
