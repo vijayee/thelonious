@@ -25,6 +25,7 @@ type ChainConfig struct{
     Identifier string `json:"id"`
     KeyStore string `json:"keystore"`
     GenesisPointer string `json:"genesis_func"`
+    DougDifficulty int `json:"difficulty"`
 }
 
 // set default config object
@@ -47,6 +48,7 @@ var DefaultConfig = &ChainConfig{
         Identifier: "",
         KeyStore: "db",
         GenesisPointer: "txs-by-doug",
+        DougDifficulty: 15,
 }
 
 
@@ -70,6 +72,7 @@ func (e *EthChain) SetConfig(config interface{}) error{
 func (e *EthChain) EthConfig() {
     ethutil.PathToLLL = e.Config.LLLPath
     ethchain.ContractPath = e.Config.ContractPath
+    ethchain.DougDifficulty = ethutil.BigPow(2, e.Config.DougDifficulty)
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
     // data dir, logfile, log level, debug file
     InitLogging(e.Config.RootDir, e.Config.LogFile, 5, "")

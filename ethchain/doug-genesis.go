@@ -67,6 +67,7 @@ func LoadGenesis() *GenesisJSON{
 }
 
 // deploy the genesis block
+// converts the genesisJSON info into a populated and functional doug contract in the genesis block
 func (g *GenesisJSON) Deploy(block *Block){
     fmt.Println("###DEPLOYING DOUG", ethutil.Bytes2Hex(GENDOUG), g.DougPath)
     time.Sleep(time.Second*2)
@@ -93,7 +94,7 @@ func (g *GenesisJSON) Deploy(block *Block){
         // direct state modification to create accounts and balances
         AddAccount(account.Address, account.Balance, block)
         // issue txs to set perms according to the model
-        ts, rs := Model.SetPermissions(account.Address, *account, block, keys)
+        ts, rs := Model.SetPermissions(account.Address, account.Permissions, block, keys)
         txs = append(txs, ts...)
         receipts = append(receipts, rs...)
     }

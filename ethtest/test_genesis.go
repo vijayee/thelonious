@@ -51,7 +51,7 @@ func (t *Test) TestTraverseGenesis(){
 func (t *Test) TestMaxGas(){
     t.tester("max gas", func(eth *EthChain){
         //eth.Start()
-        v := ethchain.DougValue("maxgas", eth.Ethereum.BlockChain().CurrentBlock.State())
+        v := ethchain.DougValue("maxgas", "values", eth.Ethereum.BlockChain().CurrentBlock.State())
         fmt.Println(v)
         os.Exit(0)
     }, 0)

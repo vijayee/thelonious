@@ -152,7 +152,7 @@ func (self *StateTransition) preCheck() (err error) {
 
     // Tx should not exceed max gas per tx
     gas := self.tx.GasValue()
-    max := ethutil.BigD(DougValue("maxgas", self.block.State()))
+    max := ethutil.BigD(DougValue("maxgas", "values", self.block.State()))
     if gas.Cmp(max) > 0{
         return GasLimitTxError(max, gas)
     }

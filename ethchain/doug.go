@@ -43,6 +43,44 @@ func GenesisPointer(block *Block){
 }
 
 
+/*
+    Model is a global variable set at eth startup
+    DougValidate and DougValue are our windows into the model
+*/
+func SetDougModel(model string){
+    switch(model){
+        case "fake":
+            Model = NewFakeModel()
+        case "dennis":
+            Model = NewGenDougModel()
+        default:
+            Model = NewFakeModel()
+    }
+}
+
+// use gendoug and permissions model to validate addr's role
+func DougValidate(addr []byte, state *ethstate.State, role string) bool{
+    fmt.Println("doug validating!")
+    if GENDOUG == nil{
+        return true
+    }
+
+    if Model == nil{
+        return false
+    }
+    return Model.HasPermission(addr, role, state)
+}
+
+// look up a special doug param
+func DougValue(key, namespace string, state *ethstate.State) []byte{
+    return Model.GetValue(key, namespace, state)
+}
+
+
+/*
+    Functions for setting for loading the genesis contract
+    and processing the state changes
+*/
 
 // create a new tx from a script, with dummy keypair
 // creates tx but does not sign!

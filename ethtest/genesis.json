@@ -7,7 +7,7 @@
                     "balance":"12345678909876543212345678",
                     "permissions":
                         {
-                            "tx":1,
+                            "transact":1,
                             "mine":1,
                             "create":1
                         }
@@ -17,7 +17,7 @@
                     "balance":"12345678909876543212345678",
                     "permissions":
                         {
-                            "tx":1,
+                            "transact":1,
                             "mine":1,
                             "create":1
                         }

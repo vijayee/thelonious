@@ -4,6 +4,7 @@ import (
     "math/big"
     "errors"
     "fmt"
+    //"os"
     "strconv"
     "github.com/eris-ltd/eth-go-mods/ethstate"
     "github.com/eris-ltd/eth-go-mods/ethutil"
@@ -28,45 +29,19 @@ type Location struct{
 
 // doug validation requires a reference model to understand 
 //  where the permissions are with respect to doug, the target addr, and the permission name
-//  the model should be specified in genesis.json
+//  the model name should be specified in genesis.json
 // the permissions model interface:
 type PermModel interface{
-    Doug() []byte
+    Doug(state *ethstate.State) *ethstate.StateObject
     PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error)
-    Permission(addr []byte, perm string, state *ethstate.State) bool
-    SetPermissions(addr []byte, account Account, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt)
-    Value(key string, state *ethstate.State) []byte
+    GetPermission(addr []byte, perm string, state *ethstate.State) *ethutil.Value
+    HasPermission(addr []byte, perm string, state *ethstate.State) bool // should take an extra "requested action" param for resolving more complex permissions
+    SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt)
+
+    // doug has a key-value store that is space partitioned for collision avoidance
+    // these functions resolve those values
+    GetValue(key, namespace string, state *ethstate.State) []byte
 }
-
-func SetDougModel(model string){
-    switch(model){
-        case "fake":
-            Model = NewFakeModel()
-        case "dennis":
-            Model = NewGenDougModel()
-        default:
-            Model = NewFakeModel()
-    }
-}
-
-// use genesis block and permissions model to validate addr's role
-func DougValidate(addr []byte, state *ethstate.State, role string) bool{
-    fmt.Println("doug validating!")
-    if GENDOUG == nil{
-        return true
-    }
-
-    if Model == nil{
-        return false
-    }
-    return Model.Permission(addr, role, state)
-}
-
-// look up a special doug param
-func DougValue(key string, state *ethstate.State) []byte{
-    return Model.Value(key, state)
-}
-
 
 
 // the easy fake model
@@ -81,8 +56,8 @@ func NewFakeModel() PermModel{
     return &FakeModel{GENDOUG, "01", "02", "03"}
 }
 
-func (m *FakeModel) Doug() []byte{
-    return m.doug
+func (m *FakeModel) Doug(state *ethstate.State) *ethstate.StateObject{
+    return state.GetStateObject(m.doug)
 }
 
 func (m *FakeModel) PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error){
@@ -107,55 +82,52 @@ func (m *FakeModel) PermLocator(addr []byte, perm string, state *ethstate.State)
     return loc, nil
 }
 
-func (m *FakeModel) Permission(addr []byte, perm string, state *ethstate.State) bool{
+func (m *FakeModel) GetPermission(addr []byte, perm string, state *ethstate.State) *ethutil.Value{
     loc, err := m.PermLocator(addr, perm, state)
     if err != nil{
         fmt.Println("err on perm locator", ethutil.Bytes2Hex(addr), perm, err)
-        return false
+        return ethutil.NewValue(nil)
     }
     obj := state.GetStateObject(loc.addr)
     /*obj.EachStorage(func(k string, v *ethutil.Value){
         fmt.Println(ethutil.Bytes2Hex([]byte(k)), ethutil.Bytes2Hex(v.Bytes()))
     })*/
     val := obj.GetStorage(loc.row)
+    return val
+}
+
+func (m *FakeModel) HasPermission(addr []byte, perm string, state *ethstate.State) bool{
+    val := m.GetPermission(addr, perm, state)
     return !val.IsNil()
 }
 
-func (m *FakeModel) SetPermissions(addr []byte, account Account, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
+func (m *FakeModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
     return nil, nil
 }
 
-func (m *FakeModel) Value(key string, state *ethstate.State) []byte{
+func (m *FakeModel) GetValue(key, namespace string, state *ethstate.State) []byte{
     return nil
 }
 
 // the proper genesis doug, ala Dr. McKinnon
 type GenDougModel struct{
     doug []byte
+    base *big.Int
 }
 
 func NewGenDougModel() PermModel{
-    return &GenDougModel{GENDOUG}
+    return &GenDougModel{GENDOUG, new(big.Int)}
 }
 
-func (m *GenDougModel) Doug() []byte{
-    return m.doug
+func (m *GenDougModel) Doug(state *ethstate.State) *ethstate.StateObject{
+    return state.GetStateObject(m.doug)
 }
 
 
 func (m *GenDougModel) PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error) {
-    base := new(big.Int)
-    gen := state.GetStateObject(m.doug)
-    // get offset (so permission names dont collide with contract names)
-    offset := gen.GetStorage(ethutil.Big("7")).BigInt()
-    // turn permission to big int
-    permBig := ethutil.BigD(ethutil.PackTxDataArgs(perm))
     // location of the locator is perm+offset
-    locatorLocator := base.Add(offset, permBig)
-    // get locator (specifies position and row)
-    locator := gen.GetStorage(locatorLocator).Bytes()
-
-    //PrintHelp(map[string]interface{}{"offset":offset, "permBig":permBig, "locloc":locatorLocator, "loc":locator}, gen)
+    locator := m.GetValue(perm, "perms", state) //m.resolvePerm(perm, state) 
+    PrintHelp(map[string]interface{}{"loc":locator}, m.Doug(state))
 
     if len(locator) == 0{
         return nil, errors.New("could not find locator")
@@ -167,19 +139,18 @@ func (m *GenDougModel) PermLocator(addr []byte, perm string, state *ethstate.Sta
     }
     // return permission string location
     addrBig := ethutil.BigD(ethutil.LeftPadBytes(addr, 32))
-    permStrLocator := base.Add(base.Mul(addrBig, ethutil.Big("256")), row)
+    permStrLocator := m.base.Add(m.base.Mul(addrBig, ethutil.Big("256")), row)
 
     return &Location{m.doug, permStrLocator, pos}, nil
 
 }
 
-func (m *GenDougModel) Permission(addr []byte, perm string, state *ethstate.State)bool{
-    base := new(big.Int)
+func (m *GenDougModel) GetPermission(addr []byte, perm string, state *ethstate.State) *ethutil.Value{
     // get location object
     loc, err := m.PermLocator(addr, perm, state)
     if err != nil{
         fmt.Println("err on perm locator", ethutil.Bytes2Hex(addr), perm, err)
-        return false
+        return ethutil.NewValue(nil)
     }
     obj := state.GetStateObject(loc.addr)
 
@@ -187,41 +158,112 @@ func (m *GenDougModel) Permission(addr []byte, perm string, state *ethstate.Stat
     permstr := obj.GetStorage(loc.row)
     
     // recover permission from permission string (ie get nibble)
-    permbit := base.Div(permstr.BigInt(), base.Exp(ethutil.Big("2"), loc.pos, nil))
-    permBig := base.Mod(permbit, ethutil.Big("16"))
+    permbit := m.base.Div(permstr.BigInt(), m.base.Exp(ethutil.Big("2"), loc.pos, nil))
+    permBig := m.base.Mod(permbit, ethutil.Big("16"))
+    return ethutil.NewValue(permBig)
+}
+
+// determines if addr has sufficient permissions to execute perm
+func (m *GenDougModel) HasPermission(addr []byte, perm string, state *ethstate.State)bool{
+    permBig := m.GetPermission(addr, perm, state).BigInt()
     return permBig.Int64() > 0
 }
 
-
-func (m *GenDougModel) SetPermissions(addr []byte, account Account, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
+// set some permissions on an addr
+// requires keys with sufficient privileges
+func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
 
     txs := Transactions{}
     receipts := []*Receipt{}
 
-    for perm, val := range account.Permissions{
+    for perm, val := range permissions{
         data := ethutil.PackTxDataArgs("setperm", perm, "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
+        fmt.Println("data for ", perm, ethutil.Bytes2Hex(data))
         tx, rec := MakeApplyTx("", GENDOUG, data, keys, block)
         txs = append(txs, tx)
         receipts = append(receipts, rec)
     }
-    //fmt.Println(account.Permissions)
+    fmt.Println(permissions)
+    //os.Exit(0)
     return txs, receipts
 }
 
-func (m *GenDougModel) Value(key string, state *ethstate.State) []byte{
-    // right now, just maxgas, sigh sigh sigh
-    base := new(big.Int)
-    genDoug := state.GetStateObject(m.Doug())
-    offset := genDoug.GetStorage(ethutil.Big("7")).BigInt()
-    keyBig := ethutil.BigD(ethutil.RightPadBytes([]byte(key), 32))
-    keyOffSet := base.Add(keyBig, base.Mul(offset, big.NewInt(2)))
-    val := genDoug.GetStorage(keyOffSet)
-
-    //PrintHelp(map[string]interface{}{"offset":offset, "keybig":keyBig, "val":val}, genDoug)
+func (m *GenDougModel) GetValue(key, namespace string, state *ethstate.State) []byte{
+    var loc *big.Int
+    switch(namespace){
+        case "addrs":
+            loc = m.resolveAddr(key, state)
+        case "perms":
+            loc = m.resolvePerm(key, state)
+        case "values":
+            loc = m.resolveVal(key, state)    
+        case "special":
+            loc = m.resolveSpecial(key, state)
+        default:
+            return nil
+    }
+    val := m.Doug(state).GetStorage(loc)
     return val.Bytes()
 }
 
+// resolve addresses for keys based on namespace partition
+// does not return the values, just their proper addresses!
+// offset used to partition namespaces
+// these don't need to take state if the offset is fixed
+//      it is fixed, but maybe one day it wont be?
 
+// resolve location of an address 
+func (m *GenDougModel) resolveAddr(key string, state *ethstate.State) *big.Int{
+    // addrs have no special offset
+    return String2Big(key)
+
+}
+
+// resolve location of  a permission locator
+func (m *GenDougModel) resolvePerm(key string, state *ethstate.State) *big.Int{
+    // permissions have one offset
+    fmt.Println("resolving perm")
+    offset := ethutil.BigD(m.GetValue("offset", "special", state) )
+    // turn permission to big int
+    permBig := String2Big(key) 
+    // location of the permission locator is perm+offset
+    //PrintHelp(map[string]interface{}{"offset":offset, "permbig":permBig, "sum":m.base.Add(offset, permBig)}, m.Doug(state))
+    return m.base.Add(offset, permBig)
+}
+
+// resolve location of a named value
+func (m *GenDougModel) resolveVal(key string, state *ethstate.State) *big.Int{
+    // values have two offsets
+    offset := m.resolveSpecial("offset", state) 
+    // turn key to big int
+    valBig := String2Big(key) 
+    // location of this value is (+ key (* 2 offset))
+    return m.base.Add(m.base.Mul(offset, big.NewInt(2)), valBig)
+}
+
+// resolve position of special values
+func (m *GenDougModel) resolveSpecial(key string, state *ethstate.State) *big.Int{
+    switch(key){
+        case "offset":
+            return big.NewInt(7)
+    }
+    return nil
+}
+            //offset := m.Doug().GetStorage(ethutil.Big("7")).BigInt()
+            //return 
+
+func String2Big(s string) *big.Int{
+    // right pad the string, convert to big num
+    return ethutil.BigD(ethutil.PackTxDataArgs(s))
+}
+
+
+
+
+
+
+
+// pretty print chain queries and storage
 func PrintHelp(m map[string]interface{}, obj *ethstate.StateObject){
     for k, v := range m{
         if vv, ok := v.(*ethutil.Value); ok{
@@ -236,9 +278,5 @@ func PrintHelp(m map[string]interface{}, obj *ethstate.StateObject){
         fmt.Println(ethutil.Bytes2Hex([]byte(k)), ethutil.Bytes2Hex(v.Bytes()))
     })
 }
-
-
-
-
 
 
