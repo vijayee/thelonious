@@ -35,16 +35,18 @@ type StateTransition struct {
 	state              *ethstate.State
 	block              *Block
     genesis            *Block
+    
+    msg                *ethstate.Message
 
 	cb, rec, sen *ethstate.StateObject
 }
 
 func NewStateTransition(coinbase *ethstate.StateObject, tx *Transaction, state *ethstate.State, block *Block) *StateTransition {
-	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, nil, coinbase, nil, nil}
+	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, nil, nil, coinbase, nil, nil}
 }
 
 func NewStateTransitionEris(coinbase *ethstate.StateObject, tx *Transaction, state *ethstate.State, block *Block, gen *Block) *StateTransition {
-	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, gen, coinbase, nil, nil}
+	return &StateTransition{coinbase.Address(), tx.Recipient, tx, new(big.Int), new(big.Int).Set(tx.GasPrice), tx.Value, tx.Data, state, block, gen, nil, coinbase, nil, nil}
 }
 
 func (self *StateTransition) Coinbase() *ethstate.StateObject {
@@ -163,6 +165,7 @@ func (self *StateTransition) preCheck() (err error) {
 	return nil
 }
 
+// TODO: return the message!!!
 func (self *StateTransition) TransitionState() (err error) {
 	statelogger.Debugf("(~) %x\n", self.tx.Hash())
 
@@ -237,6 +240,7 @@ func (self *StateTransition) TransitionState() (err error) {
 
 	msg := self.state.Manifest().AddMessage(&ethstate.Message{
 		To: receiver.Address(), From: sender.Address(),
+        Output: nil,
 		Input:  self.tx.Data,
 		Origin: sender.Address(),
 		Block:  self.block.Hash(), Timestamp: self.block.Time, Coinbase: self.block.Coinbase, Number: self.block.Number,
@@ -271,6 +275,9 @@ func (self *StateTransition) TransitionState() (err error) {
 			msg.Output = ret
 		}
 	}
+
+    // so we can retrieve return values
+    self.msg = msg
 
 	return
 }

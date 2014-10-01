@@ -151,6 +151,12 @@ done:
 			}
 		}
 
+        if st.msg != nil{
+            // if msg is nil, an error should have triggered above
+            // publish return value
+            self.Ethereum.Reactor().Post("tx:"+string(tx.Hash())+":return", st.msg.Output)
+        }
+
 		// Notify all subscribers
 		self.Ethereum.Reactor().Post("newTx:post", tx)
 
