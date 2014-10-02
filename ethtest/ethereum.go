@@ -168,6 +168,9 @@ func (e *EthChain) Msg(addr string, data []string){
     packed := PackTxDataArgs(data...)
     fmt.Println("packed", packed)
     keys := e.fetchKeyPair()
+    if addr[:2] == "0x"{
+        addr = addr[2:]
+    }
     byte_addr := ethutil.Hex2Bytes(addr)
     _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big("350")), ethutil.NewValue(ethutil.Big("20000")), ethutil.NewValue(ethutil.Big("1000000")), packed)
     if err != nil{
@@ -178,6 +181,9 @@ func (e *EthChain) Msg(addr string, data []string){
 // send a tx
 func (e *EthChain) Tx(addr, amt string){
     keys := e.fetchKeyPair()
+    if addr[:2] == "0x"{
+        addr = addr[2:]
+    }
     byte_addr := ethutil.Hex2Bytes(addr)
     fmt.Println("the amount:", amt, ethutil.Big(amt), ethutil.NewValue(amt), ethutil.NewValue(ethutil.Big(amt)))
     _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big(amt)), ethutil.NewValue(ethutil.Big("2000")), ethutil.NewValue(ethutil.Big("100000")), "")
