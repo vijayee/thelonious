@@ -154,7 +154,7 @@ func (self *StateTransition) preCheck() (err error) {
     gas := self.tx.GasValue()
     max := ethutil.BigD(DougValue("maxgas", "values", self.block.State()))
     if gas.Cmp(max) > 0{
-        return GasLimitTxError(max, gas)
+        return GasLimitTxError(gas, max)
     }
 
 	// Pre-pay gas / Buy gas of the coinbase account
