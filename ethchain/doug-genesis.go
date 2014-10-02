@@ -13,7 +13,7 @@ import (
 
 /*
     configure a new genesis block from genesis.json
-    deploy the genesis
+    deploy the genesis block from json 
     something of a shell for epm
 */
 

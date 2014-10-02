@@ -30,16 +30,21 @@ type Location struct{
 // doug validation requires a reference model to understand 
 //  where the permissions are with respect to doug, the target addr, and the permission name
 //  the model name should be specified in genesis.json
-// the permissions model interface:
+// now, the permissions model interface:
 type PermModel interface{
+    // return the current doug state
     Doug(state *ethstate.State) *ethstate.StateObject
+    // return the location of a permission string for an address
     PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error)
+    // Get a permission string
     GetPermission(addr []byte, perm string, state *ethstate.State) *ethutil.Value
-    HasPermission(addr []byte, perm string, state *ethstate.State) bool // should take an extra "requested action" param for resolving more complex permissions
+    // Determine if a user has permission to do something
+    HasPermission(addr []byte, perm string, state *ethstate.State) bool 
+    // Set some permissions for a given address. requires valid keypair
     SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt)
 
     // doug has a key-value store that is space partitioned for collision avoidance
-    // these functions resolve those values
+    // resolve those values
     GetValue(key, namespace string, state *ethstate.State) []byte
 }
 
@@ -222,7 +227,6 @@ func (m *GenDougModel) resolveAddr(key string, state *ethstate.State) *big.Int{
 // resolve location of  a permission locator
 func (m *GenDougModel) resolvePerm(key string, state *ethstate.State) *big.Int{
     // permissions have one offset
-    fmt.Println("resolving perm")
     offset := ethutil.BigD(m.GetValue("offset", "special", state) )
     // turn permission to big int
     permBig := String2Big(key) 
@@ -234,7 +238,7 @@ func (m *GenDougModel) resolvePerm(key string, state *ethstate.State) *big.Int{
 // resolve location of a named value
 func (m *GenDougModel) resolveVal(key string, state *ethstate.State) *big.Int{
     // values have two offsets
-    offset := m.resolveSpecial("offset", state) 
+    offset := ethutil.BigD(m.GetValue("offset", "special", state) )
     // turn key to big int
     valBig := String2Big(key) 
     // location of this value is (+ key (* 2 offset))
