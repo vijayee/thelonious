@@ -150,11 +150,13 @@ func (self *StateTransition) preCheck() (err error) {
 		return NonceError(tx.Nonce, sender.Nonce)
 	}
 
-    // Tx should not exceed max gas per tx
-    gas := self.tx.GasValue()
-    max := ethutil.BigD(DougValue("maxgas", "values", self.block.State()))
-    if gas.Cmp(max) > 0{
-        return GasLimitTxError(gas, max)
+    if GENDOUG != nil{
+        // Tx should not exceed max gas per tx
+        gas := self.tx.GasValue()
+        max := ethutil.BigD(DougValue("maxgas", "values", self.block.State()))
+        if gas.Cmp(max) > 0{
+            return GasLimitTxError(gas, max)
+        }
     }
 
 	// Pre-pay gas / Buy gas of the coinbase account

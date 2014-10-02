@@ -47,7 +47,7 @@ var DefaultConfig = &ChainConfig{
         Version: "0.5.17",
         Identifier: "",
         KeyStore: "db",
-        GenesisPointer: "txs-by-doug",
+        GenesisPointer: "",
         DougDifficulty: 15,
 }
 

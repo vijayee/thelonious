@@ -157,7 +157,7 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 
 	if contractCreation {
 		logger.Infof("Contract addr %x", tx.CreationAddress())
-
+        //logger.Infoln(tx.String())
 		return tx.CreationAddress(), nil
 	}
 

@@ -24,6 +24,7 @@ var (
 
 // called by setLastBlock when a new blockchain is created
 // ie. Load a genesis.json and deploy
+// if GENDOUG is nil, simply bankroll the accounts (no doug)
 func GenesisPointer(block *Block){
     g := LoadGenesis()
 
@@ -39,7 +40,18 @@ func GenesisPointer(block *Block){
 
     fmt.Println("PRE DEPLOY")
     fmt.Println("GENDOUG", GENDOUG)
-    g.Deploy(block)
+    if GENDOUG != nil{
+        g.Deploy(block)
+    } else{
+        // no genesis doug, deploy simple
+        for _, account := range g.Accounts{
+            // direct state modification to create accounts and balances
+            AddAccount(account.Address, account.Balance, block)
+        }
+        // update and commit state
+        block.State().Update()  
+        block.State().Sync()  
+    }
 }
 
 
@@ -54,7 +66,7 @@ func SetDougModel(model string){
         case "dennis":
             Model = NewGenDougModel()
         default:
-            Model = NewFakeModel()
+            Model = nil 
     }
 }
 
@@ -73,6 +85,9 @@ func DougValidate(addr []byte, state *ethstate.State, role string) bool{
 
 // look up a special doug param
 func DougValue(key, namespace string, state *ethstate.State) []byte{
+    if GENDOUG == nil{
+        return nil 
+    }
     return Model.GetValue(key, namespace, state)
 }
 
