@@ -105,7 +105,17 @@ func (self *Pipe) TransactString(key *ethcrypto.KeyPair, rec string, value, gas,
 	return self.Transact(key, hash, value, gas, price, data)
 }
 
-// data is a string since it might be already compiled hex
+/*
+    Notes on data string
+    if this creates a contract:
+        data is either
+            - hex - compiled script
+            - text - filename
+    if this is a regular transaction
+        data is either
+            - hex - packed input bytes
+            - ascii version of packed bytes
+*/
 func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price *ethutil.Value, data string) ([]byte, error) {
 	//var hash []byte
 	var contractCreation bool

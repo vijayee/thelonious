@@ -14,6 +14,7 @@ import (
     "os/user"
     "strconv"
     "io/ioutil"
+    "math/big"
 )
 
 var (
@@ -33,8 +34,7 @@ type EthChain struct{
     Pipe *ethpipe.Pipe
     keyManager *ethcrypto.KeyManager
     reactor *ethreact.ReactorEngine
-    chans map[string]chan ethreact.Event
-    GenesisFunc string // name of the genesis function to use
+    //chans map[string]chan ethreact.Event
 }
 
 // new ethchain with default config
@@ -122,14 +122,25 @@ func (e *EthChain) NewEthereum(){
 // get=  contract storage
 // everything should be in hex!
 func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string{
+    var saddr *big.Int
+    if ethutil.IsHex(storage_addr){
+        saddr = ethutil.BigD(ethutil.Hex2Bytes(ethutil.StripHex(storage_addr)))
+    } else {
+        saddr = ethutil.Big(storage_addr)
+    }
+
+    contract_addr = ethutil.StripHex(contract_addr)
     caddr := ethutil.Hex2Bytes(contract_addr)
     //saddr := ethutil.Hex2Bytes(storage_addr)
     w := e.Pipe.World()
-    ret := w.SafeGet(caddr).GetStorage(ethutil.Big(storage_addr))
+    ret := w.SafeGet(caddr).GetStorage(saddr)
     //ret := e.Pipe.Storage(caddr, saddr) 
     //returns an ethValue
     // TODO: figure it out!
     //val := BigNumStrToHex(ret)
+    if ret.IsNil(){
+        return "0x"
+    }
     return ret.String()
 }
 
@@ -166,14 +177,12 @@ func (e EthChain) Subscribe(addr, event string, ch chan decerver.Update){
 // send a message to a contract
 func (e *EthChain) Msg(addr string, data []string){
     packed := PackTxDataArgs(data...)
-    fmt.Println("packed", packed)
     keys := e.fetchKeyPair()
-    if addr[:2] == "0x"{
-        addr = addr[2:]
-    }
+    addr = ethutil.StripHex(addr)
     byte_addr := ethutil.Hex2Bytes(addr)
     _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big("350")), ethutil.NewValue(ethutil.Big("20000")), ethutil.NewValue(ethutil.Big("1000000")), packed)
     if err != nil{
+        //TODO: don't be so mean
         log.Fatal("tx err", err)
     }
 }
@@ -181,6 +190,7 @@ func (e *EthChain) Msg(addr string, data []string){
 // send a tx
 func (e *EthChain) Tx(addr, amt string){
     keys := e.fetchKeyPair()
+    addr = ethutil.StripHex(addr)
     if addr[:2] == "0x"{
         addr = addr[2:]
     }

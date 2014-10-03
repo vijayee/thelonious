@@ -34,7 +34,7 @@ func NumberToBytes(num interface{}, bits int) []byte {
 	if err != nil {
 		fmt.Println("NumberToBytes failed:", err)
 	}
-
+    fmt.Println("btyes!", buf.Bytes())
 	return buf.Bytes()[buf.Len()-(bits/8):]
 }
 
@@ -108,6 +108,15 @@ func CopyBytes(b []byte) (copiedBytes []byte) {
 func IsHex(str string) bool {
 	l := len(str)
 	return l >= 4 && l%2 == 0 && str[0:2] == "0x"
+}
+
+func StripHex(s string) string{
+    if len(s) > 1{
+        if s[:2] == "0x"{
+            return s[2:]
+        }
+    }
+    return s
 }
 
 func Bytes2Hex(d []byte) string {

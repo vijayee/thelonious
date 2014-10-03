@@ -72,7 +72,6 @@ func SetDougModel(model string){
 
 // use gendoug and permissions model to validate addr's role
 func DougValidate(addr []byte, state *ethstate.State, role string) bool{
-    fmt.Println("doug validating!")
     if GENDOUG == nil{
         return true
     }
