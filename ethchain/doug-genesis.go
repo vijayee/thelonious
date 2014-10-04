@@ -34,6 +34,12 @@ type GenesisJSON struct{
 
 // load the genesis block info from genesis.json
 func LoadGenesis() *GenesisJSON{
+    _, err := os.Stat(GenesisConfig)
+    if err != nil{
+        fmt.Println("No genesis.json file found. Resorting to default")
+        GenesisConfig = defaultGenesisConfig
+    }
+
     b, err := ioutil.ReadFile(GenesisConfig)
     if err != nil{
         fmt.Println("err reading genesis.json", err)
@@ -131,130 +137,3 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *ethcrypto.KeyPair, bl
 
 
 
-
-
-/*
-    These functions all deploy specific doug styles
-    We're generalizing the functionality to genesis.json
-    Hope to be rid of them soon ;)
-    Though might be useful to keep some around...
-    They're probably all broken ...
-
-
-// for testing. the keys are in keys.txt.
-var ADDRS = []string{
-        "bbbd0256041f7aed3ce278c56ee61492de96d001",                                 
-        "b9398794cafb108622b07d9a01ecbed3857592d5", 
-    }
-
-// add addresses
-func GenesisSimple(block *Block, eth EthManager){
-    // private keys for these are stored in keys.txt
-	for _, addr := range ADDRS{
-        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
-	}
-    block.State().Update()  
-    block.State().Sync()  
-}
-
-func GenesisInit(block *Block, eth EthManager){
-	for _, addr := range ADDRS{
-        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
-	}
-    txs := Transactions{}
-    receipts := []*Receipt{}
-
-    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
-    GENDOUG = addr[12:] 
-    tx := NewGenesisContract(path.Join(ContractPath, "lll/keyvalue.lll"))
-    receipt := SimpleTransitionState(addr, block, tx)
-
-    txs = append(txs, tx) 
-    receipts = append(receipts, receipt)
-
-    block.SetReceipts(receipts, txs)
-    block.State().Update()  
-    block.State().Sync()  
-}
-
-
-// add addresses and a simple contract
-func GenesisKeyVal(block *Block, eth EthManager){
-    // private keys for these are stored in keys.txt
-	for _, addr := range ADDRS{
-        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
-	}
-    txs := Transactions{}
-    receipts := []*Receipt{}
-
-    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
-    GENDOUG = addr[12:] 
-    tx := NewGenesisContract(path.Join(ContractPath, "lll/keyvalue.lll"))
-    receipt := SimpleTransitionState(addr, block, tx)
-
-    txs = append(txs, tx) 
-    receipts = append(receipts, receipt)
-
-    block.SetReceipts(receipts, txs)
-    block.State().Update()  
-    block.State().Sync()  
-}
-
-
-// doug and lists of valid miners/txers
-func Valids(block *Block, eth EthManager){
-    // private keys for these are stored in keys.txt
-	for _, addr := range ADDRS{
-        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
-	}
-  
-    // set up main contract addrs
-    doug := ethcrypto.Sha3Bin([]byte("the genesis doug"))[12:]
-    GENDOUG = doug 
-    txers := ethcrypto.Sha3Bin([]byte("txers"))[12:]
-    miners := ethcrypto.Sha3Bin([]byte("miners"))[12:]
-    // create accounts
-    Doug := block.State().GetOrNewStateObject(doug)
-    Txers := block.State().GetOrNewStateObject(txers)
-    Miners := block.State().GetOrNewStateObject(miners)
-    // add addresses into DOUG
-    Doug.SetAddr([]byte("\x00"), doug)
-    Doug.SetAddr([]byte("\x01"), txers)
-    Doug.SetAddr([]byte("\x02"), miners)
-    // add permitted transactors to txers contract 
-    for _, a := range ADDRS{
-        Txers.SetAddr(ethutil.Hex2Bytes(a), 1)
-    }
-    // add permitted miners to miners contract 
-    Miners.SetAddr(ethutil.Hex2Bytes(ADDRS[0]), 1)
-
-    block.State().Update()  
-    block.State().Sync()
-}
-
-// add addresses and a simple contract
-func GenesisTxsByDoug(block *Block, eth EthManager){
-    // private keys for these are stored in keys.txt
-	for _, addr := range ADDRS{
-        AddAccount(addr, "1606938044258990275541962092341162602522202993782792835301376", block)
-	}
-
-    fmt.Println("TXS BY DOUG!!")
-
-    txs := Transactions{}
-    receipts := []*Receipt{}
-
-    addr := ethcrypto.Sha3Bin([]byte("the genesis doug"))
-    GENDOUG = addr[12:] //[]byte("\x00"*16 + "DOUG")
-    tx := NewGenesisContract(path.Join(ContractPath, "lll/fake-doug1.lll"))
-    fmt.Println(tx.String())
-    receipt := SimpleTransitionState(addr, block, tx)
-
-    txs = append(txs, tx) 
-    receipts = append(receipts, receipt)
-
-    block.SetReceipts(receipts, txs)
-    block.State().Update()  
-    block.State().Sync()  
-}
-*/
