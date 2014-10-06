@@ -1,3 +1,5 @@
+[![Stories in Ready](https://badge.waffle.io/eris-ltd/deCerver.png?label=ready&title=Ready)](https://waffle.io/eris-ltd/deCerver)
+
 # Eth Mods
 
 Ethan: Since I don't know about Casey's git sequence below, everything for now is in branch eris. So to play
