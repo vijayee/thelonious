@@ -7,7 +7,6 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethchain"
 )
 
-
 type ChainConfig struct{
     Port int        `json:"port"`
     Mining bool     `json:"mining"`
@@ -24,7 +23,7 @@ type ChainConfig struct{
     Version string  `json:"version"`
     Identifier string `json:"id"`
     KeyStore string `json:"keystore"`
-    GenesisPointer string `json:"genesis_func"`
+    GenesisConfig string `json:"genesis_config"`
     DougDifficulty int `json:"difficulty"`
     LogLevel int    `json:"log_level"`
 }
@@ -48,7 +47,7 @@ var DefaultConfig = &ChainConfig{
         Version: "0.5.17",
         Identifier: "",
         KeyStore: "db",
-        GenesisPointer: "",
+        GenesisConfig: "",
         DougDifficulty: 15,
         LogLevel: 5,
 }
@@ -74,6 +73,9 @@ func (e *EthChain) SetConfig(config interface{}) error{
 func (e *EthChain) EthConfig() {
     ethutil.PathToLLL = e.Config.LLLPath
     ethchain.ContractPath = e.Config.ContractPath
+    if e.Config.GenesisConfig != ""{
+        ethchain.GenesisConfig = e.Config.GenesisConfig
+    }
     ethchain.DougDifficulty = ethutil.BigPow(2, e.Config.DougDifficulty)
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
     // data dir, logfile, log level, debug file

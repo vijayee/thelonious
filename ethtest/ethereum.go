@@ -101,7 +101,6 @@ func (e *EthChain) NewEthereum(){
     clientIdentity := NewClientIdentity(e.Config.ClientIdentifier, e.Config.Version, e.Config.Identifier) 
 
     // create the ethereum obj
-    //ethereum, err := eth.NewEris(db, clientIdentity, e.keyManager, eth.CapDefault, false, e.Config.GenesisPointer)
     ethereum, err := eth.New(db, clientIdentity, e.keyManager, eth.CapDefault, false)
 
     if err != nil {

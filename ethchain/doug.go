@@ -13,13 +13,16 @@ import (
 
 var (
 
-    DougDifficulty = ethutil.BigPow(2, 17)  // for mining speed
-
-    DougPath = "" // lets us set the doug contract post config load
-
     GoPath = os.Getenv("GOPATH")
+
+    DougPath = "" // lets us set the doug contract post config load. Convenient for testing
+
+    // overwritten by ethtest/config.go
+    DougDifficulty = ethutil.BigPow(2, 17)  // for mining speed
     ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib")
     GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
+    // if GenesisConfig is invalid ...
+    defaultGenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
 )
 
 // called by setLastBlock when a new blockchain is created
