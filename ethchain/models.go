@@ -125,7 +125,7 @@ func NewGenDougModel() PermModel{
 }
 
 func (m *GenDougModel) Doug(state *ethstate.State) *ethstate.StateObject{
-    return state.GetStateObject(m.doug)
+    return state.GetOrNewStateObject(m.doug) // add or new so we can avoid panics..
 }
 
 
