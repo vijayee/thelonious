@@ -144,7 +144,7 @@ func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string
     if ret.IsNil(){
         return "0x"
     }
-    return ret.String()
+    return ethutil.Bytes2Hex(ret.Bytes())
 }
 
 // TODO: return hex string
