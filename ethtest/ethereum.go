@@ -8,6 +8,7 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethlog"
     "github.com/eris-ltd/eth-go-mods/ethcrypto"
     "github.com/eris-ltd/eth-go-mods/ethreact"
+    "github.com/eris-ltd/eth-go-mods/ethstate"
     "log"
     "fmt"
     "os"
@@ -34,6 +35,7 @@ type EthChain struct{
     Pipe *ethpipe.Pipe
     keyManager *ethcrypto.KeyManager
     reactor *ethreact.ReactorEngine
+    started bool
     //chans map[string]chan ethreact.Event
 }
 
@@ -48,6 +50,7 @@ func NewEth(ethereum *eth.Ethereum) *EthChain{
     if ethereum != nil{
         e.Ethereum = ethereum
     }
+    e.started = false
     return e
 }
 
@@ -82,6 +85,7 @@ func (e *EthChain) Init() error{
 // start the ethereum node
 func (ethchain *EthChain) Start(){
     ethchain.Ethereum.Start(true) // peer seed
+    ethchain.started = true
 
     if ethchain.Config.Mining{
         StartMining(ethchain.Ethereum)
@@ -143,6 +147,7 @@ func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string
     return ret.String()
 }
 
+// TODO: return hex string
 func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{
     acct := e.Pipe.World().SafeGet(ethutil.Hex2Bytes(contract_addr)).StateObject
     m := make(map[string]*ethutil.Value)
@@ -153,6 +158,20 @@ func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{
             m[kk] = v
         })
    return m 
+}
+
+func (e EthChain) GetState() map[string]map[string]string{
+    state := e.Pipe.World().State()
+    stateMap := make(map[string]map[string]string)
+    trieIterator := state.Trie.NewIterator()
+    trieIterator.Each(func (addr string, acct *ethutil.Value){
+        stateMap[ethutil.Bytes2Hex([]byte(addr))] = make(map[string]string)
+        acctObj := ethstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
+        acctObj.EachStorage(func (storage string, value *ethutil.Value){
+            stateMap[ethutil.Bytes2Hex([]byte(addr))][ethutil.Bytes2Hex([]byte(storage))] = ethutil.Bytes2Hex(value.Bytes())
+        })
+    })
+    return stateMap
 }
 
 // subscribe to an address (hex)
@@ -278,6 +297,10 @@ func (e EthChain) DeployContract(file, lang string) string{
 }
 
 func (e *EthChain) Stop(){
+    if !e.started{
+        fmt.Println("can't stop: haven't even started...")
+        return
+    }
     e.StopMining()
     fmt.Println("stopped mining")
     e.Ethereum.Stop()
