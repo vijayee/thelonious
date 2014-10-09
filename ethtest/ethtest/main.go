@@ -1,14 +1,11 @@
 package main
 
 import (
-    "path"
-    "log"
-    "strconv"
     "flag"
     "os"
-    "github.com/ethereum/eth-go"
-    "github.com/ethereum/eth-go/ethutil"
-    "github.com/ethereum/go-ethereum/utils"
+    //"github.com/ethereum/eth-go"
+    //"github.com/ethereum/go-ethereum/utils"
+    //"github.com/eris-ltd/eth-go-mods/ethutil"
     "github.com/eris-ltd/eth-go-mods/ethtest"
 )   
 
@@ -19,6 +16,7 @@ var (
     pure = flag.Bool("pure", false, "run a pure eth-go node")
 )
 
+/*
 // this is for running a pure eth-go node
 func NewEthereum() *eth.Ethereum{
     db := utils.NewDatabase()
@@ -50,15 +48,15 @@ func Run(){
     utils.StartMining(e)
     e.WaitForShutdown()
 }
-
+*/
 
 
 func main(){
     flag.Parse()
-
+    /*
     if *pure{
         Run() //blocks until shutdown
-    }
+    }*/
 
     if *tester == ""{
         flag.Usage()
