@@ -481,9 +481,12 @@ func (s *Ethereum) StartListening(){
 
 // use to toggle listening
 func (s *Ethereum) StopListening(){
-    s.peerQuit <- true
-    // does not kill already established peer go routines (just stops listening)
-    s.listener.Close()
+    if s.listening{
+        s.peerQuit <- true
+        // does not kill already established peer go routines (just stops listening)
+        s.listener.Close()
+        s.listening = false
+    }
 }
 
 func (s *Ethereum) peerHandler(listener net.Listener) {
@@ -527,7 +530,10 @@ func (s *Ethereum) Stop() {
 
 	close(s.quit)
 
-    s.listener.Close() // release the listening port
+    if s.listening{
+        s.listener.Close() // release the listening port
+        s.listening = false
+    }
 
 	if s.RpcServer != nil {
 		s.RpcServer.Stop()
