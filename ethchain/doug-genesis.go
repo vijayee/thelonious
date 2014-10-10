@@ -40,6 +40,7 @@ func LoadGenesis() *GenesisJSON{
         GenesisConfig = defaultGenesisConfig
     }
 
+    fmt.Println("reading ", GenesisConfig)
     b, err := ioutil.ReadFile(GenesisConfig)
     if err != nil{
         fmt.Println("err reading genesis.json", err)
@@ -99,10 +100,12 @@ func (g *GenesisJSON) Deploy(block *Block){
     for _, account := range g.Accounts{
         // direct state modification to create accounts and balances
         AddAccount(account.Address, account.Balance, block)
-        // issue txs to set perms according to the model
-        ts, rs := Model.SetPermissions(account.Address, account.Permissions, block, keys)
-        txs = append(txs, ts...)
-        receipts = append(receipts, rs...)
+        if Model != nil{
+            // issue txs to set perms according to the model
+            ts, rs := Model.SetPermissions(account.Address, account.Permissions, block, keys)
+            txs = append(txs, ts...)
+            receipts = append(receipts, rs...)
+        }
     }
     // update and commit state
     block.SetReceipts(receipts, txs)

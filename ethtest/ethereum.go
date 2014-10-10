@@ -9,6 +9,7 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethcrypto"
     "github.com/eris-ltd/eth-go-mods/ethreact"
     "github.com/eris-ltd/eth-go-mods/ethstate"
+    "github.com/eris-ltd/eth-go-mods/ethchain"
     "log"
     "fmt"
     "os"
@@ -83,12 +84,12 @@ func (e *EthChain) Init() error{
 }
 
 // start the ethereum node
-func (ethchain *EthChain) Start(){
-    ethchain.Ethereum.Start(true) // peer seed
-    ethchain.started = true
+func (ec *EthChain) Start(){
+    ec.Ethereum.Start(true) // peer seed
+    ec.started = true
 
-    if ethchain.Config.Mining{
-        StartMining(ethchain.Ethereum)
+    if ec.Config.Mining{
+        StartMining(ec.Ethereum)
     }
 }
 
@@ -146,6 +147,13 @@ func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string
     }
     return ethutil.Bytes2Hex(ret.Bytes())
 }
+
+// returns hex addr of gendoug
+func (e EthChain) GenDoug() string{
+    fmt.Println("gendoug baby:", ethchain.GENDOUG)
+    return ethutil.Bytes2Hex(ethchain.GENDOUG)
+}
+
 
 // TODO: return hex string
 func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{

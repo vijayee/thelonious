@@ -32,7 +32,7 @@ func GenesisPointer(block *Block){
     g := LoadGenesis()
 
     // check doug address validity (addr length is at least 20)
-    if len(g.Address) > 20 {
+    if len(g.Address) >= 20 {
         if g.Address[:2] == "0x"{
             GENDOUG = ethutil.Hex2Bytes(g.Address[2:])
         } else{
@@ -75,7 +75,7 @@ func SetDougModel(model string){
 
 // use gendoug and permissions model to validate addr's role
 func DougValidate(addr []byte, state *ethstate.State, role string) bool{
-    if GENDOUG == nil{
+    if GENDOUG == nil || Model == nil{
         return true
     }
 

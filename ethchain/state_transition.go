@@ -3,6 +3,7 @@ package ethchain
 import (
 	"fmt"
 	"math/big"
+    "runtime"
 
 	"github.com/eris-ltd/eth-go-mods/ethstate"
 	"github.com/eris-ltd/eth-go-mods/ethtrie"
@@ -150,7 +151,7 @@ func (self *StateTransition) preCheck() (err error) {
 		return NonceError(tx.Nonce, sender.Nonce)
 	}
 
-    if GENDOUG != nil{
+    if Model != nil{
         // Tx should not exceed max gas per tx
         gas := self.tx.GasValue()
         max := ethutil.BigD(DougValue("maxgas", "values", self.block.State()))
@@ -173,8 +174,11 @@ func (self *StateTransition) TransitionState() (err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
+            trace := make([]byte, 1024)
+            runtime.Stack(trace, true)
 			statelogger.Infoln(r)
 			err = fmt.Errorf("state transition err %v", r)
+            fmt.Println(string(trace))
 		}
 	}()
 
