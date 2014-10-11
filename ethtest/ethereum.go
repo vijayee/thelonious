@@ -98,7 +98,7 @@ func (ec *EthChain) Start(){
 // expects EthConfig to already have been called!
 // init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
 func (e *EthChain) NewEthereum(){
-    db := NewDatabase()
+    db := NewDatabase(e.Config.DbName)
 
     keyManager := NewKeyManager(e.Config.KeyStore, e.Config.DataDir, db)
     keyManager.Init("", 0, true)

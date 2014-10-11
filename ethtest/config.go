@@ -2,6 +2,7 @@ package ethtest
 
 import (
     "errors"
+    "fmt"
     "path"
     "github.com/eris-ltd/eth-go-mods/ethutil"
     "github.com/eris-ltd/eth-go-mods/ethchain"
@@ -17,6 +18,7 @@ type ChainConfig struct{
     Name string     `json:"name"`
     LogFile string  `json:"log_file"`
     DataDir string `json:"data_dir"`
+    DbName string `json:"db_name"`
     LLLPath string `json:"lll_path"`
     ContractPath string `json:"contract_path"`
     ClientIdentifier string `json:"client"`
@@ -34,7 +36,8 @@ var DefaultConfig = &ChainConfig{
         Mining : false,
         MaxPeers : 10,
         ConfigFile : "config",
-        RootDir : path.Join(usr.HomeDir, ".ethchain"),
+        RootDir : path.Join(usr.HomeDir, ".ethchain2"),
+        DbName : "database",
         KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "keys.txt"),
         Name : "decerver-ethchain",
         LogFile: "",
@@ -48,8 +51,8 @@ var DefaultConfig = &ChainConfig{
         Identifier: "",
         KeyStore: "db",
         GenesisConfig: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json"),
-        DougDifficulty: 15,
-        LogLevel: 5,
+        DougDifficulty: 12,
+        LogLevel: 1,
 }
 
 
@@ -75,6 +78,7 @@ func (e *EthChain) EthConfig() {
     ethchain.ContractPath = e.Config.ContractPath
     if e.Config.GenesisConfig != ""{
         ethchain.GenesisConfig = e.Config.GenesisConfig
+        fmt.Println("ethchain gen:", ethchain.GenesisConfig)
     }
     ethchain.DougDifficulty = ethutil.BigPow(2, e.Config.DougDifficulty)
     ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")

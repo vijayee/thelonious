@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+    "strconv"
 )
 
 type Bytes []byte
@@ -248,3 +249,30 @@ func ByteSliceToInterface(slice [][]byte) (ret []interface{}) {
 
 	return
 }
+
+// s can be string, hex, or int.
+// if int, use enough bytes to represent the int in big endian
+// if hex, return hex (with even num nibbles)
+// if string, convert to 32 byte little endian
+func Coerce2Hex(s string) string{
+    // is int?
+    i, err := strconv.Atoi(s)
+    if err == nil{
+        return "0x"+hex.EncodeToString(NumberToBytes(int32(i), i/256+1))
+    }
+    // is already prefixed hex?
+    if len(s) > 1 && s[:2] == "0x"{
+        if len(s) % 2 == 0{
+            return s
+        }
+        return "0x0"+s[2:]
+    }
+    // is unprefixed hex?
+    if len(s) > 32{
+        return "0x"+s
+    }
+    pad := s + strings.Repeat("\x00", (32-len(s)))
+    ret := "0x"+hex.EncodeToString([]byte(pad))
+    return ret
+}
+

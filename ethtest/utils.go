@@ -124,8 +124,8 @@ func exit(err error) {
 	os.Exit(status)
 }
 
-func NewDatabase() ethutil.Database {
-	db, err := ethdb.NewLDBDatabase("database")
+func NewDatabase(dbName string) ethutil.Database {
+	db, err := ethdb.NewLDBDatabase(dbName)
 	if err != nil {
 		exit(err)
 	}

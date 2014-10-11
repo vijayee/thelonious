@@ -7,7 +7,6 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethreact"
     "github.com/eris-ltd/eth-go-mods/ethutil"
     "github.com/eris-ltd/eth-go-mods/ethstate"
-    "os"
 )   
 
 // environment object for running tests
@@ -33,26 +32,15 @@ func NewTester(tester, genesis string, blocks int) *Test{
     return &Test{testerFunc:tester, genesis:genesis, blocks:blocks, failed:[]string{}}
 }
 
-var options = []string{"tx", "genesis-msg", "simple-storage", "msg-storage"} //"traverse"} //, mining, validate
-
+// for functions we cant use `go test` on
 func (t *Test) Run(){
     switch(t.testerFunc){
         case "basic":
             t.TestBasic()
         case "run":
             t.TestRun()
-        case "tx":
-            t.TestTx()
-        case "traverse":
-            t.TestTraverseGenesis()
         case "genesis":
             t.TestGenesisAccounts()
-        case "genesis-msg":
-            t.TestGenesisMsg()
-        case "simple-storage":
-            t.TestSimpleStorage()
-        case "msg-storage":
-            t.TestMsgStorage()
         case "validate":
             t.TestValidate()
         case "mining":
@@ -67,23 +55,8 @@ func (t *Test) Run(){
             t.TestCallStack()
         case "maxgas":
             t.TestMaxGas()
-        case "all":
-            t.eth = NewEth(nil)
-            rootdir := t.eth.Config.RootDir
-            for _, testf := range options{
-                fmt.Println("running next test function: ", testf)
-                fmt.Println("delete ~/.ethchain", rootdir)
-                os.Remove(rootdir)
-                time.Sleep(time.Second*2)
-                t.testerFunc = testf
-                t.success = false
-                t.Run()
-                if !t.success{
-                    t.failed = append(t.failed, t.testerFunc)
-                }
-            }
-            fmt.Println("failed tests:", len(t.failed), "/", len(options))
-            fmt.Println("failed:", t.failed)
+        case "state":
+            t.TestState()
     }
     fmt.Println(t.success)
 }
@@ -98,6 +71,7 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
     } 
 
     eth.Config.Mining = true
+    eth.Config.DbName = "tests/"+name
     ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
     ethchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
     t.gendougaddr = ethutil.Bytes2Hex(ethchain.GENDOUG)
@@ -115,6 +89,35 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
     t.eth = nil
     time.Sleep(time.Second*3)
 }
+
+func tester2(name string, testing func(eth *EthChain), end int){
+    eth := NewEth(nil) 
+    eth.Config.Mining = true
+    eth.Config.DbName = "tests/"+name
+    //TODO: genesis
+    //ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    ethchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
+    eth.Init()
+
+    testing(eth)
+    
+    if end > 0{
+        time.Sleep(time.Second*time.Duration(end))
+    }
+    fmt.Println("Stopping...")
+    eth.Stop()
+    time.Sleep(time.Second*3)
+}
+
+func callback2(name string, eth *EthChain, caller func()) {
+    ch := make(chan ethreact.Event, 1)
+    eth.Ethereum.Reactor().Subscribe("newBlock", ch)
+    _ = <- ch
+    fmt.Println("####RESPONSE: "+ name +  " ####")
+    caller()
+} 
+
+
 
 func (t *Test) callback(name string, eth *EthChain, caller func()) {
     ch := make(chan ethreact.Event, 1)
@@ -161,7 +164,7 @@ func PrettyPrintChainAccounts(eth *EthChain){
 
 // compare expected and recovered vals
 func check_recovered(expected, recovered string) bool{
-    if recovered == expected{
+    if ethutil.Coerce2Hex(recovered) == ethutil.Coerce2Hex(expected){
         fmt.Println("Test passed")
         return true
     } else{
