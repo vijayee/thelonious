@@ -31,16 +31,6 @@ var (
 func GenesisPointer(block *Block){
     g := LoadGenesis()
 
-    // check doug address validity (addr length is at least 20)
-    if len(g.Address) >= 20 {
-        if g.Address[:2] == "0x"{
-            GENDOUG = ethutil.Hex2Bytes(g.Address[2:])
-        } else{
-            GENDOUG = []byte(g.Address)
-        }
-        GENDOUG = GENDOUG[:20]
-    }
-
     fmt.Println("PRE DEPLOY")
     fmt.Println("GENDOUG", GENDOUG)
     if GENDOUG != nil{
@@ -173,7 +163,6 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
 /*
     sigh...
 */
-/*
 
 func PrettyPrintAccount(obj *ethstate.StateObject){
     fmt.Println("Address", ethutil.Bytes2Hex(obj.Address())) //ethutil.Bytes2Hex([]byte(addr)))
@@ -189,6 +178,7 @@ func PrettyPrintAccount(obj *ethstate.StateObject){
         }) 
     }
 }
+/*
 
 // print all accounts and storage in a block
 func PrettyPrintBlockAccounts(block *ethchain.Block){

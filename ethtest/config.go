@@ -74,7 +74,9 @@ func (e *EthChain) SetConfig(config interface{}) error{
 
 // configure an ethereum node
 func (e *EthChain) EthConfig() {
-    ethutil.PathToLLL = e.Config.LLLPath
+    if e.Config.LLLPath != ""{
+	    ethutil.PathToLLL = e.Config.LLLPath
+    }
     ethchain.ContractPath = e.Config.ContractPath
     if e.Config.GenesisConfig != ""{
         ethchain.GenesisConfig = e.Config.GenesisConfig

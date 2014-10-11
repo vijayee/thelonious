@@ -66,6 +66,16 @@ func LoadGenesis() *GenesisJSON{
         g.Address = string(GENDOUG)
     }
 
+    // check doug address validity (addr length is at least 20)
+    if len(g.Address) >= 20 {
+        if g.Address[:2] == "0x"{
+            GENDOUG = ethutil.Hex2Bytes(g.Address[2:])
+        } else{
+            GENDOUG = []byte(g.Address)
+        }
+        GENDOUG = GENDOUG[:20]
+    }
+
     // set doug model
     SetDougModel(g.Model)
 
@@ -75,7 +85,7 @@ func LoadGenesis() *GenesisJSON{
 // deploy the genesis block
 // converts the genesisJSON info into a populated and functional doug contract in the genesis block
 func (g *GenesisJSON) Deploy(block *Block){
-    fmt.Println("###DEPLOYING DOUG", ethutil.Bytes2Hex(GENDOUG), g.DougPath)
+    fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
 
     // dummy keys for signing
     keys := ethcrypto.GenerateNewKeyPair() 
@@ -86,7 +96,7 @@ func (g *GenesisJSON) Deploy(block *Block){
     // create the genesis doug
     tx := NewGenesisContract(path.Join(ContractPath, g.DougPath))
     tx.Sign(keys.PrivateKey)
-    receipt := SimpleTransitionState(GENDOUG, block, tx)
+    receipt := SimpleTransitionState([]byte(g.Address), block, tx)
     txs = append(txs, tx) 
     receipts = append(receipts, receipt)
 

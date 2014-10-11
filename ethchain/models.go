@@ -195,6 +195,7 @@ func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, b
 
 func (m *GenDougModel) GetValue(key, namespace string, state *ethstate.State) []byte{
     var loc *big.Int
+    //fmt.Println("get value:", key, namespace)
     switch(namespace){
         case "addrs":
             loc = m.resolveAddr(key, state)
