@@ -142,8 +142,8 @@ func (self *StateTransition) preCheck() (err error) {
    
     // state transition only has the genesis block if 
     // created by Eris 
-    if self.genesis != nil && !DougValidate(sender.Address(), self.genesis.State(), "tx"){
-        return InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "tx")
+    if self.genesis != nil && !DougValidate(sender.Address(), self.genesis.State(), "transact"){
+        return InvalidPermError(ethutil.Bytes2Hex(sender.Address()), "transact")
     }
 
 	// Make sure this transaction's nonce is correct
