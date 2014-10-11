@@ -3,7 +3,6 @@ package ethtest
 import (
     "github.com/eris-ltd/eth-go-mods/ethutil"
     "github.com/eris-ltd/eth-go-mods/ethchain"
-    "os"
     "fmt"
     "testing"
 )
@@ -36,20 +35,24 @@ func TestTraverseGenesis(t *testing.T){
 // test sending a message to the genesis doug
 func TestGenesisMsg(t *testing.T){
     //t.genesis = "lll/fake-doug-msg.lll"
+    dp := ethchain.DougPath
     ethchain.DougPath = "tests/fake-doug-msg.lll"
     tester2("genesis msg", func(eth *EthChain){
+        md := ethchain.Model
         ethchain.Model = nil // disable permissions model so we can transact
         eth.Start()
             key := "0x21"
             value := "0x400"
             gendoug := ethutil.Bytes2Hex(ethchain.GENDOUG)
             eth.Msg(gendoug, []string{key, value})
-            callback2("get storage", eth, func(){
+            callback2("genesis msg", eth, func(){
                 recovered := "0x"+ eth.GetStorageAt(gendoug, key)
                 if !check_recovered(value, recovered){
                     fmt.Println("got:", recovered, "expected:", value)
                 }
             })
+            ethchain.Model = md
+            ethchain.DougPath = dp
     }, 0)
 }
 
