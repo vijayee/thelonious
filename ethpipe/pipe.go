@@ -153,7 +153,7 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
         }else{
             d = []byte(data)
         }
-        fmt.Println("data pre tx:", d, len(d))
+        //fmt.Println("data pre tx:", d, len(d))
 		tx = ethchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), d)
 	}
 
@@ -161,7 +161,6 @@ func (self *Pipe) Transact(key *ethcrypto.KeyPair, rec []byte, value, gas, price
 	tx.Nonce = acc.Nonce
 	acc.Nonce += 1
 	self.stateManager.TransState().UpdateStateObject(acc)
-
 	tx.Sign(key.PrivateKey)
 	self.obj.TxPool().QueueTransaction(tx)
 

@@ -17,6 +17,7 @@ import (
     "strconv"
     "io/ioutil"
     "math/big"
+    "time"
 )
 
 var (
@@ -221,8 +222,12 @@ func (e *EthChain) Tx(addr, amt string){
         addr = addr[2:]
     }
     byte_addr := ethutil.Hex2Bytes(addr)
-    fmt.Println("the amount:", amt, ethutil.Big(amt), ethutil.NewValue(amt), ethutil.NewValue(ethutil.Big(amt)))
+    //fmt.Println("the amount:", amt, ethutil.Big(amt), ethutil.NewValue(amt), ethutil.NewValue(ethutil.Big(amt)))
+    // note, NewValue will not turn a string int into a big int..
+    start := time.Now()
     _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big(amt)), ethutil.NewValue(ethutil.Big("2000")), ethutil.NewValue(ethutil.Big("100000")), "")
+    dif := time.Since(start)
+    fmt.Println("pipe tx took ", dif)
     //_, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(amt), ethutil.NewValue("2000"), ethutil.NewValue("100000"), "")
     if err != nil{
         log.Fatal("tx err", err)
@@ -351,8 +356,9 @@ func SHA3(tohash string) string{
 
 // pack data into acceptable format for transaction
 // TODO: make sure this is ok ...
+// TODO: this is in two places, clean it up you putz
 func PackTxDataArgs(args ... string) string{
-    fmt.Println("pack data:", args)
+    //fmt.Println("pack data:", args)
     ret := *new([]byte)
     for _, s := range args{
         if s[:2] == "0x"{
@@ -361,7 +367,7 @@ func PackTxDataArgs(args ... string) string{
                 t = "0"+t
             }
             x := ethutil.Hex2Bytes(t)
-            fmt.Println(x)
+            //fmt.Println(x)
             l := len(x)
             ret = append(ret, ethutil.LeftPadBytes(x, 32*((l + 31)/32))...)
         }else{

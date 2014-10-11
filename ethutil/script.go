@@ -23,10 +23,10 @@ var PathToLLL = path.Join("/Users/BatBuddha/cpp-ethereum/build/lllc/lllc")
 // script must be a file name!
 func Compile(script string, silent bool) (ret []byte, err error) {
 	if len(script) > 2 {
-        fmt.Println("script", script, script[len(script)-4:])
+        //fmt.Println("script", script, script[len(script)-4:])
         l := len(script)
         if script[l-4:] == ".lll"{
-            fmt.Println("LLL")
+            //fmt.Println("LLL")
             byteCode, err := CompileLLL(script)
             if err != nil{
                 return nil, err                
@@ -72,7 +72,7 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 
 // compile LLL file into evm bytecode 
 func CompileLLL(filename string) ([]byte, error){
-    fmt.Println("filename", filename, PathToLLL)
+    //fmt.Println("filename", filename, PathToLLL)
     // if we don't have the lllc locally, use the server
     if PathToLLL == "NETCALL"{
             //url := "http://ps.erisindustries.com/compile"
@@ -94,7 +94,7 @@ func CompileLLL(filename string) ([]byte, error){
 
 // strings and hex only
 func PackTxDataArgs(args ... string) []byte{
-    fmt.Println("pack data:", args)
+    //fmt.Println("pack data:", args)
     ret := *new([]byte)
     for _, s := range args{
         if s[:2] == "0x"{
@@ -103,7 +103,7 @@ func PackTxDataArgs(args ... string) []byte{
                 t = "0"+t
             }
             x := Hex2Bytes(t)
-            fmt.Println(x)
+            //fmt.Println(x)
             l := len(x)
             ret = append(ret, LeftPadBytes(x, 32*((l + 31)/32))...)
         }else{

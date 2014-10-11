@@ -119,7 +119,7 @@ func NewGenesisContract(scriptFile string) *Transaction{
         fmt.Println("failed compile", err)
         os.Exit(0)
     }
-    fmt.Println("script: ", script)
+    //fmt.Println("script: ", script)
 
     // create tx
     tx := NewContractCreationTx(ethutil.Big("543"), ethutil.Big("10000"), ethutil.Big("10000"), script)

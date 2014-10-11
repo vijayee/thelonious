@@ -132,7 +132,7 @@ func (m *GenDougModel) Doug(state *ethstate.State) *ethstate.StateObject{
 func (m *GenDougModel) PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error) {
     // location of the locator is perm+offset
     locator := m.GetValue(perm, "perms", state) //m.resolvePerm(perm, state) 
-    PrintHelp(map[string]interface{}{"loc":locator}, m.Doug(state))
+    //PrintHelp(map[string]interface{}{"loc":locator}, m.Doug(state))
 
     if len(locator) == 0{
         return nil, errors.New("could not find locator")
@@ -183,12 +183,12 @@ func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, b
 
     for perm, val := range permissions{
         data := ethutil.PackTxDataArgs("setperm", perm, "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
-        fmt.Println("data for ", perm, ethutil.Bytes2Hex(data))
+        //fmt.Println("data for ", perm, ethutil.Bytes2Hex(data))
         tx, rec := MakeApplyTx("", GENDOUG, data, keys, block)
         txs = append(txs, tx)
         receipts = append(receipts, rec)
     }
-    fmt.Println(permissions)
+    //fmt.Println(permissions)
     //os.Exit(0)
     return txs, receipts
 }
@@ -207,7 +207,9 @@ func (m *GenDougModel) GetValue(key, namespace string, state *ethstate.State) []
         default:
             return nil
     }
+    //fmt.Println("loc after resolution for key in namespace:", key, namespace, ethutil.Bytes2Hex(loc.Bytes()))
     val := m.Doug(state).GetStorage(loc)
+    //fmt.Println("corresponding value:", ethutil.Bytes2Hex(val.Bytes()))
     return val.Bytes()
 }
 

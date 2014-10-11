@@ -8,7 +8,6 @@ import (
     "encoding/json"
     "github.com/eris-ltd/eth-go-mods/ethutil"    
     "github.com/eris-ltd/eth-go-mods/ethcrypto"    
-    "time"
 )
 
 /*
@@ -77,7 +76,6 @@ func LoadGenesis() *GenesisJSON{
 // converts the genesisJSON info into a populated and functional doug contract in the genesis block
 func (g *GenesisJSON) Deploy(block *Block){
     fmt.Println("###DEPLOYING DOUG", ethutil.Bytes2Hex(GENDOUG), g.DougPath)
-    time.Sleep(time.Second*2)
 
     // dummy keys for signing
     keys := ethcrypto.GenerateNewKeyPair() 
@@ -131,7 +129,7 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *ethcrypto.KeyPair, bl
     }
 
     tx.Sign(keys.PrivateKey)
-    fmt.Println(tx.String())
+    //fmt.Println(tx.String())
     receipt := SimpleTransitionState(addr, block, tx)
     
     return tx, receipt
