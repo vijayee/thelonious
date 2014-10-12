@@ -75,7 +75,7 @@ func CompileLLL(filename string) ([]byte, error){
     // if we don't have the lllc locally, use the server
     if PathToLLL == "NETCALL"{
             //url := "http://ps.erisindustries.com/compile"
-            lllcserver.URL = "http://162.218.65.211:9999/compile"
+            lllcserver.URL = "http://lllc.erisindustries.com/compile"
             resp, err := lllcserver.CompileLLLClient([]string{filename})
             // check for internal error
             if err != nil{
