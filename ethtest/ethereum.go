@@ -1,7 +1,7 @@
 package ethtest
 
 import (
-    "github.com/eris-ltd/deCerver/decerver"
+    //"github.com/eris-ltd/deCerver/decerver"
     "github.com/eris-ltd/eth-go-mods"
     "github.com/eris-ltd/eth-go-mods/ethutil"
     "github.com/eris-ltd/eth-go-mods/ethpipe"
@@ -185,6 +185,7 @@ func (e EthChain) GetState() map[string]map[string]string{
 
 // subscribe to an address (hex)
 // returns a chanel that will fire when address is updated
+/*
 func (e EthChain) Subscribe(addr, event string, ch chan decerver.Update){
     addr = string(ethutil.Hex2Bytes(addr))
     eth_ch := make(chan ethreact.Event, 1)
@@ -199,7 +200,7 @@ func (e EthChain) Subscribe(addr, event string, ch chan decerver.Update){
             ch <- decerver.Update{Address:addr, Event:event}
         }
     }(eth_ch, ch)
-}
+}*/
 
 // send a message to a contract
 func (e *EthChain) Msg(addr string, data []string){

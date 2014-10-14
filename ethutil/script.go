@@ -82,7 +82,7 @@ func CompileLLL(filename string) ([]byte, error){
                 return nil, err    
             }
             // check for compilation error
-            if resp.Error[0] != ""{
+            if len(resp.Error) > 0 && resp.Error[0] != ""{
                 return nil, errors.New(resp.Error[0]) 
             }
             return resp.Bytecode[0], nil
