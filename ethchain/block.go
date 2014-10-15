@@ -169,6 +169,7 @@ func (block *Block) Transactions() []*Transaction {
 }
 
 func (block *Block) CalcGasLimit(parent *Block) *big.Int {
+    return ethutil.Big("100000000000000000000000")
 	if block.Number.Cmp(big.NewInt(0)) == 0 {
 		return ethutil.BigPow(10, 6)
 	}
