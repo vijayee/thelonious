@@ -208,7 +208,7 @@ func (e *EthChain) Msg(addr string, data []string){
     keys := e.fetchKeyPair()
     addr = ethutil.StripHex(addr)
     byte_addr := ethutil.Hex2Bytes(addr)
-    _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big("350")), ethutil.NewValue(ethutil.Big("20000")), ethutil.NewValue(ethutil.Big("1000000")), packed)
+    _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big("350")), ethutil.NewValue(ethutil.Big("200000000000")), ethutil.NewValue(ethutil.Big("1000000")), packed)
     if err != nil{
         //TODO: don't be so mean
         log.Fatal("tx err", err)
@@ -226,7 +226,7 @@ func (e *EthChain) Tx(addr, amt string){
     //fmt.Println("the amount:", amt, ethutil.Big(amt), ethutil.NewValue(amt), ethutil.NewValue(ethutil.Big(amt)))
     // note, NewValue will not turn a string int into a big int..
     start := time.Now()
-    _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big(amt)), ethutil.NewValue(ethutil.Big("2000")), ethutil.NewValue(ethutil.Big("100000")), "")
+    _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big(amt)), ethutil.NewValue(ethutil.Big("20000000000")), ethutil.NewValue(ethutil.Big("100000")), "")
     dif := time.Since(start)
     fmt.Println("pipe tx took ", dif)
     //_, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(amt), ethutil.NewValue("2000"), ethutil.NewValue("100000"), "")
@@ -303,7 +303,7 @@ func (e EthChain) DeployContract(file, lang string) string{
     keys := e.fetchKeyPair()
 
     // well isn't this pretty! barf
-    contract_addr, err := e.Pipe.Transact(keys, nil, ethutil.NewValue(ethutil.Big("271")), ethutil.NewValue(ethutil.Big("20000")), ethutil.NewValue(ethutil.Big("1000000")), script)
+    contract_addr, err := e.Pipe.Transact(keys, nil, ethutil.NewValue(ethutil.Big("271")), ethutil.NewValue(ethutil.Big("2000000000000")), ethutil.NewValue(ethutil.Big("1000000")), script)
     if err != nil{
         log.Fatal("could not deploy contract", err)
     }
