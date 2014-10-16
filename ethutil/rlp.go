@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+    "regexp"
 )
+
+var COMPRESS = false
 
 type RlpEncode interface {
 	RlpEncode() []byte
@@ -131,6 +134,11 @@ func Encode(object interface{}) []byte {
 		case Bytes:
 			buff.Write(Encode([]byte(t)))
 		case []byte:
+            // compress repeated 0s
+            if COMPRESS{
+                t = compress0(t)
+                //fmt.Println("compressed:", t)
+            }
 			if len(t) == 1 && t[0] <= 0x7f {
 				buff.Write(t)
 			} else if len(t) < 56 {
@@ -173,7 +181,7 @@ func Encode(object interface{}) []byte {
 
 // TODO Use a bytes.Buffer instead of a raw byte slice.
 // Cleaner code, and use draining instead of seeking the next bytes to read
-func Decode(data []byte, pos uint64) (interface{}, uint64) {
+func Decode_(data []byte, pos uint64) (interface{}, uint64) {
 	var slice []interface{}
 	char := int(data[pos])
 	switch {
@@ -233,4 +241,124 @@ func Decode(data []byte, pos uint64) (interface{}, uint64) {
 	}
 
 	return slice, 0
+}
+
+func Decode(data []byte, pos uint64) (interface{}, uint64) {
+	var slice []interface{}
+	char := int(data[pos])
+    var ret []byte
+    var retN uint64
+	switch {
+	case char <= 0x7f:
+		return data[pos], pos + 1
+
+	case char <= 0xb7:
+		b := uint64(data[pos]) - 0x80
+
+		ret = data[pos+1 : pos+1+b]
+        retN = pos + 1 + b
+
+	case char <= 0xbf:
+		b := uint64(data[pos]) - 0xb7
+
+		b2 := ReadVarInt(data[pos+1 : pos+1+b])
+
+		ret = data[pos+1+b : pos+1+b+b2]
+        retN = pos + 1 + b + b2
+
+	case char <= 0xf7:
+		b := uint64(data[pos]) - 0xc0
+		prevPos := pos
+		pos++
+		for i := uint64(0); i < b; {
+			var obj interface{}
+
+			// Get the next item in the data list and append it
+			obj, prevPos = Decode(data, pos)
+			slice = append(slice, obj)
+
+			// Increment i by the amount bytes read in the previous
+			// read
+			i += (prevPos - pos)
+			pos = prevPos
+		}
+		return slice, pos
+
+	case char <= 0xff:
+		l := uint64(data[pos]) - 0xf7
+		b := ReadVarInt(data[pos+1 : pos+1+l])
+
+		pos = pos + l + 1
+
+		prevPos := b
+		for i := uint64(0); i < uint64(b); {
+			var obj interface{}
+
+			obj, prevPos = Decode(data, pos)
+			slice = append(slice, obj)
+
+			i += (prevPos - pos)
+			pos = prevPos
+		}
+		return slice, pos
+
+	default:
+		panic(fmt.Sprintf("byte not supported: %q", char))
+	}
+    if COMPRESS{
+        ret = decompress0(ret)
+    }
+    return ret, retN
+	//return slice, 0
+}
+
+// compresison/decompression of zero bytes
+// called by Encode and Decode
+var compress0regexp = regexp.MustCompile(`(\x00+)`)
+func compress0(d []byte)[]byte{
+    r := compress0regexp.ReplaceAllFunc(d, func(b []byte)[]byte{
+        if len(b) > 1 && len(b) < 256{
+            return []byte{0, 0, byte(len(b))}
+        } else if len(b) >= 256{
+            bb := []byte{0, 0, 0}
+            lenn := big.NewInt(int64(len(b))).Bytes()
+            lenN := byte(len(lenn))
+            bb = append(bb, lenN)
+            bb = append(bb, lenn...)
+            return bb
+        } 
+        return b
+    })
+    return r
+}
+
+var decompress0regexp = regexp.MustCompile(`(\x00\x00.)`)
+func decompress0(d []byte)[]byte{
+    is := decompress0regexp.FindAllIndex(d, -1)
+    for _, ii := range is{
+        i := ii[0]
+        // three zeros means length specified length
+        if d[i+2] == byte('\x00'){
+            n := int(d[i+3])
+            nzb := d[i+4:i+4+n]
+            bigN := BigD(nzb)
+            nzeros := int(bigN.Int64())
+            
+            if i+4+n == len(d){
+                d = append(d[:i], bytes.Repeat([]byte("\x00"), nzeros)...)
+            } else {
+                d = append(append(d[:i], bytes.Repeat([]byte("\x00"), nzeros)...), d[i+4+n:]...)
+            }
+     
+        } else{
+            // two zeros means the third byte is the length
+            // we may or may not be at the end
+            if i+3 == len(d){
+                d = append(d[:i], bytes.Repeat([]byte("\x00"), int(d[i+2]))...)
+            } else{
+                d = append(append(d[:i], bytes.Repeat([]byte("\x00"), int(d[i+2]))...), d[i+3:]...)
+            }
+        }
+    }
+    return d
 }
