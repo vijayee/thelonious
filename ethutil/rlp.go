@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-    "regexp"
 )
 
-var COMPRESS = false
+var COMPRESS = true
 
 type RlpEncode interface {
 	RlpEncode() []byte
@@ -96,49 +95,54 @@ var (
 	zeroRlp   = big.NewInt(0x0)
 )
 
-func Encode(object interface{}) []byte {
+func Encode(object interface{}) []byte{
+    return _Encode(object)
+}
+
+func _Encode(object interface{}) []byte {
 	var buff bytes.Buffer
 
 	if object != nil {
 		switch t := object.(type) {
 		case *Value:
-			buff.Write(Encode(t.Raw()))
+			buff.Write(_Encode(t.Raw()))
 		// Code dup :-/
 		case int:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case uint:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case int8:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case int16:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case int32:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case int64:
-			buff.Write(Encode(big.NewInt(t)))
+			buff.Write(_Encode(big.NewInt(t)))
 		case uint16:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case uint32:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case uint64:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case byte:
-			buff.Write(Encode(big.NewInt(int64(t))))
+			buff.Write(_Encode(big.NewInt(int64(t))))
 		case *big.Int:
 			// Not sure how this is possible while we check for
 			if t == nil {
 				buff.WriteByte(0xc0)
 			} else {
-				buff.Write(Encode(t.Bytes()))
+				buff.Write(_Encode(t.Bytes()))
 			}
 		case Bytes:
-			buff.Write(Encode([]byte(t)))
+			buff.Write(_Encode([]byte(t)))
 		case []byte:
-            // compress repeated 0s
+            // compress repeated 0s before rlp encode
             if COMPRESS{
                 t = compress0(t)
                 //fmt.Println("compressed:", t)
             }
+
 			if len(t) == 1 && t[0] <= 0x7f {
 				buff.Write(t)
 			} else if len(t) < 56 {
@@ -151,7 +155,7 @@ func Encode(object interface{}) []byte {
 				buff.Write(t)
 			}
 		case string:
-			buff.Write(Encode([]byte(t)))
+			buff.Write(_Encode([]byte(t)))
 		case []interface{}:
 			// Inline function for writing the slice header
 			WriteSliceHeader := func(length int) {
@@ -166,7 +170,7 @@ func Encode(object interface{}) []byte {
 
 			var b bytes.Buffer
 			for _, val := range t {
-				b.Write(Encode(val))
+				b.Write(_Encode(val))
 			}
 			WriteSliceHeader(len(b.Bytes()))
 			buff.Write(b.Bytes())
@@ -175,7 +179,7 @@ func Encode(object interface{}) []byte {
 		// Empty list for nil
 		buff.WriteByte(0xc0)
 	}
-
+    
 	return buff.Bytes()
 }
 
@@ -243,7 +247,18 @@ func Decode_(data []byte, pos uint64) (interface{}, uint64) {
 	return slice, 0
 }
 
-func Decode(data []byte, pos uint64) (interface{}, uint64) {
+func Decode(data []byte, pos uint64) (interface{}, uint64){
+    d, p :=  _Decode(data, pos)
+    // decompress data after rlp decoding
+    if COMPRESS{
+        // since d is type interface{}, it may be []interface{} recursively
+        d = recursiveDecompress0(d)
+    }
+
+    return d, p
+}
+
+func _Decode(data []byte, pos uint64) (interface{}, uint64) {
 	var slice []interface{}
 	char := int(data[pos])
     var ret []byte
@@ -274,7 +289,7 @@ func Decode(data []byte, pos uint64) (interface{}, uint64) {
 			var obj interface{}
 
 			// Get the next item in the data list and append it
-			obj, prevPos = Decode(data, pos)
+			obj, prevPos = _Decode(data, pos)
 			slice = append(slice, obj)
 
 			// Increment i by the amount bytes read in the previous
@@ -285,7 +300,9 @@ func Decode(data []byte, pos uint64) (interface{}, uint64) {
 		return slice, pos
 
 	case char <= 0xff:
+        // how many bytes for the length
 		l := uint64(data[pos]) - 0xf7
+        // the length
 		b := ReadVarInt(data[pos+1 : pos+1+l])
 
 		pos = pos + l + 1
@@ -294,7 +311,7 @@ func Decode(data []byte, pos uint64) (interface{}, uint64) {
 		for i := uint64(0); i < uint64(b); {
 			var obj interface{}
 
-			obj, prevPos = Decode(data, pos)
+			obj, prevPos = _Decode(data, pos)
 			slice = append(slice, obj)
 
 			i += (prevPos - pos)
@@ -305,60 +322,140 @@ func Decode(data []byte, pos uint64) (interface{}, uint64) {
 	default:
 		panic(fmt.Sprintf("byte not supported: %q", char))
 	}
-    if COMPRESS{
-        ret = decompress0(ret)
-    }
     return ret, retN
 	//return slice, 0
 }
 
 // compresison/decompression of zero bytes
 // called by Encode and Decode
-var compress0regexp = regexp.MustCompile(`(\x00+)`)
+
+// Compress all 0s in a byte array
 func compress0(d []byte)[]byte{
-    r := compress0regexp.ReplaceAllFunc(d, func(b []byte)[]byte{
-        if len(b) > 1 && len(b) < 256{
-            return []byte{0, 0, byte(len(b))}
-        } else if len(b) >= 256{
-            bb := []byte{0, 0, 0}
-            lenn := big.NewInt(int64(len(b))).Bytes()
-            lenN := byte(len(lenn))
-            bb = append(bb, lenN)
-            bb = append(bb, lenn...)
-            return bb
-        } 
-        return b
-    })
-    return r
+    matches := [][]int{} // list of pairs of indices delineating 0 patches
+    beg := 0
+    in := false
+    // find all matches
+    for i:=0;i<len(d);i++{
+        if !in && d[i] == byte(0){
+            beg = i
+            in = true
+        }
+        if in && d[i]!=byte(0){
+            matches = append(matches, []int{beg, i})
+            in =false
+        }
+    }
+    // if the array itself ends in a 0
+    if in{
+        matches = append(matches, []int{beg, len(d)})
+    }
+    // compressed version
+    dd := []byte{}
+    lasti := 0
+    for _, ii := range matches{
+       i := ii[0]
+       // append the non-zeros
+       dd = append(dd, d[lasti:i]...)
+       l := ii[1]-i
+       // we only compress if its more than one zero
+       if l > 1{
+            if  l < 256{
+                dd = append(dd, []byte{0, 0, byte(ii[1]-i)}...)
+            } else{
+                bb := []byte{0, 0, 0}                                                      
+                lenn := big.NewInt(int64(l)).Bytes()                                  
+                lenN := byte(len(lenn))                                                    
+                bb = append(bb, lenN) 
+                bb = append(bb, lenn...)                                                   
+                dd = append(dd, bb...)
+            }
+       }else{
+            dd = append(dd, byte(0))
+       }
+            lasti = ii[1]
+    }
+    // if the array doesn't end in zeros, append the rest
+    if lasti != len(d){
+        dd = append(dd, d[lasti:]...)
+    }
+    return dd
 }
 
-var decompress0regexp = regexp.MustCompile(`(\x00\x00.)`)
+// to save on the reflection that builtin append must do
+func AppendBytes(slice []byte, elements ...byte) []byte{
+    n := len(slice)
+    total := len(slice) + len(elements)
+    if total > cap(slice) {
+        // Reallocate. 
+        newSize := total*2
+        newSlice := make([]byte, total, newSize)
+        copy(newSlice, slice)
+        slice = newSlice
+    }
+    slice = slice[:total]
+    copy(slice[n:], elements)
+    return slice
+}
+
+// Decompress byte array with compressed zeros
+// All sequences of 2 or 3 zeros are markers of a compressed sequence.
+// 4 or more are invalid and will probably lead to an error.
+// unfortunately, it's slow
 func decompress0(d []byte)[]byte{
-    is := decompress0regexp.FindAllIndex(d, -1)
-    for _, ii := range is{
-        i := ii[0]
-        // three zeros means length specified length
-        if d[i+2] == byte('\x00'){
+    l := len(d)
+    dd := []byte{}
+    lasti := 0
+    for i:=0;i<l;i++{
+        if l-i < 3{
+            // if we are basically at the end
+            continue
+        } else if bytes.Compare(d[i:i+3], []byte{0,0,0}) == 0{
+            // expand arbitrary number of zeros
+            dd = AppendBytes(dd, d[lasti:i]...) // append non zeros up to now
             n := int(d[i+3])
             nzb := d[i+4:i+4+n]
             bigN := BigD(nzb)
             nzeros := int(bigN.Int64())
-            
-            if i+4+n == len(d){
-                d = append(d[:i], bytes.Repeat([]byte("\x00"), nzeros)...)
-            } else {
-                d = append(append(d[:i], bytes.Repeat([]byte("\x00"), nzeros)...), d[i+4+n:]...)
-            }
-     
-        } else{
-            // two zeros means the third byte is the length
-            // we may or may not be at the end
-            if i+3 == len(d){
-                d = append(d[:i], bytes.Repeat([]byte("\x00"), int(d[i+2]))...)
-            } else{
-                d = append(append(d[:i], bytes.Repeat([]byte("\x00"), int(d[i+2]))...), d[i+3:]...)
-            }
+            dd = AppendBytes(dd, bytes.Repeat([]byte{0}, nzeros)...)
+            lasti = i+4+n
+            i+=3
+        } else if bytes.Compare(d[i:i+2], []byte{0, 0}) == 0{
+            // expand fewer than 256 zeros
+            dd = AppendBytes(dd, d[lasti:i]...) // append non zeros up to now
+            n := int(d[i+2])
+            dd = AppendBytes(dd, bytes.Repeat([]byte{0}, n)...)
+            lasti = i+3
+            i+=2
         }
     }
-    return d
+    // if the byte array does not end in zeros, append the rest
+    if lasti != l{
+        dd = AppendBytes(dd, d[lasti:]...)
+    }
+    return dd[:len(dd)]
 }
+
+// Recursively decompress an interface type if it is a list
+func recursiveDecompress0(d interface{}) interface{}{
+    switch t := d.(type) {
+        case byte:
+            return t
+        case []byte:
+            l := make([]byte, len(t))
+            copy(l, t)
+            r := decompress0(l)
+            return r
+        case []interface{}:
+            ret := make([]interface{}, len(t))
+            for i, k := range t{
+                ret[i] = recursiveDecompress0(k)
+            }
+            return ret
+        default:
+            // should never get here...
+            panic(t)
+    }
+    // or here
+    return nil
+}
+

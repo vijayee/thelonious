@@ -8,6 +8,7 @@ import (
     "path"
     "fmt"
     "time"
+    "strconv"
 )
 
 // start the node, start mining, quit
@@ -150,3 +151,42 @@ func (t *Test) TestCallStack(){
 
     }, 0)
 }
+
+func (t *Test) TestCompression(){
+    m := map[bool]string{false:"compression-without", true:"compression-with"}
+    root := ""
+    db := ""
+    results_size := make(map[string]int64)
+    results_time := make(map[string]time.Duration)
+    for compress, name := range m{
+        ethutil.COMPRESS = compress
+        fmt.Println("compress:", ethutil.COMPRESS)
+        t.tester(name, func(eth *EthChain){
+            contract_addr := eth.DeployContract(path.Join(ethchain.ContractPath, "tests/lots-of-stuff.lll"), "lll")
+            // send many msgs
+            start := time.Now()
+            for i := 0; i < 10000; i++{
+                key := ethutil.Bytes2Hex([]byte(strconv.Itoa(i)))
+                value := "x0001200003400021000500555000000008"
+                eth.Msg(contract_addr, []string{key, value})
+                fmt.Println(i)
+            }
+            results_time[name] = time.Since(start)
+            root = eth.Config.RootDir
+            db = eth.Config.DbName
+            f := path.Join(root, db)
+            fi, err := os.Stat(f)
+            if err != nil{
+                fmt.Println("cma!", err)
+                os.Exit(0)
+            }
+            results_size[name] = fi.Size()
+            
+        }, 0)
+   }
+   for i, v := range results_size{
+        fmt.Println(i, v, results_time[i])
+   }
+}
+
+

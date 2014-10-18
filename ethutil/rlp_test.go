@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+    "fmt"
+    "crypto/rand"
 )
 
 func TestRlpValueEncoding(t *testing.T) {
@@ -90,6 +92,37 @@ func TestEncode(t *testing.T) {
 	}
 }
 
+func TestDecodeDecompress(t *testing.T){
+    if !COMPRESS{
+        return
+    }
+    toenc := []byte{0, 0, 0, 0, 0}
+    expected := []byte{131, 0, 0, 5}
+    enc := Encode(toenc)
+    if bytes.Compare(enc, expected) != 0{
+        t.Errorf("Expected %v, got %v", expected, enc)
+    }
+
+    b, _ := Decode(enc, 0)
+    fmt.Println(b)
+    if bytes.Compare(b.([]byte), toenc) != 0{
+        t.Errorf("Expected %s, got %s", toenc, b)
+    }
+
+    toenc = []byte("create\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00")
+    expected = []byte{141, 99, 114, 101, 97, 116, 101, 0, 0, 23, 1, 0, 0, 2}
+    enc = Encode(toenc)
+    if bytes.Compare(enc, expected) != 0{
+        t.Errorf("Expected %v, got %v", expected, enc)
+    }
+
+    b, _ = Decode(enc, 0)
+    if bytes.Compare(b.([]byte), toenc) != 0{
+        t.Errorf("Expected %v, got %v", toenc, b)
+    }
+    
+}
+
 func TestDecode(t *testing.T) {
 	single := []byte("\x01")
 	b, _ := Decode(single, 0)
@@ -138,9 +171,76 @@ func TestEncodeZero(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeDecode(b *testing.B) {
+func randInt() int{
+    one := make([]byte, 1)
+    rand.Read(one)
+    return int(one[0])
+}
+
+func makeTestData() *Value{
+    dd := []interface{}{}
+    for j:=0;j<3;j++{
+        d := []byte{}
+       for i:=0; i<5;i++{
+            o := randInt() % 32
+            m := make([]byte, o)
+            rand.Read(m) // read a random number of bytes
+            d = append(d, m...)
+            o = randInt() % 32
+            d = append(d, bytes.Repeat([]byte{0}, o)...) // add a random number of zeros
+        }
+    dd = append(dd, d)
+    }
+    return NewValue(dd)
+}
+//var prefix = string(bytes.Repeat([]byte{0}, 100))
+//var testValues = []interface{}{prefix+"dog", prefix+"cat", prefix+"god"}
+var testValues = makeTestData()
+
+func BenchmarkEncode(b *testing.B){
+    COMPRESS=false
 	for i := 0; i < b.N; i++ {
-		bytes := Encode([]interface{}{"dog", "god", "cat"})
+		testValues.Encode()//[]interface{}{"dog", "god", "cat"})
+	}
+}
+
+func BenchmarkEncodeCompress(b *testing.B){
+    COMPRESS=true
+	for i := 0; i < b.N; i++ {
+		testValues.Encode() //[]interface{}{"dog", "god", "cat"})
+	}
+}
+
+func BenchmarkDecode(b *testing.B){
+    COMPRESS=false
+    by := Encode(testValues)
+    b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+        Decode(by, 0)
+	}
+}
+
+func BenchmarkDecodeCompress(b *testing.B){
+    COMPRESS=true
+    by := testValues.Encode()
+    b.ResetTimer()    
+	for i := 0; i < b.N; i++ {
+        Decode(by, 0)
+	}
+}
+
+func BenchmarkEncodeDecode(b *testing.B) {
+    COMPRESS = false
+	for i := 0; i < b.N; i++ {
+		bytes := testValues.Encode()//[]interface{}{"dog", "god", "cat"})
+		Decode(bytes, 0)
+	}
+}
+
+func BenchmarkEncodeDecodeCompress(b *testing.B) {
+    COMPRESS = true
+	for i := 0; i < b.N; i++ {
+		bytes := testValues.Encode()//[]interface{}{"dog", "god", "cat"})
 		Decode(bytes, 0)
 	}
 }
