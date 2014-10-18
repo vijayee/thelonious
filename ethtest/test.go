@@ -9,7 +9,7 @@ import (
     "github.com/eris-ltd/eth-go-mods/ethstate"
 )   
 
-// environment object for running tests
+// environment object for running custom tests (ie. not used in `go test`)
 // one tester obj, will run many tests (sequentially)
 type Test struct{
     genesis string
@@ -57,6 +57,8 @@ func (t *Test) Run(){
             t.TestMaxGas()
         case "state":
             t.TestState()
+        case "compress":
+            t.TestCompression()
     }
     fmt.Println(t.success)
 }
@@ -78,19 +80,18 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
     eth.Init()
 
     t.reactor = eth.Ethereum.Reactor()
-
     testing(eth)
     
     if end > 0{
         time.Sleep(time.Second*time.Duration(end))
     }
-    fmt.Println("Stopping...")
     eth.Stop()
     t.eth = nil
     time.Sleep(time.Second*3)
 }
 
-func tester2(name string, testing func(eth *EthChain), end int){
+// called by `go test` functions
+func tester(name string, testing func(eth *EthChain), end int){
     eth := NewEth(nil) 
     eth.Config.Mining = true
     eth.Config.DbName = "tests/"+name
@@ -104,20 +105,17 @@ func tester2(name string, testing func(eth *EthChain), end int){
     if end > 0{
         time.Sleep(time.Second*time.Duration(end))
     }
-    fmt.Println("Stopping...")
     eth.Stop()
     time.Sleep(time.Second*3)
 }
 
-func callback2(name string, eth *EthChain, caller func()) {
+func callback(name string, eth *EthChain, caller func()) {
     ch := make(chan ethreact.Event, 1)
     eth.Ethereum.Reactor().Subscribe("newBlock", ch)
     _ = <- ch
     fmt.Println("####RESPONSE: "+ name +  " ####")
     caller()
 } 
-
-
 
 func (t *Test) callback(name string, eth *EthChain, caller func()) {
     ch := make(chan ethreact.Event, 1)

@@ -297,7 +297,6 @@ func (e EthChain) DeployContract(file, lang string) string{
     } else {
         script = file
     }
-    log.Println("script:",script )
     // messy key system...
     // ethchain should have an 'active key'
     keys := e.fetchKeyPair()

@@ -17,9 +17,9 @@ import (
 
 // doesn't start up a node, just loads from db and traverses to genesis
 func TestTraverseGenesis(t *testing.T){
-    tester2("traverse to genesis", func(eth *EthChain){
+    tester("traverse to genesis", func(eth *EthChain){
         eth.Start()
-        callback2("traverse_to_genesis", eth, func(){
+        callback("traverse_to_genesis", eth, func(){
             curchain := eth.Ethereum.BlockChain()
             curblock := curchain.CurrentBlock
             gen_tr := traverse_to_genesis(curchain, curblock)
@@ -37,7 +37,7 @@ func TestGenesisMsg(t *testing.T){
     //t.genesis = "lll/fake-doug-msg.lll"
     dp := ethchain.DougPath
     ethchain.DougPath = "tests/fake-doug-msg.lll"
-    tester2("genesis msg", func(eth *EthChain){
+    tester("genesis msg", func(eth *EthChain){
         md := ethchain.Model
         ethchain.Model = nil // disable permissions model so we can transact
         eth.Start()
@@ -45,7 +45,7 @@ func TestGenesisMsg(t *testing.T){
             value := "0x400"
             gendoug := ethutil.Bytes2Hex(ethchain.GENDOUG)
             eth.Msg(gendoug, []string{key, value})
-            callback2("genesis msg", eth, func(){
+            callback("genesis msg", eth, func(){
                 recovered := "0x"+ eth.GetStorageAt(gendoug, key)
                 if !check_recovered(value, recovered){
                     fmt.Println("got:", recovered, "expected:", value)

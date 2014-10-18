@@ -4,7 +4,6 @@ import (
     "math/big"
     "errors"
     "fmt"
-    //"os"
     "strconv"
     "github.com/eris-ltd/eth-go-mods/ethstate"
     "github.com/eris-ltd/eth-go-mods/ethutil"

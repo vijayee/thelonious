@@ -839,7 +839,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 				self.Printf("CREATE err %v", err)
 			} else {
-                fmt.Println("msg.object.Code = ", ret)
+                //fmt.Println("msg.object.Code = ", ret)
 				msg.object.Code = ret
 
 				stack.Push(ethutil.BigD(addr))

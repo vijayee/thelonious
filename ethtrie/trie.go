@@ -64,7 +64,6 @@ func NewCache(db ethutil.Database) *Cache {
 
 func (cache *Cache) PutValue(v interface{}, force bool) interface{} {
 	value := ethutil.NewValue(v)
-
 	enc := value.Encode()
 	if len(enc) >= 32 || force {
 		sha := ethcrypto.Sha3Bin(enc)
@@ -337,7 +336,6 @@ func (t *Trie) InsertState(node interface{}, key []int, value interface{}) inter
 	if node == nil || n.Len() == 0 {
 		//if node == nil || (n.Type() == reflect.String && (n.Str() == "" || n.Get(0).IsNil())) || n.Len() == 0 {
 		newNode := []interface{}{CompactEncode(key), value}
-
 		return t.Put(newNode)
 	}
 
@@ -590,7 +588,6 @@ func (it *TrieIterator) fetchNode(key []int, node []byte, cb EachCallback) {
 func (it *TrieIterator) iterateNode(key []int, currentNode *ethutil.Value, cb EachCallback) {
 	if currentNode.Len() == 2 {
 		k := CompactDecode(currentNode.Get(0).Str())
-
 		pk := append(key, k...)
 		if currentNode.Get(1).Len() != 0 && currentNode.Get(1).Str() == "" {
 			it.iterateNode(pk, currentNode.Get(1), cb)

@@ -22,7 +22,7 @@ import (
 
 // contract that stores a single value during init
 func TestSimpleStorage(t *testing.T){
-    tester2("simple storage", func(eth *EthChain){
+    tester("simple storage", func(eth *EthChain){
         // set up test parameters and code
         key := "0x5"
         value := "0x400"
@@ -44,7 +44,7 @@ func TestSimpleStorage(t *testing.T){
         contract_addr := eth.DeployContract(p, "lll")
         eth.Start()
         // callback when block is mined
-        callback2("simple storage", eth, func(){
+        callback("simple storage", eth, func(){
             recovered := "0x" + eth.GetStorageAt(contract_addr, key)
             result := check_recovered(value, recovered)
             if !result{
@@ -56,15 +56,15 @@ func TestSimpleStorage(t *testing.T){
 
 // test a simple key-value store contract
 func TestMsgStorage(t *testing.T){
-    tester2("msg storage", func(eth *EthChain){
+    tester("msg storage", func(eth *EthChain){
         contract_addr := eth.DeployContract(path.Join(ethchain.ContractPath, "tests/keyval.lll"), "lll")
         eth.Start()
-        callback2("deploy key-value", eth, func(){
+        callback("deploy key-value", eth, func(){
             key := "0x21"
             value := "0x400"
             time.Sleep(time.Nanosecond) // needed or else subscribe channels block and are skipped ... TODO: why?!
             eth.Msg(contract_addr, []string{key, value})
-            callback2("test key-value", eth, func(){
+            callback("test key-value", eth, func(){
                 start := time.Now()
                 recovered := "0x"+eth.GetStorageAt(contract_addr, key)
                 dif := time.Since(start)
@@ -81,7 +81,7 @@ func TestMsgStorage(t *testing.T){
 
 // test simple tx
 func TestTx(t *testing.T){
-    tester2("basic tx", func(eth *EthChain){
+    tester("basic tx", func(eth *EthChain){
         addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
         addr_bytes := ethutil.Hex2Bytes(addr)
         amount := "567890"
@@ -92,7 +92,7 @@ func TestTx(t *testing.T){
         dif := time.Since(start)
         fmt.Println("sending one tx took", dif)
         eth.Start()
-        callback2("get balance", eth, func(){
+        callback("get balance", eth, func(){
             new_balance := eth.Pipe.Balance(addr_bytes)
             old := old_balance.BigInt()
             am := ethutil.Big(amount)
@@ -110,7 +110,7 @@ func TestTx(t *testing.T){
 }
 
 func TestManyTx(t *testing.T){
-    tester2("many tx", func(eth *EthChain){
+    tester("many tx", func(eth *EthChain){
         addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
         addr_bytes := ethutil.Hex2Bytes(addr)
         amount := "567890"
@@ -124,7 +124,7 @@ func TestManyTx(t *testing.T){
         end := time.Since(start)
         fmt.Printf("sending %d txs took %s\n", N, end)
         eth.Start()
-        callback2("get balance", eth, func(){
+        callback("get balance", eth, func(){
             new_balance := eth.Pipe.Balance(addr_bytes)
             old := old_balance.BigInt()
             am := ethutil.Big(amount)
@@ -139,5 +139,5 @@ func TestManyTx(t *testing.T){
         })
         //eth.Ethereum.WaitForShutdown()
     }, 0)
-    
 }
+
