@@ -177,6 +177,7 @@ func (e EthChain) GetState() map[string]map[string]string{
         stateMap[ethutil.Bytes2Hex([]byte(addr))] = make(map[string]string)
         acctObj := ethstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
         acctObj.EachStorage(func (storage string, value *ethutil.Value){
+            value.Decode()
             stateMap[ethutil.Bytes2Hex([]byte(addr))][ethutil.Bytes2Hex([]byte(storage))] = ethutil.Bytes2Hex(value.Bytes())
         })
     })
