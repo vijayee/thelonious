@@ -169,16 +169,34 @@ func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{
    return m 
 }
 
-func (e EthChain) GetState() map[string]map[string]string{
+type Storage struct{
+    Storage map[string]string
+    Order []string
+}
+
+type State struct{
+    State map[string]Storage// map addrs to map of storage to value
+    Order []string // ordered addrs and ordered storage inside
+}
+
+func (e EthChain) GetState() State{
     state := e.Pipe.World().State()
-    stateMap := make(map[string]map[string]string)
+    stateMap := State{make(map[string]Storage), []string{}}
+
     trieIterator := state.Trie.NewIterator()
     trieIterator.Each(func (addr string, acct *ethutil.Value){
-        stateMap[ethutil.Bytes2Hex([]byte(addr))] = make(map[string]string)
+        hexAddr := ethutil.Bytes2Hex([]byte(addr))
+        stateMap.Order = append(stateMap.Order, hexAddr)
+        stateMap.State[hexAddr] = Storage{make(map[string]string), []string{}}
+
         acctObj := ethstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
         acctObj.EachStorage(func (storage string, value *ethutil.Value){
             value.Decode()
-            stateMap[ethutil.Bytes2Hex([]byte(addr))][ethutil.Bytes2Hex([]byte(storage))] = ethutil.Bytes2Hex(value.Bytes())
+            hexStorage := ethutil.Bytes2Hex([]byte(storage))
+            storageState := stateMap.State[hexAddr]
+            storageState.Order = append(stateMap.State[hexAddr].Order, hexStorage)
+            storageState.Storage[hexStorage] = ethutil.Bytes2Hex(value.Bytes())
+            stateMap.State[hexAddr] = storageState
         })
     })
     return stateMap
