@@ -6,7 +6,7 @@ import (
 	"math/big"
 )
 
-var COMPRESS = true
+var COMPRESS = false
 
 type RlpEncode interface {
 	RlpEncode() []byte
