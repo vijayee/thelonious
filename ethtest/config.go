@@ -4,6 +4,9 @@ import (
     "errors"
     "fmt"
     "path"
+    "bytes"
+    "io/ioutil"
+    "encoding/json"
     "github.com/eris-ltd/thelonious/ethutil"
     "github.com/eris-ltd/thelonious/ethchain"
 )
@@ -58,8 +61,31 @@ var DefaultConfig = &ChainConfig{
 
 // can these methods be functions in decerver that take the modules as argument?
 func (e *EthChain) WriteConfig(config_file string){
+    b, err := json.Marshal(e.Config)
+    if err != nil{
+        fmt.Println("error marshalling config:", err)
+        return
+    }
+    var out bytes.Buffer
+    json.Indent(&out, b, "", "\t")
+    ioutil.WriteFile(config_file, out.Bytes(), 0600)
 }
 func (e *EthChain) ReadConfig(config_file string){
+    b, err := ioutil.ReadFile(config_file)
+    if err != nil{
+        fmt.Println("could not read config", err)
+        fmt.Println("resorting to defaults")
+        e.Config = DefaultConfig
+        e.WriteConfig(config_file)
+    }
+    var config ChainConfig
+    err = json.Unmarshal(b, &config)
+    if err != nil{
+        fmt.Println("error unmarshalling config from file:", err)
+        fmt.Println("resorting to defaults")
+        e.Config = DefaultConfig
+    }
+    e.Config = &config
 }
 func (e *EthChain) SetConfig(config interface{}) error{
     if s, ok := config.(string); ok{

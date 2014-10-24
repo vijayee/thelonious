@@ -48,7 +48,10 @@ type EthChain struct{
 //      creating the EthChain
 func NewEth(ethereum *eth.Ethereum) *EthChain{
     e := new(EthChain)
-    e.Config = DefaultConfig
+    // attempt to read from config file
+    // if fail, load default config and write to file
+    e.ReadConfig("eth-config.json")
+    //e.Config = DefaultConfig
     if ethereum != nil{
         e.Ethereum = ethereum
     }

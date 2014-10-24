@@ -66,6 +66,7 @@ func main(){
         os.Exit(0)
     }
 
+    // run the pprof server for debug
     go func() {
             log.Println(http.ListenAndServe(":6060", nil))
     }()
