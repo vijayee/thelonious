@@ -7,7 +7,7 @@ It also offers a set of tests for testing contract creation, execution, storage,
 
 Tests are in `storage.go` and `genesis.go` and the framework is defined in `test.go`.
 
-Within `ethtest`, run a test with `go run tests/main.go -t testname`, where `testname` is one of:
+Within `monk`, run a test with `go run tests/main.go -t testname`, where `testname` is one of:
    *  basic: start a node, start mining, stop after a few seconds
    *  run: run a node, mine, and keep running
    *  tx: send a simple tx

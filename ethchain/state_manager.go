@@ -15,7 +15,6 @@ import (
 	"github.com/eris-ltd/thelonious/ethstate"
 	"github.com/eris-ltd/thelonious/ethutil"
 	"github.com/eris-ltd/thelonious/ethwire"
-	"github.com/eris-ltd/thelonious/eventer"
 )
 
 var statelogger = ethlog.NewLogger("STATE")

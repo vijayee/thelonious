@@ -1,4 +1,4 @@
-package ethtest
+package monk
 
 import (
     "errors"
@@ -41,19 +41,19 @@ var DefaultConfig = &ChainConfig{
         ConfigFile : "config",
         RootDir : path.Join(usr.HomeDir, ".ethchain2"),
         DbName : "database",
-        KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "ethtest", "keys.txt"),
+        KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "keys.txt"),
         Name : "decerver-ethchain",
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
        // LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
         LLLPath: "NETCALL",
-       // ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "contracts"),
+       // ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "contracts"),
         ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib"),
         ClientIdentifier: "Ethereum(deCerver)",
         Version: "0.5.17",
         Identifier: "",
         KeyStore: "db",
-        GenesisConfig: path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "ethtest", "genesis.json"),
+        GenesisConfig: path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "genesis.json"),
         DougDifficulty: 17,
         LogLevel: 5,
 }
@@ -77,6 +77,7 @@ func (e *EthChain) ReadConfig(config_file string){
         fmt.Println("resorting to defaults")
         e.Config = DefaultConfig
         e.WriteConfig(config_file)
+        return
     }
     var config ChainConfig
     err = json.Unmarshal(b, &config)
@@ -84,6 +85,7 @@ func (e *EthChain) ReadConfig(config_file string){
         fmt.Println("error unmarshalling config from file:", err)
         fmt.Println("resorting to defaults")
         e.Config = DefaultConfig
+        return
     }
     e.Config = &config
 }

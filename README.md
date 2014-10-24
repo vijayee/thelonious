@@ -9,9 +9,9 @@ Ethan: Since I don't know about Casey's git sequence below, everything for now i
     git checkout eris
 ```
 
-Doug stuff is in `ethchain/doug.go`, and there's a couple functions suffixed with `Eris`. The old `deCerver/chain` is now in `ethtest` (see ethtest/README.md for details), which is also the bones of decerver interface to eth-go.
+Doug stuff is in `ethchain/doug.go`, and there's a couple functions suffixed with `Eris`. The old `deCerver/chain` is now in `monk` (see monk/README.md for details), which is also the bones of decerver interface to eth-go.
 
-Run a simple node with `go run ethtest/tests/main.go -t run`
+Run a simple node with `go run monk/monk/main.go -t run`
 
 --------------------------------------------------
 This library should contain all of the modifications we make to `eth-go`. Because of how `go` works the libs we build here should be a one for one trade with the `eth-go` libs.

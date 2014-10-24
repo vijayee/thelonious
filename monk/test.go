@@ -1,4 +1,4 @@
-package ethtest
+package monk
 
 import (
     "fmt"

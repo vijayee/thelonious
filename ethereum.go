@@ -22,7 +22,6 @@ import (
 	"github.com/eris-ltd/thelonious/ethstate"
 	"github.com/eris-ltd/thelonious/ethutil"
 	"github.com/eris-ltd/thelonious/ethwire"
-	"github.com/eris-ltd/thelonious/eventer"
 )
 
 const (

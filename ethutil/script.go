@@ -14,7 +14,7 @@ import (
 )
 
 // this can be overwritten by higher-level constructs
-// ethtest/config.go will reset it from config file
+// monk/config.go will reset it from config file
 var PathToLLL = ExpandHomePath("~/cpp-ethereum/build/lllc/lllc")
 
 // General compile function

@@ -10,6 +10,7 @@ import (
 	"github.com/eris-ltd/thelonious/ethchain"
 	"github.com/eris-ltd/thelonious/ethlog"
 	"github.com/eris-ltd/thelonious/ethutil"
+	"github.com/eris-ltd/thelonious/ethwire"
 )
 
 var poollogger = ethlog.NewLogger("BPOOL")

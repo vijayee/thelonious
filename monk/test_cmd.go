@@ -1,5 +1,4 @@
-
-package ethtest
+package monk
 
 import (
     "github.com/eris-ltd/thelonious/ethutil"

@@ -8,7 +8,7 @@ import (
     //"github.com/ethereum/eth-go"
     //"github.com/ethereum/go-ethereum/utils"
     //"github.com/eris-ltd/thelonious/ethutil"
-    "github.com/eris-ltd/thelonious/ethtest"
+    "github.com/eris-ltd/thelonious/monk"
     _ "net/http/pprof"
 )   
 
@@ -71,7 +71,7 @@ func main(){
             log.Println(http.ListenAndServe(":6060", nil))
     }()
 
-    T := ethtest.NewTester(*tester, *genesis, *blocks)
+    T := monk.NewTester(*tester, *genesis, *blocks)
     T.Run()
 }
 
