@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethdb"
-	"github.com/eris-ltd/eth-go-mods/ethreact"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
-	"github.com/eris-ltd/eth-go-mods/ethwire"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethdb"
+	"github.com/eris-ltd/thelonious/ethreact"
+	"github.com/eris-ltd/thelonious/ethutil"
+	"github.com/eris-ltd/thelonious/ethwire"
 )
 
 // Implement our EthTest Manager

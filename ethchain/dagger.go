@@ -6,10 +6,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethlog"
-	"github.com/eris-ltd/eth-go-mods/ethreact"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethlog"
+	"github.com/eris-ltd/thelonious/ethreact"
+	"github.com/eris-ltd/thelonious/ethutil"
 	"github.com/obscuren/sha3"
 )
 

@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethutil"
 )
 
 // Connection interface describing the methods required to implement the wire protocol.

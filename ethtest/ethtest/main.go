@@ -3,10 +3,13 @@ package main
 import (
     "flag"
     "os"
+    "log"
+    "net/http"
     //"github.com/ethereum/eth-go"
     //"github.com/ethereum/go-ethereum/utils"
-    //"github.com/eris-ltd/eth-go-mods/ethutil"
-    "github.com/eris-ltd/eth-go-mods/ethtest"
+    //"github.com/eris-ltd/thelonious/ethutil"
+    "github.com/eris-ltd/thelonious/ethtest"
+    _ "net/http/pprof"
 )   
 
 var (
@@ -62,6 +65,10 @@ func main(){
         flag.Usage()
         os.Exit(0)
     }
+
+    go func() {
+            log.Println(http.ListenAndServe(":6060", nil))
+    }()
 
     T := ethtest.NewTester(*tester, *genesis, *blocks)
     T.Run()

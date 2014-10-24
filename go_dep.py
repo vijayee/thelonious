@@ -19,5 +19,5 @@ def replace_all(path='.', old="github.com/ethereum", new="github.com/project-dou
             d.close()
 
 
-replace_all(old="github.com/ethereum/eth-go", new="github.com/eris-ltd/eth-go-mods")
+replace_all(old="github.com/eris-ltd/eth-go-mods", new="github.com/eris-ltd/thelonious")
 

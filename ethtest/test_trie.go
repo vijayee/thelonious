@@ -2,10 +2,10 @@ package ethtest
 
 import (
     //"github.com/eris-ltd/deCerver/chain"
-    "github.com/eris-ltd/eth-go-mods/ethutil"
+    "github.com/eris-ltd/thelonious/ethutil"
     //"github.com/project-douglas/eth-go/ethchain"
-    //"github.com/eris-ltd/eth-go-mods/ethtrie"
-    "github.com/eris-ltd/eth-go-mods/ethstate"
+    //"github.com/eris-ltd/thelonious/ethtrie"
+    "github.com/eris-ltd/thelonious/ethstate"
     "os"
     "fmt"
 )

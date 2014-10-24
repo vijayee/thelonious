@@ -6,8 +6,8 @@ import (
 	_ "reflect"
 	"sync"
 
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethutil"
 )
 
 func __ignore() { fmt.Println("") }

@@ -3,7 +3,7 @@ package ethreact
 import (
 	"sync"
 
-	"github.com/eris-ltd/eth-go-mods/ethlog"
+	"github.com/eris-ltd/thelonious/ethlog"
 )
 
 var logger = ethlog.NewLogger("REACTOR")

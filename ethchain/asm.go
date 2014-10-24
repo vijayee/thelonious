@@ -2,7 +2,7 @@ package ethchain
 
 import (
 	"fmt"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethutil"
 	"math/big"
 )
 

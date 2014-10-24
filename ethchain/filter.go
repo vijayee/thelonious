@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/eris-ltd/eth-go-mods/ethstate"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethstate"
+	"github.com/eris-ltd/thelonious/ethutil"
 //	"gopkg.in/qml.v1"
 )
 

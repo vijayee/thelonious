@@ -3,9 +3,9 @@ package ethstate
 import (
 	"testing"
 
-	"github.com/eris-ltd/eth-go-mods/ethdb"
-	"github.com/eris-ltd/eth-go-mods/ethtrie"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethdb"
+	"github.com/eris-ltd/thelonious/ethtrie"
+	"github.com/eris-ltd/thelonious/ethutil"
 )
 
 var ZeroHash256 = make([]byte, 32)

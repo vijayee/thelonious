@@ -14,14 +14,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eris-ltd/eth-go-mods/ethchain"
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethlog"
-	"github.com/eris-ltd/eth-go-mods/ethreact"
-	"github.com/eris-ltd/eth-go-mods/ethrpc"
-	"github.com/eris-ltd/eth-go-mods/ethstate"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
-	"github.com/eris-ltd/eth-go-mods/ethwire"
+	"github.com/eris-ltd/thelonious/ethchain"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethlog"
+	"github.com/eris-ltd/thelonious/ethreact"
+	"github.com/eris-ltd/thelonious/ethrpc"
+	"github.com/eris-ltd/thelonious/ethstate"
+	"github.com/eris-ltd/thelonious/ethutil"
+	"github.com/eris-ltd/thelonious/ethwire"
+	"github.com/eris-ltd/thelonious/eventer"
 )
 
 const (

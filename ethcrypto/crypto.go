@@ -2,7 +2,7 @@ package ethcrypto
 
 import (
 	//"code.google.com/p/go.crypto/sha3"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethutil"
 	"github.com/obscuren/sha3"
 )
 

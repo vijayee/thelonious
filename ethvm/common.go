@@ -1,8 +1,8 @@
 package ethvm
 
 import (
-	"github.com/eris-ltd/eth-go-mods/ethlog"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethlog"
+	"github.com/eris-ltd/thelonious/ethutil"
 	"math/big"
 )
 

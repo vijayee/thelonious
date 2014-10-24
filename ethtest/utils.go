@@ -13,15 +13,15 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
-	"github.com/eris-ltd/eth-go-mods"
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethdb"
-	"github.com/eris-ltd/eth-go-mods/ethlog"
-	"github.com/eris-ltd/eth-go-mods/ethminer"
-	"github.com/eris-ltd/eth-go-mods/ethpipe"
-	"github.com/eris-ltd/eth-go-mods/ethrpc"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
-	"github.com/eris-ltd/eth-go-mods/ethwire"
+	"github.com/eris-ltd/thelonious"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethdb"
+	"github.com/eris-ltd/thelonious/ethlog"
+	"github.com/eris-ltd/thelonious/ethminer"
+	"github.com/eris-ltd/thelonious/ethpipe"
+	"github.com/eris-ltd/thelonious/ethrpc"
+	"github.com/eris-ltd/thelonious/ethutil"
+	"github.com/eris-ltd/thelonious/ethwire"
 )
 
 // this is basically go-etheruem/utils

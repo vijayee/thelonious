@@ -4,8 +4,8 @@ import (
     "errors"
     "fmt"
     "path"
-    "github.com/eris-ltd/eth-go-mods/ethutil"
-    "github.com/eris-ltd/eth-go-mods/ethchain"
+    "github.com/eris-ltd/thelonious/ethutil"
+    "github.com/eris-ltd/thelonious/ethchain"
 )
 
 type ChainConfig struct{
@@ -38,7 +38,7 @@ var DefaultConfig = &ChainConfig{
         ConfigFile : "config",
         RootDir : path.Join(usr.HomeDir, ".ethchain2"),
         DbName : "database",
-        KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "keys.txt"),
+        KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "ethtest", "keys.txt"),
         Name : "decerver-ethchain",
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
@@ -50,9 +50,9 @@ var DefaultConfig = &ChainConfig{
         Version: "0.5.17",
         Identifier: "",
         KeyStore: "db",
-        GenesisConfig: path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json"),
-        DougDifficulty: 12,
-        LogLevel: 1,
+        GenesisConfig: path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "ethtest", "genesis.json"),
+        DougDifficulty: 17,
+        LogLevel: 5,
 }
 
 

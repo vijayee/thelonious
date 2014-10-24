@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethutil"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 

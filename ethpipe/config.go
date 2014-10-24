@@ -1,6 +1,6 @@
 package ethpipe
 
-import "github.com/eris-ltd/eth-go-mods/ethutil"
+import "github.com/eris-ltd/thelonious/ethutil"
 
 var cnfCtr = ethutil.Hex2Bytes("661005d2720d855f1d9976f88bb10c1a3398c77f")
 

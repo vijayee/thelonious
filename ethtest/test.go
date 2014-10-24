@@ -3,10 +3,10 @@ package ethtest
 import (
     "fmt"
     "time"
-    "github.com/eris-ltd/eth-go-mods/ethchain"
-    "github.com/eris-ltd/eth-go-mods/ethreact"
-    "github.com/eris-ltd/eth-go-mods/ethutil"
-    "github.com/eris-ltd/eth-go-mods/ethstate"
+    "github.com/eris-ltd/thelonious/ethchain"
+    "github.com/eris-ltd/thelonious/ethreact"
+    "github.com/eris-ltd/thelonious/ethutil"
+    "github.com/eris-ltd/thelonious/ethstate"
 )   
 
 // environment object for running custom tests (ie. not used in `go test`)

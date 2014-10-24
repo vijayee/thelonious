@@ -8,10 +8,10 @@ import (
 	_ "strconv"
 	"time"
 
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethstate"
-	"github.com/eris-ltd/eth-go-mods/ethtrie"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethstate"
+	"github.com/eris-ltd/thelonious/ethtrie"
+	"github.com/eris-ltd/thelonious/ethutil"
 	"github.com/obscuren/secp256k1-go"
 )
 

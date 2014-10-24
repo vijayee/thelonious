@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"sync/atomic"
 
-	"github.com/eris-ltd/eth-go-mods/ethchain"
-	"github.com/eris-ltd/eth-go-mods/ethcrypto"
-	"github.com/eris-ltd/eth-go-mods/ethstate"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
+	"github.com/eris-ltd/thelonious/ethchain"
+	"github.com/eris-ltd/thelonious/ethcrypto"
+	"github.com/eris-ltd/thelonious/ethstate"
+	"github.com/eris-ltd/thelonious/ethutil"
 )
 
 type JSPipe struct {

@@ -3,8 +3,8 @@ package ethpipe
 import (
 	"math/big"
 
-	"github.com/eris-ltd/eth-go-mods/ethchain"
-	"github.com/eris-ltd/eth-go-mods/ethstate"
+	"github.com/eris-ltd/thelonious/ethchain"
+	"github.com/eris-ltd/thelonious/ethstate"
 )
 
 type VMEnv struct {

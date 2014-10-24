@@ -5,10 +5,10 @@ import (
 	"math/big"
     "runtime"
 
-	"github.com/eris-ltd/eth-go-mods/ethstate"
-	"github.com/eris-ltd/eth-go-mods/ethtrie"
-	"github.com/eris-ltd/eth-go-mods/ethutil"
-	"github.com/eris-ltd/eth-go-mods/ethvm"
+	"github.com/eris-ltd/thelonious/ethstate"
+	"github.com/eris-ltd/thelonious/ethtrie"
+	"github.com/eris-ltd/thelonious/ethutil"
+	"github.com/eris-ltd/thelonious/ethvm"
 )
 
 /*

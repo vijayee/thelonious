@@ -6,9 +6,9 @@ import (
     "math/big"
     "path"
     "io/ioutil"
-    "github.com/eris-ltd/eth-go-mods/ethutil"    
-    "github.com/eris-ltd/eth-go-mods/ethstate"    
-    "github.com/eris-ltd/eth-go-mods/ethtrie"    
+    "github.com/eris-ltd/thelonious/ethutil"    
+    "github.com/eris-ltd/thelonious/ethstate"    
+    "github.com/eris-ltd/thelonious/ethtrie"    
 )
 
 var (
@@ -20,9 +20,9 @@ var (
     // overwritten by ethtest/config.go
     DougDifficulty = ethutil.BigPow(2, 17)  // for mining speed
     ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib")
-    GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
+    GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "ethtest", "genesis.json")
     // if GenesisConfig is invalid ...
-    defaultGenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "eth-go-mods", "ethtest", "genesis.json")
+    defaultGenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "ethtest", "genesis.json")
 )
 
 // called by setLastBlock when a new blockchain is created

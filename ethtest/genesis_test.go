@@ -1,8 +1,8 @@
 package ethtest
 
 import (
-    "github.com/eris-ltd/eth-go-mods/ethutil"
-    "github.com/eris-ltd/eth-go-mods/ethchain"
+    "github.com/eris-ltd/thelonious/ethutil"
+    "github.com/eris-ltd/thelonious/ethchain"
     "fmt"
     "testing"
 )
