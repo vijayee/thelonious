@@ -156,7 +156,10 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
     }
     msg.Output = ret
 
+
     receipt := &Receipt{tx, ethutil.CopyBytes(state.Root().([]byte)), new(big.Int)}
+    // remove stateobject used to deploy gen doug
+    state.DeleteStateObject(sender)    
     return receipt
 }
 

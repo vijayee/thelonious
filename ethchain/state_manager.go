@@ -180,9 +180,6 @@ done:
 			}
 		}
 
-		// Notify all subscribers
-		self.Ethereum.Reactor().Post("newTx:post", tx)
-
 		receipts = append(receipts, receipt)
 		handled = append(handled, tx)
 
