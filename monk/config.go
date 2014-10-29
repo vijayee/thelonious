@@ -75,7 +75,6 @@ func (e *EthChain) ReadConfig(config_file string){
     if err != nil{
         fmt.Println("could not read config", err)
         fmt.Println("resorting to defaults")
-        e.Config = DefaultConfig
         e.WriteConfig(config_file)
         return
     }

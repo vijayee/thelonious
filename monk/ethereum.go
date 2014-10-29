@@ -48,10 +48,9 @@ type EthChain struct{
 //      creating the EthChain
 func NewEth(ethereum *eth.Ethereum) *EthChain{
     e := new(EthChain)
-    // attempt to read from config file
-    // if fail, load default config and write to file
-    e.ReadConfig("eth-config.json")
-    //e.Config = DefaultConfig
+    // here we load default config and leave it to caller
+    // to read a config file to overwrite
+    e.Config = DefaultConfig
     if ethereum != nil{
         e.Ethereum = ethereum
     }
@@ -154,7 +153,6 @@ func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string
 
 // returns hex addr of gendoug
 func (e EthChain) GenDoug() string{
-    fmt.Println("gendoug baby:", ethchain.GENDOUG)
     return ethutil.Bytes2Hex(ethchain.GENDOUG)
 }
 
