@@ -3,7 +3,7 @@ package websocket
 import (
 	"net/http"
 
-	"github.com/ethereum/eth-go/ethlog"
+	"github.com/eris-ltd/thelonious/ethlog"
 
 	ws "code.google.com/p/go.net/websocket"
 )
