@@ -113,3 +113,26 @@ func PackTxDataArgs(args ... string) []byte{
     }
    return ret
 }
+
+// strings and hex only
+func PackTxDataArgs2(args ... string) []byte{
+    //fmt.Println("pack data:", args)
+    ret := *new([]byte)
+    for _, s := range args{
+        if s[:2] == "0x"{
+            t := s[2:]
+            if len(t) % 2 == 1{
+                t = "0"+t
+            }
+            x := Hex2Bytes(t)
+            //fmt.Println(x)
+            l := len(x)
+            ret = append(ret, LeftPadBytes(x, 32*((l + 31)/32))...)
+        }else{
+            x := []byte(s)
+            l := len(x)
+            ret = append(ret, LeftPadBytes(x, 32*((l + 31)/32))...)
+        }
+    }
+   return ret
+}

@@ -65,15 +65,20 @@ func LoadGenesis() *GenesisJSON{
     if GENDOUG != nil{
         g.Address = string(GENDOUG)
     }
-
-    // check doug address validity (addr length is at least 20)
-    if len(g.Address) >= 20 {
-        if g.Address[:2] == "0x"{
-            GENDOUG = ethutil.Hex2Bytes(g.Address[2:])
-        } else{
-            GENDOUG = []byte(g.Address)
+    
+    if NoGenDoug{
+        GENDOUG = nil
+        Model = nil
+    } else{
+        // check doug address validity (addr length is at least 20)
+        if len(g.Address) >= 20 {
+            if g.Address[:2] == "0x"{
+                GENDOUG = ethutil.Hex2Bytes(g.Address[2:])
+            } else{
+                GENDOUG = []byte(g.Address)
+            }
+            GENDOUG = GENDOUG[:20]
         }
-        GENDOUG = GENDOUG[:20]
     }
 
     // set doug model
