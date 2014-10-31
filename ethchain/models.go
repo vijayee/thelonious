@@ -44,6 +44,7 @@ type PermModel interface{
     // Set some permissions for a given address. requires valid keypair
     SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt)
 
+    SetValue(addr []byte, data []string, keys *ethcrypto.KeyPair, block *Block) (*Transaction, *Receipt)
     // doug has a key-value store that is space partitioned for collision avoidance
     // resolve those values
     GetValue(key, namespace string, state *ethstate.State) []byte
@@ -108,6 +109,11 @@ func (m *FakeModel) HasPermission(addr []byte, perm string, state *ethstate.Stat
 }
 
 func (m *FakeModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
+    return nil, nil
+}
+
+
+func (m *FakeModel) SetValue(addr []byte, data []string, keys *ethcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
     return nil, nil
 }
 
@@ -192,6 +198,10 @@ func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, b
     //fmt.Println(permissions)
     //os.Exit(0)
     return txs, receipts
+}
+
+func (m *GenDougModel) SetValue(addr []byte, data []string, keys *ethcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
+    return nil, nil
 }
 
 func (m *GenDougModel) GetValue(key, namespace string, state *ethstate.State) []byte{
@@ -316,8 +326,22 @@ func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, bl
     return txs, receipts
 }
 
+func (m *StdLibModel) SetValue(addr []byte, args []string, keys *ethcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
+    data := ethutil.PackTxDataArgs2(args...)
+    tx, rec := MakeApplyTx("", addr, data, keys, block)
+    return tx, rec
+}
+
+
+
 func (m *StdLibModel) GetValue(key, namespace string, state *ethstate.State) []byte{
 
+    switch(namespace){
+        case "global":
+           return vars.GetSingle(GENDOUG, key, state)
+        default:
+            return nil
+    }
     return nil
 }
 

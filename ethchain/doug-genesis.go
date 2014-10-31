@@ -4,6 +4,7 @@ import (
     "fmt"
     "path"
     "os"
+    "strconv"
     "io/ioutil"
     "encoding/json"
     "github.com/eris-ltd/thelonious/ethutil"    
@@ -17,16 +18,30 @@ import (
 */
 
 type Account struct{
-    Address []byte // this one won't come in under json (the address will be out of scope). we'll set it later
+    Address string `json:"address"`
+    ByteAddr []byte  //convenience, but not from json
+    Name string `json:"name"`
     Balance string  `json:"balance"`
     Permissions map[string]int `json:"permissions"`
+    Stake int `json:"stake"`
 }
 
 type GenesisJSON struct{
+    // MetaGenDoug
     Address string  `json:"address"`
-    Accounts map[string]*Account `json:"accounts"`
     DougPath string `json:"doug"`
     Model string `json:"model"`
+
+    // Global GenDoug Singles
+    Consensus string `json:"consensus"`
+    PublicMine int `json:"public:mine"`
+    PublicCreate int `json:"public:create"`
+    PublicTx int `json:"public:tx"`
+    MaxGasTx string `json:"maxgastx"`
+    BlockTime int `json:"blocktime"`
+
+    // Accounts (permissions and stake)
+    Accounts []*Account `json:"accounts"`
 
     f string // other things to do
 }
@@ -54,8 +69,8 @@ func LoadGenesis() *GenesisJSON{
     }
 
     // move address into accounts, in bytes
-    for a, acc := range g.Accounts{
-        acc.Address = ethutil.UserHex2Bytes(a)
+    for _, acc := range g.Accounts{
+        acc.ByteAddr = ethutil.UserHex2Bytes(acc.Address)
     }
     // if the global DougPath is set, overwrite the config file
     if DougPath != ""{
@@ -95,33 +110,32 @@ func (g *GenesisJSON) Deploy(block *Block){
     // dummy keys for signing
     keys := ethcrypto.GenerateNewKeyPair() 
 
-    txs := Transactions{}
-    receipts := []*Receipt{}
-
     // create the genesis doug
-    tx := NewGenesisContract(path.Join(ContractPath, g.DougPath))
-    tx.Sign(keys.PrivateKey)
-    receipt := SimpleTransitionState([]byte(g.Address), block, tx)
-    txs = append(txs, tx) 
-    receipts = append(receipts, receipt)
+    codePath := path.Join(ContractPath, g.DougPath)
+    genAddr := []byte(g.Address)
+    MakeApplyTx(codePath, genAddr, nil, keys, block)
+
+    // set the global vars
+    Model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
+    Model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
+    Model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
+    Model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
+    Model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
+    Model.SetValue(genAddr, []string{"setvar", "blocktime", "0x"+strconv.Itoa(g.BlockTime)}, keys, block)
 
     chainlogger.Debugln("done genesis. setting perms...")
-    txs = Transactions{}
-    receipts = []*Receipt{}
 
     // set balances and permissions
     for _, account := range g.Accounts{
         // direct state modification to create accounts and balances
-        AddAccount(account.Address, account.Balance, block)
+        AddAccount(account.ByteAddr, account.Balance, block)
         if Model != nil{
             // issue txs to set perms according to the model
-            ts, rs := Model.SetPermissions(account.Address, account.Permissions, block, keys)
-            txs = append(txs, ts...)
-            receipts = append(receipts, rs...)
+            Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
+
+            Model.SetValue(GENDOUG, []string{"addminer", account.Name, account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
         }
     }
-    // update and commit state
-    block.SetReceipts(receipts, txs)
     block.State().Update()  
     block.State().Sync()  
 }
@@ -146,6 +160,8 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *ethcrypto.KeyPair, bl
     tx.Sign(keys.PrivateKey)
     //fmt.Println(tx.String())
     receipt := SimpleTransitionState(addr, block, tx)
+    block.receipts = append(block.receipts, receipt)
+    block.transactions = append(block.transactions, tx)
     
     return tx, receipt
 }

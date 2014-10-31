@@ -39,7 +39,7 @@ func GenesisPointer(block *Block){
         // no genesis doug, deploy simple
         for _, account := range g.Accounts{
             // direct state modification to create accounts and balances
-            AddAccount(account.Address, account.Balance, block)
+            AddAccount(account.ByteAddr, account.Balance, block)
         }
         // update and commit state
         block.State().Update()  
@@ -158,8 +158,15 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
     }
     msg.Output = ret
 
+    rootI := state.Root()
+    var root []byte
+    if r, ok := rootI.([]byte); ok{
+        root = r 
+    } else if r, ok := rootI.(string); ok{
+        root = []byte(r)
+    }
 
-    receipt := &Receipt{tx, ethutil.CopyBytes(state.Root().([]byte)), new(big.Int)}
+    receipt := &Receipt{tx, ethutil.CopyBytes(root), new(big.Int)}
     // remove stateobject used to deploy gen doug
     state.DeleteStateObject(sender)    
     return receipt
