@@ -1,7 +1,7 @@
 package monk
 
 import (
-    //"github.com/eris-ltd/deCerver/decerver"
+    "github.com/eris-ltd/decerver-interfaces"
     "github.com/eris-ltd/thelonious"
     "github.com/eris-ltd/thelonious/ethutil"
     "github.com/eris-ltd/thelonious/ethpipe"
@@ -38,7 +38,7 @@ type EthChain struct{
     keyManager *ethcrypto.KeyManager
     reactor *ethreact.ReactorEngine
     started bool
-    //chans map[string]chan ethreact.Event
+    Chans map[string]chan types.Update
 }
 
 // new ethchain with default config
@@ -80,6 +80,11 @@ func (e *EthChain) Init() error{
     e.Pipe = pipe
     e.keyManager = e.Ethereum.KeyManager()
     e.reactor = e.Ethereum.Reactor()
+
+    // subscribe to the new block
+    e.Chans = make(map[string]chan types.Update)
+    e.Chans["newBlock"] = make(chan types.Update)
+    e.Subscribe("", "newBlock", e.Chans["newBlock"])
 
     log.Println(e.Ethereum.Port)
     
@@ -170,25 +175,15 @@ func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{
    return m 
 }
 
-type Storage struct{
-    Storage map[string]string
-    Order []string
-}
-
-type State struct{
-    State map[string]Storage// map addrs to map of storage to value
-    Order []string // ordered addrs and ordered storage inside
-}
-
-func (e EthChain) GetState() State{
+func (e EthChain) GetState() types.State{
     state := e.Pipe.World().State()
-    stateMap := State{make(map[string]Storage), []string{}}
+    stateMap := types.State{make(map[string]types.Storage), []string{}}
 
     trieIterator := state.Trie.NewIterator()
     trieIterator.Each(func (addr string, acct *ethutil.Value){
         hexAddr := ethutil.Bytes2Hex([]byte(addr))
         stateMap.Order = append(stateMap.Order, hexAddr)
-        stateMap.State[hexAddr] = Storage{make(map[string]string), []string{}}
+        stateMap.State[hexAddr] = types.Storage{make(map[string]string), []string{}}
 
         acctObj := ethstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
         acctObj.EachStorage(func (storage string, value *ethutil.Value){
@@ -205,22 +200,35 @@ func (e EthChain) GetState() State{
 
 // subscribe to an address (hex)
 // returns a chanel that will fire when address is updated
-/*
-func (e EthChain) Subscribe(addr, event string, ch chan decerver.Update){
+func (e EthChain) Subscribe(addr, event string, ch chan types.Update){
     addr = string(ethutil.Hex2Bytes(addr))
     eth_ch := make(chan ethreact.Event, 1)
-    e.reactor.Subscribe("object:"+addr, eth_ch)
+    if addr != ""{
+        e.reactor.Subscribe("object:"+addr, eth_ch)
+    } else{
+        e.reactor.Subscribe(event, eth_ch)
+    }
 
     // since we cant cast to chan interface{}
     // we fire up a goroutine and broadcast on our main ch
-    go func(eth_ch chan ethreact.Event, ch chan decerver.Update){
+    go func(eth_ch chan ethreact.Event, ch chan types.Update){
         for {
             r := <- eth_ch           
             log.Println(r)
-            ch <- decerver.Update{Address:addr, Event:event}
+            ch <- types.Update{Address:addr, Event:event}
         }
     }(eth_ch, ch)
-}*/
+}
+
+// Mine a block
+func (e EthChain) Commit(){
+    e.StartMining()
+    _ =<- e.Chans["newBlock"]
+    v := false
+    for !v{
+        v = e.StopMining()
+    }
+}
 
 // send a message to a contract
 func (e *EthChain) Msg(addr string, data []string){
@@ -393,7 +401,8 @@ func PackTxDataArgs(args ... string) string{
         }else{
             x := []byte(s)
             l := len(x)
-            ret = append(ret, ethutil.RightPadBytes(x, 32*((l + 31)/32))...)
+            // TODO: just changed from right to left. yabadabadoooooo take care!
+            ret = append(ret, ethutil.LeftPadBytes(x, 32*((l + 31)/32))...)
         }
     }
     return "0x" + ethutil.Bytes2Hex(ret)

@@ -71,7 +71,7 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
         eth = NewEth(nil) 
         t.eth = eth
     } 
-
+    eth.ReadConfig("eth-config.json")
     eth.Config.Mining = true
     eth.Config.DbName = "tests/"+name
     ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
@@ -93,6 +93,7 @@ func (t *Test) tester(name string, testing func(eth *EthChain), end int){
 // called by `go test` functions
 func tester(name string, testing func(eth *EthChain), end int){
     eth := NewEth(nil) 
+    eth.ReadConfig("eth-config.json")
     eth.Config.Mining = true
     eth.Config.DbName = "tests/"+name
     //TODO: genesis

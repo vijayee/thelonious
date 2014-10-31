@@ -58,6 +58,8 @@ func SetDougModel(model string){
             Model = NewFakeModel()
         case "dennis":
             Model = NewGenDougModel()
+        case "std":
+            Model = NewStdLibModel()
         default:
             Model = nil 
     }

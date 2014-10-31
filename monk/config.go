@@ -54,7 +54,7 @@ var DefaultConfig = &ChainConfig{
         Identifier: "",
         KeyStore: "db",
         GenesisConfig: path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "genesis.json"),
-        DougDifficulty: 17,
+        DougDifficulty: 7,
         LogLevel: 5,
 }
 

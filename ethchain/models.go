@@ -8,12 +8,14 @@ import (
     "github.com/eris-ltd/thelonious/ethstate"
     "github.com/eris-ltd/thelonious/ethutil"
     "github.com/eris-ltd/thelonious/ethcrypto"
+    "github.com/eris-ltd/eris-std-lib/go-tests"
 )
 
 
 
 var (
     GENDOUG []byte = nil // dougs address
+    NoGenDoug = false // set this to turn off gendouging
     Model PermModel = nil // permissions model
 )
 
@@ -258,16 +260,72 @@ func (m *GenDougModel) resolveSpecial(key string, state *ethstate.State) *big.In
             //offset := m.Doug().GetStorage(ethutil.Big("7")).BigInt()
             //return 
 
+// the LLL eris-std-lib model with types :)
+type StdLibModel struct{
+    doug []byte
+    base *big.Int
+}
+
+func NewStdLibModel() PermModel{
+    return &StdLibModel{GENDOUG, new(big.Int)}
+}
+
+func (m *StdLibModel) Doug(state *ethstate.State) *ethstate.StateObject{
+    return state.GetOrNewStateObject(m.doug)
+}
+
+func (m *StdLibModel) PermLocator(addr []byte, perm string, state *ethstate.State) (*Location, error){
+    // where can we find the perm w.r.t the address?
+    locator := vars.GetLinkedListElement(m.doug, "permnames", perm, state)
+    locatorBig := ethutil.BigD(locator)
+
+    return &Location{m.doug, locatorBig, nil}, nil
+}
+
+func (m *StdLibModel) GetPermission(addr []byte, perm string, state *ethstate.State) *ethutil.Value{
+    loc, err := m.PermLocator(addr, perm, state)
+    if err != nil{
+        // suck a dick
+    }
+    
+    locInt := loc.row.Uint64()
+    
+    permStr := vars.GetKeyedArrayElement(m.doug, "perms", ethutil.Bytes2Hex(addr), int(locInt), state)
+    return ethutil.NewValue(permStr)
+}
+
+func (m *StdLibModel) HasPermission(addr []byte, perm string, state *ethstate.State) bool{
+    permBig := m.GetPermission(addr, perm, state).BigInt()
+    return permBig.Int64() > 0
+}
+
+func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *ethcrypto.KeyPair) (Transactions, []*Receipt){
+
+    txs := Transactions{}
+    receipts := []*Receipt{}
+
+    for perm, val := range permissions{
+        data := ethutil.PackTxDataArgs2("setperm", perm, "0x"+ethutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
+        //fmt.Println("data for ", perm, ethutil.Bytes2Hex(data))
+        tx, rec := MakeApplyTx("", GENDOUG, data, keys, block)
+        txs = append(txs, tx)
+        receipts = append(receipts, rec)
+    }
+    //fmt.Println(permissions)
+    //os.Exit(0)
+    return txs, receipts
+}
+
+func (m *StdLibModel) GetValue(key, namespace string, state *ethstate.State) []byte{
+
+    return nil
+}
+
+
 func String2Big(s string) *big.Int{
     // right pad the string, convert to big num
     return ethutil.BigD(ethutil.PackTxDataArgs(s))
 }
-
-
-
-
-
-
 
 // pretty print chain queries and storage
 func PrintHelp(m map[string]interface{}, obj *ethstate.StateObject){
@@ -284,5 +342,4 @@ func PrintHelp(m map[string]interface{}, obj *ethstate.StateObject){
         fmt.Println(ethutil.Bytes2Hex([]byte(k)), ethutil.Bytes2Hex(v.Bytes()))
     })
 }
-
 
