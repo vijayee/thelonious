@@ -1,7 +1,9 @@
 package monk
 
 import (
-    "github.com/eris-ltd/decerver-interfaces"
+    "github.com/eris-ltd/decerver-interfaces/events"
+    "github.com/eris-ltd/decerver-interfaces/core"
+    "github.com/eris-ltd/decerver-interfaces/api"
     "github.com/eris-ltd/thelonious"
     "github.com/eris-ltd/thelonious/ethutil"
     "github.com/eris-ltd/thelonious/ethpipe"
@@ -28,8 +30,7 @@ var (
 //Logging
 var logger *ethlog.Logger = ethlog.NewLogger("EthChain(deCerver)")
 
-
-// implements decerver.Blockchain
+// implements decerver Module
 // our window into eth-go
 type EthChain struct{
     Config *ChainConfig
@@ -38,7 +39,7 @@ type EthChain struct{
     keyManager *ethcrypto.KeyManager
     reactor *ethreact.ReactorEngine
     started bool
-    Chans map[string]chan types.Update
+    Chans map[string]chan events.Event
 }
 
 // new ethchain with default config
@@ -56,6 +57,11 @@ func NewEth(ethereum *eth.Ethereum) *EthChain{
     }
     e.started = false
     return e
+}
+
+// register the module with the decerver javascript vm
+func (e *EthChain) RegisterModule(registry api.ApiRegistry, logger core.LogSystem) error{
+    return nil
 }
 
 // initialize an ethchain
@@ -82,9 +88,8 @@ func (e *EthChain) Init() error{
     e.reactor = e.Ethereum.Reactor()
 
     // subscribe to the new block
-    e.Chans = make(map[string]chan types.Update)
-    e.Chans["newBlock"] = make(chan types.Update)
-    e.Subscribe("", "newBlock", e.Chans["newBlock"])
+    e.Chans = make(map[string]chan events.Event)
+    e.Subscribe("newBlock", "newBlock", "")
 
     log.Println(e.Ethereum.Port)
     
@@ -92,13 +97,14 @@ func (e *EthChain) Init() error{
 }
 
 // start the ethereum node
-func (ec *EthChain) Start(){
+func (ec *EthChain) Start() error{
     ec.Ethereum.Start(true) // peer seed
     ec.started = true
 
     if ec.Config.Mining{
         StartMining(ec.Ethereum)
     }
+    return nil
 }
 
 // create a new ethereum instance
@@ -163,7 +169,7 @@ func (e EthChain) GenDoug() string{
 
 
 // TODO: return hex string
-func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{
+func (e EthChain) _GetStorage(contract_addr string) map[string]*ethutil.Value{
     acct := e.Pipe.World().SafeGet(ethutil.Hex2Bytes(contract_addr)).StateObject
     m := make(map[string]*ethutil.Value)
     acct.EachStorage(func(k string, v *ethutil.Value){
@@ -175,15 +181,36 @@ func (e EthChain) GetStorage(contract_addr string) map[string]*ethutil.Value{
    return m 
 }
 
-func (e EthChain) GetState() types.State{
+func (e EthChain) State() core.State{
+    return e.GetState()
+}
+
+func (e EthChain) Storage(addr string) core.Storage{
+    return e.GetStorage(addr)
+}
+
+func (e EthChain) GetStorage(addr string) core.Storage{
+    w := e.Pipe.World()
+    obj := w.SafeGet(ethutil.UserHex2Bytes(addr)).StateObject
+    ret := core.Storage{make(map[string]interface{}), []string{}}
+    obj.EachStorage(func(k string, v *ethutil.Value){
+        kk := ethutil.Bytes2Hex([]byte(k))
+        vv := ethutil.Bytes2Hex(v.Bytes())
+        ret.Order = append(ret.Order, kk)
+        ret.Storage[kk] = vv 
+    })
+    return ret
+}
+
+func (e EthChain) GetState() core.State{
     state := e.Pipe.World().State()
-    stateMap := types.State{make(map[string]types.Storage), []string{}}
+    stateMap := core.State{make(map[string]core.Storage), []string{}}
 
     trieIterator := state.Trie.NewIterator()
     trieIterator.Each(func (addr string, acct *ethutil.Value){
         hexAddr := ethutil.Bytes2Hex([]byte(addr))
         stateMap.Order = append(stateMap.Order, hexAddr)
-        stateMap.State[hexAddr] = types.Storage{make(map[string]string), []string{}}
+        stateMap.State[hexAddr] = core.Storage{make(map[string]interface{}), []string{}}
 
         acctObj := ethstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
         acctObj.EachStorage(func (storage string, value *ethutil.Value){
@@ -200,24 +227,31 @@ func (e EthChain) GetState() types.State{
 
 // subscribe to an address (hex)
 // returns a chanel that will fire when address is updated
-func (e EthChain) Subscribe(addr, event string, ch chan types.Update){
-    addr = string(ethutil.Hex2Bytes(addr))
+func (e EthChain) Subscribe(name, event, target string){
     eth_ch := make(chan ethreact.Event, 1)
-    if addr != ""{
+    if target != ""{
+        addr := string(ethutil.Hex2Bytes(target))
         e.reactor.Subscribe("object:"+addr, eth_ch)
     } else{
         e.reactor.Subscribe(event, eth_ch)
     }
 
-    // since we cant cast to chan interface{}
-    // we fire up a goroutine and broadcast on our main ch
-    go func(eth_ch chan ethreact.Event, ch chan types.Update){
+    e.Chans[name] = make(chan events.Event)
+    ch := e.Chans[name]
+
+    // fire up a goroutine and broadcast module specific chan on our main chan
+    go func(){
         for {
             r := <- eth_ch           
             log.Println(r)
-            ch <- types.Update{Address:addr, Event:event}
+            ch <- events.Event{
+                         Event:event,
+                         Target:target,
+                         Source:"monk",
+                         TimeStamp:time.Now(),
+                    }
         }
-    }(eth_ch, ch)
+    }()
 }
 
 // Mine a block
@@ -228,6 +262,19 @@ func (e EthChain) Commit(){
     for !v{
         v = e.StopMining()
     }
+}
+
+// start and stop continuous mining
+func (e EthChain) AutoCommit(toggle bool){
+    if toggle{
+        e.StartMining()
+    } else{
+        e.StopMining()
+    }
+}
+
+func (e EthChain) IsAutocommit() bool{
+    return e.Ethereum.IsMining()
 }
 
 // send a message to a contract
@@ -283,6 +330,8 @@ func (e *EthChain) StopListening() {
     e.Ethereum.StopListening()
 }
 
+
+
 /*
     some key management stuff
 */
@@ -337,6 +386,11 @@ func (e EthChain) DeployContract(file, lang string) string{
     return ethutil.Bytes2Hex(contract_addr)
 }
 
+func (e *EthChain) Shutdown() error{
+    e.Stop()
+    return nil
+}
+
 func (e *EthChain) Stop(){
     if !e.started{
         fmt.Println("can't stop: haven't even started...")
@@ -348,6 +402,13 @@ func (e *EthChain) Stop(){
     fmt.Println("stopped ethereum")
     e = &EthChain{Config: e.Config}
     ethlog.Reset()
+}
+
+// ReadConfig and WriteConfig implemented in config.go
+
+// What module is this?
+func (e *EthChain) Name() string{
+    return "monk"
 }
 
 // compile LLL file into evm bytecode 
@@ -408,4 +469,5 @@ func PackTxDataArgs(args ... string) string{
     return "0x" + ethutil.Bytes2Hex(ret)
    // return ret
 }
+
 
