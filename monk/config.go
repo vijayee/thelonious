@@ -7,8 +7,8 @@ import (
     "bytes"
     "io/ioutil"
     "encoding/json"
-    "github.com/eris-ltd/thelonious/ethutil"
-    "github.com/eris-ltd/thelonious/ethchain"
+    "github.com/eris-ltd/thelonious/monkutil"
+    "github.com/eris-ltd/thelonious/monkchain"
 )
 
 type ChainConfig struct{
@@ -39,13 +39,13 @@ var DefaultConfig = &ChainConfig{
         Mining : false,
         MaxPeers : 10,
         ConfigFile : "config",
-        RootDir : path.Join(usr.HomeDir, ".ethchain2"),
+        RootDir : path.Join(usr.HomeDir, ".monkchain2"),
         DbName : "database",
         KeyFile : path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "keys.txt"),
-        Name : "decerver-ethchain",
+        Name : "decerver-monkchain",
         LogFile: "",
         DataDir: path.Join(homeDir(), ".eris-eth"),
-       // LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
+        //LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
         LLLPath: "NETCALL",
        // ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "contracts"),
         ContractPath: path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib"),
@@ -60,8 +60,8 @@ var DefaultConfig = &ChainConfig{
 
 
 // can these methods be functions in decerver that take the modules as argument?
-func (e *EthChain) WriteConfig(config_file string){
-    b, err := json.Marshal(e.Config)
+func (mod *MonkModule) WriteConfig(config_file string){
+    b, err := json.Marshal(mod.monk.Config)
     if err != nil{
         fmt.Println("error marshalling config:", err)
         return
@@ -70,12 +70,12 @@ func (e *EthChain) WriteConfig(config_file string){
     json.Indent(&out, b, "", "\t")
     ioutil.WriteFile(config_file, out.Bytes(), 0600)
 }
-func (e *EthChain) ReadConfig(config_file string){
+func (mod *MonkModule) ReadConfig(config_file string){
     b, err := ioutil.ReadFile(config_file)
     if err != nil{
         fmt.Println("could not read config", err)
         fmt.Println("resorting to defaults")
-        e.WriteConfig(config_file)
+        mod.WriteConfig(config_file)
         return
     }
     var config ChainConfig
@@ -83,16 +83,16 @@ func (e *EthChain) ReadConfig(config_file string){
     if err != nil{
         fmt.Println("error unmarshalling config from file:", err)
         fmt.Println("resorting to defaults")
-        e.Config = DefaultConfig
+        mod.monk.Config = DefaultConfig
         return
     }
-    e.Config = &config
+    mod.monk.Config = &config
 }
-func (e *EthChain) SetConfig(config interface{}) error{
+func (mod *MonkModule) SetConfig(config interface{}) error{
     if s, ok := config.(string); ok{
-        e.ReadConfig(s)
+        mod.ReadConfig(s)
     } else if s, ok := config.(ChainConfig); ok{
-        e.Config = &s
+        mod.monk.Config = &s
     } else {
         return errors.New("could not set config")
     }
@@ -100,18 +100,18 @@ func (e *EthChain) SetConfig(config interface{}) error{
 }
 
 // configure an ethereum node
-func (e *EthChain) EthConfig() {
-    if e.Config.LLLPath != ""{
-	    ethutil.PathToLLL = e.Config.LLLPath
+func (monk *Monk) EthConfig() {
+    cfg := monk.Config
+    if cfg.LLLPath != ""{
+	    monkutil.PathToLLL = cfg.LLLPath
     }
-    ethchain.ContractPath = e.Config.ContractPath
-    if e.Config.GenesisConfig != ""{
-        ethchain.GenesisConfig = e.Config.GenesisConfig
-        fmt.Println("ethchain gen:", ethchain.GenesisConfig)
+    monkchain.ContractPath = cfg.ContractPath
+    if cfg.GenesisConfig != ""{
+        monkchain.GenesisConfig = cfg.GenesisConfig
+        fmt.Println("monkchain gen:", monkchain.GenesisConfig)
     }
-    ethchain.DougDifficulty = ethutil.BigPow(2, e.Config.DougDifficulty)
-    ethutil.ReadConfig(path.Join(e.Config.RootDir, "config"), e.Config.RootDir, "ethchain")
+    monkchain.DougDifficulty = monkutil.BigPow(2, cfg.DougDifficulty)
+    monkutil.ReadConfig(path.Join(cfg.RootDir, "config"), cfg.RootDir, "monkchain")
     // data dir, logfile, log level, debug file
-    InitLogging(e.Config.RootDir, e.Config.LogFile, e.Config.LogLevel, "")
-
+    InitLogging(cfg.RootDir, cfg.LogFile, cfg.LogLevel, "")
 }

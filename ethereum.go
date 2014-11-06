@@ -14,14 +14,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eris-ltd/thelonious/ethchain"
-	"github.com/eris-ltd/thelonious/ethcrypto"
-	"github.com/eris-ltd/thelonious/ethlog"
-	"github.com/eris-ltd/thelonious/ethreact"
-	"github.com/eris-ltd/thelonious/ethrpc"
-	"github.com/eris-ltd/thelonious/ethstate"
-	"github.com/eris-ltd/thelonious/ethutil"
-	"github.com/eris-ltd/thelonious/ethwire"
+	"github.com/eris-ltd/thelonious/monkchain"
+	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monklog"
+	"github.com/eris-ltd/thelonious/monkreact"
+	"github.com/eris-ltd/thelonious/monkrpc"
+	"github.com/eris-ltd/thelonious/monkstate"
+	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 const (
@@ -30,7 +30,7 @@ const (
     seedNodeAddress        = "92.243.15.73:30303"
 )
 
-var ethlogger = ethlog.NewLogger("SERV")
+var monklogger = monklog.NewLogger("SERV")
 
 func eachPeer(peers *list.List, callback func(*Peer, *list.Element)) {
 	// Loop thru the peers and close them (if we had them)
@@ -50,14 +50,14 @@ type Ethereum struct {
     peerQuit     chan bool // shut down the peerHandler
 
 	// DB interface
-	db ethutil.Database
+	db monkutil.Database
 	// State manager for processing new blocks and managing the over all states
-	stateManager *ethchain.StateManager
+	stateManager *monkchain.StateManager
 	// The transaction pool. Transaction can be pushed on this pool
 	// for later including in the blocks
-	txPool *ethchain.TxPool
+	txPool *monkchain.TxPool
 	// The canonical chain
-	blockChain *ethchain.BlockChain
+	blockChain *monkchain.BlockChain
 	// The block pool
 	blockPool *BlockPool
 	// Peers (NYI)
@@ -84,35 +84,35 @@ type Ethereum struct {
 
     listener net.Listener
 
-	reactor *ethreact.ReactorEngine
+	reactor *monkreact.ReactorEngine
 
-	RpcServer *ethrpc.JsonRpcServer
+	RpcServer *monkrpc.JsonRpcServer
 
-	keyManager *ethcrypto.KeyManager
+	keyManager *monkcrypto.KeyManager
 
-	clientIdentity ethwire.ClientIdentity
+	clientIdentity monkwire.ClientIdentity
 
 	isUpToDate bool
 
-	filters map[int]*ethchain.Filter
+	filters map[int]*monkchain.Filter
 }
 
-func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, caps Caps, usePnp bool) (*Ethereum, error) {
+func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool) (*Ethereum, error) {
 	var err error
 	var nat NAT
 
 	if usePnp {
 		nat, err = Discover()
 		if err != nil {
-			ethlogger.Debugln("UPnP failed", err)
+			monklogger.Debugln("UPnP failed", err)
 		}
 	}
 
 	bootstrapDb(db)
 
-	ethutil.Config.Db = db
+	monkutil.Config.Db = db
 
-	nonce, _ := ethutil.RandomUint64()
+	nonce, _ := monkutil.RandomUint64()
 	ethereum := &Ethereum{
 		shutdownChan:   make(chan bool),
 		quit:           make(chan bool),
@@ -125,14 +125,14 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 		keyManager:     keyManager,
 		clientIdentity: clientIdentity,
 		isUpToDate:     true,
-		filters:        make(map[int]*ethchain.Filter),
+		filters:        make(map[int]*monkchain.Filter),
 	}
-	ethereum.reactor = ethreact.New()
+	ethereum.reactor = monkreact.New()
 
 	ethereum.blockPool = NewBlockPool(ethereum)
-	ethereum.txPool = ethchain.NewTxPool(ethereum)
-	ethereum.blockChain = ethchain.NewBlockChain(ethereum)
-	ethereum.stateManager = ethchain.NewStateManager(ethereum)
+	ethereum.txPool = monkchain.NewTxPool(ethereum)
+	ethereum.blockChain = monkchain.NewBlockChain(ethereum)
+	ethereum.stateManager = monkchain.NewStateManager(ethereum)
 
 	// Start the tx pool
 	ethereum.txPool.Start()
@@ -140,33 +140,33 @@ func New(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager 
 	return ethereum, nil
 }
 
-func (s *Ethereum) Reactor() *ethreact.ReactorEngine {
+func (s *Ethereum) Reactor() *monkreact.ReactorEngine {
 	return s.reactor
 }
 
-func (s *Ethereum) KeyManager() *ethcrypto.KeyManager {
+func (s *Ethereum) KeyManager() *monkcrypto.KeyManager {
 	return s.keyManager
 }
 
-func (s *Ethereum) ClientIdentity() ethwire.ClientIdentity {
+func (s *Ethereum) ClientIdentity() monkwire.ClientIdentity {
 	return s.clientIdentity
 }
 
-func (s *Ethereum) BlockChain() *ethchain.BlockChain {
+func (s *Ethereum) BlockChain() *monkchain.BlockChain {
 	return s.blockChain
 }
 
-func (s *Ethereum) StateManager() *ethchain.StateManager {
+func (s *Ethereum) StateManager() *monkchain.StateManager {
 	return s.stateManager
 }
 
-func (s *Ethereum) TxPool() *ethchain.TxPool {
+func (s *Ethereum) TxPool() *monkchain.TxPool {
 	return s.txPool
 }
 func (s *Ethereum) BlockPool() *BlockPool {
 	return s.blockPool
 }
-func (self *Ethereum) Db() ethutil.Database {
+func (self *Ethereum) Db() monkutil.Database {
 	return self.db
 }
 
@@ -216,7 +216,7 @@ func (s *Ethereum) AddPeer(conn net.Conn) {
 		if s.peers.Len() < s.MaxPeers {
 			peer.Start()
 		} else {
-			ethlogger.Debugf("Max connected peers reached. Not adding incoming peer.")
+			monklogger.Debugf("Max connected peers reached. Not adding incoming peer.")
 		}
 	}
 }
@@ -276,7 +276,7 @@ func (s *Ethereum) ConnectToPeer(addr string) error {
 
 			if phost == chost {
 				alreadyConnected = true
-				//ethlogger.Debugf("Peer %s already added.\n", chost)
+				//monklogger.Debugf("Peer %s already added.\n", chost)
 				return
 			}
 		})
@@ -337,12 +337,12 @@ func (s *Ethereum) InOutPeers() []*Peer {
 	return inboundPeers[:length]
 }
 
-func (s *Ethereum) Broadcast(msgType ethwire.MsgType, data []interface{}) {
-	msg := ethwire.NewMessage(msgType, data)
+func (s *Ethereum) Broadcast(msgType monkwire.MsgType, data []interface{}) {
+	msg := monkwire.NewMessage(msgType, data)
 	s.BroadcastMsg(msg)
 }
 
-func (s *Ethereum) BroadcastMsg(msg *ethwire.Msg) {
+func (s *Ethereum) BroadcastMsg(msg *monkwire.Msg) {
 	eachPeer(s.peers, func(p *Peer, e *list.Element) {
 		p.QueueMessage(msg)
 	})
@@ -406,20 +406,20 @@ func (s *Ethereum) Start(seed bool) {
 	if seed {
 		s.Seed()
 	}
-	ethlogger.Infoln("Server started")
+	monklogger.Infoln("Server started")
 }
 
 func (s *Ethereum) Seed() {
 	ips := PastPeers()
 	if len(ips) > 0 {
 		for _, ip := range ips {
-			ethlogger.Infoln("Connecting to previous peer ", ip)
+			monklogger.Infoln("Connecting to previous peer ", ip)
 			s.ConnectToPeer(ip)
 		}
     }
     s.ConnectToPeer(seedNodeAddress)
 	/* else {
-		ethlogger.Debugln("Retrieving seed nodes")
+		monklogger.Debugln("Retrieving seed nodes")
 
 		// Eth-Go Bootstrapping
 		ips, er := net.LookupIP("seed.bysh.me")
@@ -427,7 +427,7 @@ func (s *Ethereum) Seed() {
 			peers := []string{}
 			for _, ip := range ips {
 				node := fmt.Sprintf("%s:%d", ip.String(), 30303)
-				ethlogger.Debugln("Found DNS Go Peer:", node)
+				monklogger.Debugln("Found DNS Go Peer:", node)
 				peers = append(peers, node)
 			}
 			s.ProcessPeerList(peers)
@@ -447,11 +447,11 @@ func (s *Ethereum) Seed() {
 					for _, a := range addr {
 						// Build string out of SRV port and Resolved IP
 						peer := net.JoinHostPort(a, port)
-						ethlogger.Debugln("Found DNS Bootstrap Peer:", peer)
+						monklogger.Debugln("Found DNS Bootstrap Peer:", peer)
 						peers = append(peers, peer)
 					}
 				} else {
-					ethlogger.Debugln("Couldn't resolve :", target)
+					monklogger.Debugln("Couldn't resolve :", target)
 				}
 			}
 			// Connect to Peer list
@@ -466,14 +466,14 @@ func (s *Ethereum) Seed() {
 func (s *Ethereum) StartListening(){
     ln, err := net.Listen("tcp", ":"+s.Port)
 	if err != nil {
-		ethlogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
+		monklogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
 		s.listening = false
 	} else {
 		s.listening = true
         // add listener to ethereum so we can close it later
         s.listener = ln
 		// Starting accepting connections
-		ethlogger.Infoln("Ready and accepting connections")
+		monklogger.Infoln("Ready and accepting connections")
 		// Start the peer handler
         go s.peerHandler(ln)
 	}
@@ -501,7 +501,7 @@ out:
             // to stop, call s.listener.Close(). if a quit/peerQuit has been fired, itll catch and exit the loop
             conn, err := listener.Accept()
             if err != nil {
-                ethlogger.Debugln(err)
+                monklogger.Debugln(err)
                 continue
             } 
             go s.AddPeer(conn) 
@@ -521,7 +521,7 @@ func (s *Ethereum) Stop() {
 
 	if len(ips) > 0 {
 		d, _ := json.MarshalIndent(ips, "", "    ")
-		ethutil.WriteFile(path.Join(ethutil.Config.ExecPath, "known_peers.json"), d)
+		monkutil.WriteFile(path.Join(monkutil.Config.ExecPath, "known_peers.json"), d)
 	}
 
 	eachPeer(s.peers, func(p *Peer, e *list.Element) {
@@ -544,7 +544,7 @@ func (s *Ethereum) Stop() {
 	s.reactor.Stop()
 	s.blockPool.Stop()
 
-	ethlogger.Infoln("Server stopped")
+	monklogger.Infoln("Server stopped")
 	close(s.shutdownChan)
 }
 
@@ -566,13 +566,13 @@ out:
 			var err error
 			_, err = s.nat.AddPortMapping("TCP", int(lport), int(lport), "eth listen port", 20*60)
 			if err != nil {
-				ethlogger.Debugln("can't add UPnP port mapping:", err)
+				monklogger.Debugln("can't add UPnP port mapping:", err)
 				break out
 			}
 			if first && err == nil {
 				_, err = s.nat.GetExternalAddress()
 				if err != nil {
-					ethlogger.Debugln("UPnP can't get external address:", err)
+					monklogger.Debugln("UPnP can't get external address:", err)
 					continue out
 				}
 				first = false
@@ -586,9 +586,9 @@ out:
 	timer.Stop()
 
 	if err := s.nat.DeletePortMapping("TCP", int(lport), int(lport)); err != nil {
-		ethlogger.Debugln("unable to remove UPnP port mapping:", err)
+		monklogger.Debugln("unable to remove UPnP port mapping:", err)
 	} else {
-		ethlogger.Debugln("succesfully disestablished UPnP port mapping")
+		monklogger.Debugln("succesfully disestablished UPnP port mapping")
 	}
 }
 
@@ -614,10 +614,10 @@ out:
 
 var filterId = 0
 
-func (self *Ethereum) InstallFilter(object map[string]interface{}) (*ethchain.Filter, int) {
+func (self *Ethereum) InstallFilter(object map[string]interface{}) (*monkchain.Filter, int) {
 	defer func() { filterId++ }()
 
-	filter := ethchain.NewFilterFromMap(object, self)
+	filter := monkchain.NewFilterFromMap(object, self)
 	self.filters[filterId] = filter
 
 	return filter, filterId
@@ -627,13 +627,13 @@ func (self *Ethereum) UninstallFilter(id int) {
 	delete(self.filters, id)
 }
 
-func (self *Ethereum) GetFilter(id int) *ethchain.Filter {
+func (self *Ethereum) GetFilter(id int) *monkchain.Filter {
 	return self.filters[id]
 }
 
 func (self *Ethereum) filterLoop() {
-	blockChan := make(chan ethreact.Event, 5)
-	messageChan := make(chan ethreact.Event, 5)
+	blockChan := make(chan monkreact.Event, 5)
+	messageChan := make(chan monkreact.Event, 5)
 	// Subscribe to events
 	reactor := self.Reactor()
 	reactor.Subscribe("newBlock", blockChan)
@@ -644,7 +644,7 @@ out:
 		case <-self.quit:
 			break out
 		case block := <-blockChan:
-			if block, ok := block.Resource.(*ethchain.Block); ok {
+			if block, ok := block.Resource.(*monkchain.Block); ok {
 				for _, filter := range self.filters {
 					if filter.BlockCallback != nil {
 						filter.BlockCallback(block)
@@ -652,7 +652,7 @@ out:
 				}
 			}
 		case msg := <-messageChan:
-			if messages, ok := msg.Resource.(ethstate.Messages); ok {
+			if messages, ok := msg.Resource.(monkstate.Messages); ok {
 				for _, filter := range self.filters {
 					if filter.MessageCallback != nil {
 						msgs := filter.FilterMessages(messages)
@@ -666,18 +666,18 @@ out:
 	}
 }
 
-func bootstrapDb(db ethutil.Database) {
+func bootstrapDb(db monkutil.Database) {
 	d, _ := db.Get([]byte("ProtocolVersion"))
-	protov := ethutil.NewValue(d).Uint()
+	protov := monkutil.NewValue(d).Uint()
 
 	if protov == 0 {
-		db.Put([]byte("ProtocolVersion"), ethutil.NewValue(ProtocolVersion).Bytes())
+		db.Put([]byte("ProtocolVersion"), monkutil.NewValue(ProtocolVersion).Bytes())
 	}
 }
 
 func PastPeers() []string {
 	var ips []string
-	data, _ := ethutil.ReadAllFile(path.Join(ethutil.Config.ExecPath, "known_peers.json"))
+	data, _ := monkutil.ReadAllFile(path.Join(monkutil.Config.ExecPath, "known_peers.json"))
 	json.Unmarshal([]byte(data), &ips)
 
 	return ips

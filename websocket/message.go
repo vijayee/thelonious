@@ -1,6 +1,6 @@
 package websocket
 
-import "github.com/eris-ltd/thelonious/ethutil"
+import "github.com/eris-ltd/thelonious/monkutil"
 
 type Message struct {
 	Call string        `json:"call"`
@@ -9,6 +9,6 @@ type Message struct {
 	Data interface{}   `json:"data"`
 }
 
-func (self *Message) Arguments() *ethutil.Value {
-	return ethutil.NewValue(self.Args)
+func (self *Message) Arguments() *monkutil.Value {
+	return monkutil.NewValue(self.Args)
 }

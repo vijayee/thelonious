@@ -1,17 +1,6 @@
 package monk
 
 import (
-    "github.com/eris-ltd/decerver-interfaces/events"
-    "github.com/eris-ltd/decerver-interfaces/core"
-    "github.com/eris-ltd/decerver-interfaces/api"
-    "github.com/eris-ltd/thelonious"
-    "github.com/eris-ltd/thelonious/ethutil"
-    "github.com/eris-ltd/thelonious/ethpipe"
-    "github.com/eris-ltd/thelonious/ethlog"
-    "github.com/eris-ltd/thelonious/ethcrypto"
-    "github.com/eris-ltd/thelonious/ethreact"
-    "github.com/eris-ltd/thelonious/ethstate"
-    "github.com/eris-ltd/thelonious/ethchain"
     "log"
     "fmt"
     "os"
@@ -20,6 +9,20 @@ import (
     "io/ioutil"
     "math/big"
     "time"
+
+    "github.com/eris-ltd/deCerver-interfaces/events"
+    "github.com/eris-ltd/deCerver-interfaces/core"
+    "github.com/eris-ltd/deCerver-interfaces/api"
+    "github.com/eris-ltd/deCerver-interfaces/modules"
+
+    "github.com/eris-ltd/thelonious"
+    "github.com/eris-ltd/thelonious/monkutil"
+    "github.com/eris-ltd/thelonious/monkpipe"
+    "github.com/eris-ltd/thelonious/monklog"
+    "github.com/eris-ltd/thelonious/monkcrypto"
+    "github.com/eris-ltd/thelonious/monkreact"
+    "github.com/eris-ltd/thelonious/monkstate"
+    "github.com/eris-ltd/thelonious/monkchain"
 )
 
 var (
@@ -28,129 +31,219 @@ var (
 )
 
 //Logging
-var logger *ethlog.Logger = ethlog.NewLogger("EthChain(deCerver)")
+var logger *monklog.Logger = monklog.NewLogger("EthChain(deCerver)")
 
-// implements decerver Module
-// our window into eth-go
-type EthChain struct{
+// implements decerver-interfaces Module
+type MonkModule struct{
+    monk *Monk
+}
+
+// implements decerver-interfaces Database
+type Monk struct{
     Config *ChainConfig
     Ethereum *eth.Ethereum
-    Pipe *ethpipe.Pipe
-    keyManager *ethcrypto.KeyManager
-    reactor *ethreact.ReactorEngine
+    Pipe *monkpipe.Pipe
+    keyManager *monkcrypto.KeyManager
+    reactor *monkreact.ReactorEngine
     started bool
     Chans map[string]chan events.Event
 }
 
-// new ethchain with default config
+/*
+    First, the functions to satisfy Module
+*/
+
+// new monkchain with default config
 // it allows you to pass in an etheruem instance
 // btu it will not start a new one otherwise
 // this gives you a chance to set config options after
 //      creating the EthChain
-func NewEth(ethereum *eth.Ethereum) *EthChain{
-    e := new(EthChain)
+func NewMonk(ethereum *eth.Ethereum) *MonkModule{
+    e := new(MonkModule)
+    m := new(Monk)
     // here we load default config and leave it to caller
     // to read a config file to overwrite
-    e.Config = DefaultConfig
+    m.Config = DefaultConfig
     if ethereum != nil{
-        e.Ethereum = ethereum
+        m.Ethereum = ethereum
     }
-    e.started = false
+    m.started = false
+    e.monk = m
     return e
 }
 
 // register the module with the decerver javascript vm
-func (e *EthChain) RegisterModule(registry api.ApiRegistry, logger core.LogSystem) error{
+func (mod *MonkModule) Register(fileIO core.FileIO, registry api.ApiRegistry, runtime core.Runtime, eReg events.EventRegistry) error{
     return nil
 }
 
-// initialize an ethchain
+// initialize an monkchain
 // it may or may not already have an ethereum instance
 // basically gives you a pipe, local keyMang, and reactor
-func (e *EthChain) Init() error{
+func (mod *MonkModule) Init() error{
+    m := mod.monk
     // if didn't call NewEth
-    if e.Config == nil{
-        e.Config = DefaultConfig
+    if m.Config == nil{
+        m.Config = DefaultConfig
     }
     // if no ethereum instance
-    if e.Ethereum == nil{
-        e.EthConfig()
-        e.NewEthereum()
+    if m.Ethereum == nil{
+        m.EthConfig()
+        m.NewEthereum()
     }
 
     // public interface
-    pipe := ethpipe.New(e.Ethereum) 
+    pipe := monkpipe.New(m.Ethereum) 
     // load keys from file. genesis block keys. convenient for testing
-    LoadKeys(e.Config.KeyFile, e.Ethereum.KeyManager())
+    LoadKeys(m.Config.KeyFile, m.Ethereum.KeyManager())
 
-    e.Pipe = pipe
-    e.keyManager = e.Ethereum.KeyManager()
-    e.reactor = e.Ethereum.Reactor()
+    m.Pipe = pipe
+    m.keyManager = m.Ethereum.KeyManager()
+    m.reactor = m.Ethereum.Reactor()
 
     // subscribe to the new block
-    e.Chans = make(map[string]chan events.Event)
-    e.Subscribe("newBlock", "newBlock", "")
+    m.Chans = make(map[string]chan events.Event)
+    m.Subscribe("newBlock", "newBlock", "")
 
-    log.Println(e.Ethereum.Port)
+    log.Println(m.Ethereum.Port)
     
     return nil
 }
 
 // start the ethereum node
-func (ec *EthChain) Start() error{
-    ec.Ethereum.Start(true) // peer seed
-    ec.started = true
+func (mod *MonkModule) Start() error{
+    m := mod.monk
+    m.Ethereum.Start(true) // peer seed
+    m.started = true
 
-    if ec.Config.Mining{
-        StartMining(ec.Ethereum)
+    if m.Config.Mining{
+        StartMining(m.Ethereum)
     }
     return nil
 }
 
-// create a new ethereum instance
-// expects EthConfig to already have been called!
-// init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
-func (e *EthChain) NewEthereum(){
-    db := NewDatabase(e.Config.DbName)
+func (mod *MonkModule) Shutdown() error{
+    mod.monk.Stop()
+    return nil
+}
 
-    keyManager := NewKeyManager(e.Config.KeyStore, e.Config.DataDir, db)
-    keyManager.Init("", 0, true)
-    e.keyManager = keyManager
+// ReadConfig and WriteConfig implemented in config.go
 
-    clientIdentity := NewClientIdentity(e.Config.ClientIdentifier, e.Config.Version, e.Config.Identifier) 
-
-    // create the ethereum obj
-    ethereum, err := eth.New(db, clientIdentity, e.keyManager, eth.CapDefault, false)
-
-    if err != nil {
-        log.Fatal("Could not start node: %s\n", err)
-    }
-
-    ethereum.Port = strconv.Itoa(e.Config.Port)
-    ethereum.MaxPeers = e.Config.MaxPeers
-
-    e.Ethereum = ethereum
+// What module is this?
+func (mod *MonkModule) Name() string{
+    return "monk"
 }
 
 /*
-    Request Functions
+    Wrapper so module satisfies Database
 */
 
+func (mod *MonkModule) Get(cmd string, params ...string) (interface{}, error){
+    return mod.monk.Get(cmd, params...)    
+}
 
-// get=  contract storage
-// everything should be in hex!
-func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string{
+func (mod *MonkModule) Push(cmd string, params ...string) (string, error){
+    return mod.monk.Push(cmd, params...)
+}
+
+func (mod *MonkModule) GetState() modules.State{
+    return mod.monk.GetState()
+}
+
+func (mod *MonkModule) GetStorage(target string) modules.Storage{
+    return mod.monk.GetStorage(target)
+}
+
+func (mod *MonkModule) GetStorageAt(target, storage string) string{
+    return mod.monk.GetStorageAt(target, storage)
+}
+
+func (mod *MonkModule) Tx(addr, amt string){
+    mod.monk.Tx(addr, amt)
+}
+
+func (mod *MonkModule) Msg(addr string, data []string){
+    mod.monk.Msg(addr, data)
+}
+
+func (mod *MonkModule) Script(file, lang string) string { 
+    return mod.monk.Script(file, lang)
+}
+
+func (mod *MonkModule) Commit(){
+    mod.monk.Commit()
+}
+
+func (mod *MonkModule) AutoCommit(toggle bool){
+    mod.monk.AutoCommit(toggle)
+}
+
+func (mod *MonkModule) IsAutocommit() bool{
+    return mod.monk.IsAutocommit()
+}
+
+
+/*
+    Implement Database
+*/
+
+func (monk *Monk) Get(cmd string, params ... string) (interface{}, error){
+    return nil, nil
+}
+
+func (monk *Monk) Push(cmd string, params ... string) (string, error){
+    return "", nil
+}
+
+func (monk *Monk) GetState() modules.State{
+    state := monk.Pipe.World().State()
+    stateMap := modules.State{make(map[string]modules.Storage), []string{}}
+
+    trieIterator := state.Trie.NewIterator()
+    trieIterator.Each(func (addr string, acct *monkutil.Value){
+        hexAddr := monkutil.Bytes2Hex([]byte(addr))
+        stateMap.Order = append(stateMap.Order, hexAddr)
+        stateMap.State[hexAddr] = modules.Storage{make(map[string]interface{}), []string{}}
+
+        acctObj := monkstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
+        acctObj.EachStorage(func (storage string, value *monkutil.Value){
+            value.Decode()
+            hexStorage := monkutil.Bytes2Hex([]byte(storage))
+            storageState := stateMap.State[hexAddr]
+            storageState.Order = append(stateMap.State[hexAddr].Order, hexStorage)
+            storageState.Storage[hexStorage] = monkutil.Bytes2Hex(value.Bytes())
+            stateMap.State[hexAddr] = storageState
+        })
+    })
+    return stateMap
+}
+
+func (monk *Monk) GetStorage(addr string) modules.Storage{
+    w := monk.Pipe.World()
+    obj := w.SafeGet(monkutil.UserHex2Bytes(addr)).StateObject
+    ret := modules.Storage{make(map[string]interface{}), []string{}}
+    obj.EachStorage(func(k string, v *monkutil.Value){
+        kk := monkutil.Bytes2Hex([]byte(k))
+        vv := monkutil.Bytes2Hex(v.Bytes())
+        ret.Order = append(ret.Order, kk)
+        ret.Storage[kk] = vv 
+    })
+    return ret
+}
+
+
+func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string{
     var saddr *big.Int
-    if ethutil.IsHex(storage_addr){
-        saddr = ethutil.BigD(ethutil.Hex2Bytes(ethutil.StripHex(storage_addr)))
+    if monkutil.IsHex(storage_addr){
+        saddr = monkutil.BigD(monkutil.Hex2Bytes(monkutil.StripHex(storage_addr)))
     } else {
-        saddr = ethutil.Big(storage_addr)
+        saddr = monkutil.Big(storage_addr)
     }
 
-    contract_addr = ethutil.StripHex(contract_addr)
-    caddr := ethutil.Hex2Bytes(contract_addr)
-    //saddr := ethutil.Hex2Bytes(storage_addr)
-    w := e.Pipe.World()
+    contract_addr = monkutil.StripHex(contract_addr)
+    caddr := monkutil.Hex2Bytes(contract_addr)
+    //saddr := monkutil.Hex2Bytes(storage_addr)
+    w := monk.Pipe.World()
     ret := w.SafeGet(caddr).GetStorage(saddr)
     //ret := e.Pipe.Storage(caddr, saddr) 
     //returns an ethValue
@@ -159,210 +252,42 @@ func (e EthChain) GetStorageAt(contract_addr string, storage_addr string) string
     if ret.IsNil(){
         return "0x"
     }
-    return ethutil.Bytes2Hex(ret.Bytes())
+    return monkutil.Bytes2Hex(ret.Bytes())
 }
 
-// returns hex addr of gendoug
-func (e EthChain) GenDoug() string{
-    return ethutil.Bytes2Hex(ethchain.GENDOUG)
-}
-
-
-// TODO: return hex string
-func (e EthChain) _GetStorage(contract_addr string) map[string]*ethutil.Value{
-    acct := e.Pipe.World().SafeGet(ethutil.Hex2Bytes(contract_addr)).StateObject
-    m := make(map[string]*ethutil.Value)
-    acct.EachStorage(func(k string, v *ethutil.Value){
-            kk := ethutil.Bytes2Hex([]byte(k))
-            fmt.Println("each storage", v)
-            fmt.Println("each storage val", v.Val)
-            m[kk] = v
-        })
-   return m 
-}
-
-func (e EthChain) State() core.State{
-    return e.GetState()
-}
-
-func (e EthChain) Storage(addr string) core.Storage{
-    return e.GetStorage(addr)
-}
-
-func (e EthChain) GetStorage(addr string) core.Storage{
-    w := e.Pipe.World()
-    obj := w.SafeGet(ethutil.UserHex2Bytes(addr)).StateObject
-    ret := core.Storage{make(map[string]interface{}), []string{}}
-    obj.EachStorage(func(k string, v *ethutil.Value){
-        kk := ethutil.Bytes2Hex([]byte(k))
-        vv := ethutil.Bytes2Hex(v.Bytes())
-        ret.Order = append(ret.Order, kk)
-        ret.Storage[kk] = vv 
-    })
-    return ret
-}
-
-func (e EthChain) GetState() core.State{
-    state := e.Pipe.World().State()
-    stateMap := core.State{make(map[string]core.Storage), []string{}}
-
-    trieIterator := state.Trie.NewIterator()
-    trieIterator.Each(func (addr string, acct *ethutil.Value){
-        hexAddr := ethutil.Bytes2Hex([]byte(addr))
-        stateMap.Order = append(stateMap.Order, hexAddr)
-        stateMap.State[hexAddr] = core.Storage{make(map[string]interface{}), []string{}}
-
-        acctObj := ethstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
-        acctObj.EachStorage(func (storage string, value *ethutil.Value){
-            value.Decode()
-            hexStorage := ethutil.Bytes2Hex([]byte(storage))
-            storageState := stateMap.State[hexAddr]
-            storageState.Order = append(stateMap.State[hexAddr].Order, hexStorage)
-            storageState.Storage[hexStorage] = ethutil.Bytes2Hex(value.Bytes())
-            stateMap.State[hexAddr] = storageState
-        })
-    })
-    return stateMap
-}
-
-// subscribe to an address (hex)
-// returns a chanel that will fire when address is updated
-func (e EthChain) Subscribe(name, event, target string){
-    eth_ch := make(chan ethreact.Event, 1)
-    if target != ""{
-        addr := string(ethutil.Hex2Bytes(target))
-        e.reactor.Subscribe("object:"+addr, eth_ch)
-    } else{
-        e.reactor.Subscribe(event, eth_ch)
+// send a tx
+// TODO: return hash
+func (monk *Monk) Tx(addr, amt string){
+    keys := monk.fetchKeyPair()
+    addr = monkutil.StripHex(addr)
+    if addr[:2] == "0x"{
+        addr = addr[2:]
     }
-
-    e.Chans[name] = make(chan events.Event)
-    ch := e.Chans[name]
-
-    // fire up a goroutine and broadcast module specific chan on our main chan
-    go func(){
-        for {
-            r := <- eth_ch           
-            log.Println(r)
-            ch <- events.Event{
-                         Event:event,
-                         Target:target,
-                         Source:"monk",
-                         TimeStamp:time.Now(),
-                    }
-        }
-    }()
-}
-
-// Mine a block
-func (e EthChain) Commit(){
-    e.StartMining()
-    _ =<- e.Chans["newBlock"]
-    v := false
-    for !v{
-        v = e.StopMining()
+    byte_addr := monkutil.Hex2Bytes(addr)
+    // note, NewValue will not turn a string int into a big int..
+    start := time.Now()
+    _, err := monk.Pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big("20000000000")), monkutil.NewValue(monkutil.Big("100000")), "")
+    dif := time.Since(start)
+    fmt.Println("pipe tx took ", dif)
+    if err != nil{
+        log.Fatal("tx err", err)
     }
-}
-
-// start and stop continuous mining
-func (e EthChain) AutoCommit(toggle bool){
-    if toggle{
-        e.StartMining()
-    } else{
-        e.StopMining()
-    }
-}
-
-func (e EthChain) IsAutocommit() bool{
-    return e.Ethereum.IsMining()
 }
 
 // send a message to a contract
-func (e *EthChain) Msg(addr string, data []string){
+func (monk *Monk) Msg(addr string, data []string){
     packed := PackTxDataArgs(data...)
-    keys := e.fetchKeyPair()
-    addr = ethutil.StripHex(addr)
-    byte_addr := ethutil.Hex2Bytes(addr)
-    _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big("350")), ethutil.NewValue(ethutil.Big("200000000000")), ethutil.NewValue(ethutil.Big("1000000")), packed)
+    keys := monk.fetchKeyPair()
+    addr = monkutil.StripHex(addr)
+    byte_addr := monkutil.Hex2Bytes(addr)
+    _, err := monk.Pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big("350")), monkutil.NewValue(monkutil.Big("200000000000")), monkutil.NewValue(monkutil.Big("1000000")), packed)
     if err != nil{
         //TODO: don't be so mean
         log.Fatal("tx err", err)
     }
 }
 
-// send a tx
-func (e *EthChain) Tx(addr, amt string){
-    keys := e.fetchKeyPair()
-    addr = ethutil.StripHex(addr)
-    if addr[:2] == "0x"{
-        addr = addr[2:]
-    }
-    byte_addr := ethutil.Hex2Bytes(addr)
-    //fmt.Println("the amount:", amt, ethutil.Big(amt), ethutil.NewValue(amt), ethutil.NewValue(ethutil.Big(amt)))
-    // note, NewValue will not turn a string int into a big int..
-    start := time.Now()
-    _, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(ethutil.Big(amt)), ethutil.NewValue(ethutil.Big("20000000000")), ethutil.NewValue(ethutil.Big("100000")), "")
-    dif := time.Since(start)
-    fmt.Println("pipe tx took ", dif)
-    //_, err := e.Pipe.Transact(keys, byte_addr, ethutil.NewValue(amt), ethutil.NewValue("2000"), ethutil.NewValue("100000"), "")
-    if err != nil{
-        log.Fatal("tx err", err)
-    }
-}
-
-/*
-    daemon stuff
-*/
-
-func (e *EthChain) StartMining() bool{
-    return StartMining(e.Ethereum)
-}
-
-func (e *EthChain) StopMining() bool{
-    return StopMining(e.Ethereum)
-}
-
-func (e *EthChain) StartListening(){
-    e.Ethereum.StartListening()
-}
-
-func (e *EthChain) StopListening() {
-    e.Ethereum.StopListening()
-}
-
-
-
-/*
-    some key management stuff
-*/
-
-func (e *EthChain) FetchAddr() string{
-    keypair := e.keyManager.KeyPair()
-    pub := ethutil.Bytes2Hex(keypair.Address())
-    return pub
-}
-
-func (e *EthChain) fetchPriv() string{
-    keypair := e.keyManager.KeyPair()
-    priv := ethutil.Bytes2Hex(keypair.PrivateKey)
-    return priv
-}
-
-func (e *EthChain) fetchKeyPair() *ethcrypto.KeyPair{
-    return e.keyManager.KeyPair()
-}
-
-// this is bad but I need it for testing
-func (e *EthChain) FetchPriv() string{
-    return e.fetchPriv()
-}
-
-// switch current key
-func (e *EthChain) SetCursor(n int){
-    e.keyManager.SetCursor(n)
-}
-
-func (e EthChain) DeployContract(file, lang string) string{
+func (monk *Monk) Script(file, lang string) string{
     var script string
     if lang == "lll"{
         script = CompileLLL(file) // if lll, compile and pass along
@@ -375,51 +300,191 @@ func (e EthChain) DeployContract(file, lang string) string{
         script = file
     }
     // messy key system...
-    // ethchain should have an 'active key'
-    keys := e.fetchKeyPair()
+    // monkchain should have an 'active key'
+    keys := monk.fetchKeyPair()
 
     // well isn't this pretty! barf
-    contract_addr, err := e.Pipe.Transact(keys, nil, ethutil.NewValue(ethutil.Big("271")), ethutil.NewValue(ethutil.Big("2000000000000")), ethutil.NewValue(ethutil.Big("1000000")), script)
+    contract_addr, err := monk.Pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("271")), monkutil.NewValue(monkutil.Big("2000000000000")), monkutil.NewValue(monkutil.Big("1000000")), script)
     if err != nil{
         log.Fatal("could not deploy contract", err)
     }
-    return ethutil.Bytes2Hex(contract_addr)
+    return monkutil.Bytes2Hex(contract_addr)
 }
 
-func (e *EthChain) Shutdown() error{
-    e.Stop()
-    return nil
+
+
+// subscribe to an address (hex)
+// returns a chanel that will fire when address is updated
+func (monk *Monk) Subscribe(name, event, target string) chan events.Event{
+    eth_ch := make(chan monkreact.Event, 1)
+    if target != ""{
+        addr := string(monkutil.Hex2Bytes(target))
+        monk.reactor.Subscribe("object:"+addr, eth_ch)
+    } else{
+        monk.reactor.Subscribe(event, eth_ch)
+    }
+
+    monk.Chans[name] = make(chan events.Event)
+    ch := monk.Chans[name]
+
+    // fire up a goroutine and broadcast module specific chan on our main chan
+    go func(){
+        for {
+            r := <- eth_ch           
+            ch <- events.Event{
+                         Event:event,
+                         Target:target,
+                         Source:"monk",
+                         Resource: r,
+                         TimeStamp:time.Now(),
+                    }
+        }
+    }()
+    return ch
 }
 
-func (e *EthChain) Stop(){
-    if !e.started{
+
+// Mine a block
+func (m *Monk) Commit(){
+    m.StartMining()
+    _ =<- m.Chans["newBlock"]
+    v := false
+    for !v{
+        v = m.StopMining()
+    }
+}
+
+// start and stop continuous mining
+func (m *Monk) AutoCommit(toggle bool){
+    if toggle{
+        m.StartMining()
+    } else{
+        m.StopMining()
+    }
+}
+
+func (m *Monk) IsAutocommit() bool{
+    return m.Ethereum.IsMining()
+}
+
+
+/*
+    Helper functions
+*/
+
+// create a new ethereum instance
+// expects EthConfig to already have been called!
+// init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
+func (m *Monk) NewEthereum(){
+    db := NewDatabase(m.Config.DbName)
+
+    keyManager := NewKeyManager(m.Config.KeyStore, m.Config.DataDir, db)
+    keyManager.Init("", 0, true)
+    m.keyManager = keyManager
+
+    clientIdentity := NewClientIdentity(m.Config.ClientIdentifier, m.Config.Version, m.Config.Identifier) 
+
+    // create the ethereum obj
+    ethereum, err := eth.New(db, clientIdentity, m.keyManager, eth.CapDefault, false)
+
+    if err != nil {
+        log.Fatal("Could not start node: %s\n", err)
+    }
+
+    ethereum.Port = strconv.Itoa(m.Config.Port)
+    ethereum.MaxPeers = m.Config.MaxPeers
+
+    m.Ethereum = ethereum
+}
+
+// returns hex addr of gendoug
+func (monk *Monk) GenDoug() string{
+    return monkutil.Bytes2Hex(monkchain.GENDOUG)
+}
+
+// TODO: return hex string
+func (monk *Monk) _GetStorage(contract_addr string) map[string]*monkutil.Value{
+    acct := monk.Pipe.World().SafeGet(monkutil.Hex2Bytes(contract_addr)).StateObject
+    m := make(map[string]*monkutil.Value)
+    acct.EachStorage(func(k string, v *monkutil.Value){
+            kk := monkutil.Bytes2Hex([]byte(k))
+            fmt.Println("each storage", v)
+            fmt.Println("each storage val", v.Val)
+            m[kk] = v
+        })
+   return m 
+}
+
+func (monk *Monk) StartMining() bool{
+    return StartMining(monk.Ethereum)
+}
+
+func (monk *Monk) StopMining() bool{
+    return StopMining(monk.Ethereum)
+}
+
+func (monk *Monk) StartListening(){
+    monk.Ethereum.StartListening()
+}
+
+func (monk *Monk) StopListening() {
+    monk.Ethereum.StopListening()
+}
+
+/*
+    some key management stuff
+*/
+
+func (monk *Monk) FetchAddr() string{
+    keypair := monk.keyManager.KeyPair()
+    pub := monkutil.Bytes2Hex(keypair.Address())
+    return pub
+}
+
+func (monk *Monk) fetchPriv() string{
+    keypair := monk.keyManager.KeyPair()
+    priv := monkutil.Bytes2Hex(keypair.PrivateKey)
+    return priv
+}
+
+func (monk *Monk) fetchKeyPair() *monkcrypto.KeyPair{
+    return monk.keyManager.KeyPair()
+}
+
+// this is bad but I need it for testing
+func (monk *Monk) FetchPriv() string{
+    return monk.fetchPriv()
+}
+
+// switch current key
+func (monk *Monk) SetCursor(n int){
+    monk.keyManager.SetCursor(n)
+}
+
+
+func (monk *Monk) Stop(){
+    if !monk.started{
         fmt.Println("can't stop: haven't even started...")
         return
     }
-    e.StopMining()
+    monk.StopMining()
     fmt.Println("stopped mining")
-    e.Ethereum.Stop()
+    monk.Ethereum.Stop()
     fmt.Println("stopped ethereum")
-    e = &EthChain{Config: e.Config}
-    ethlog.Reset()
+    monk = &Monk{Config: monk.Config}
+    monklog.Reset()
 }
 
-// ReadConfig and WriteConfig implemented in config.go
-
-// What module is this?
-func (e *EthChain) Name() string{
-    return "monk"
-}
 
 // compile LLL file into evm bytecode 
 // returns hex
 func CompileLLL(filename string) string{
-    code, err := ethutil.CompileLLL(filename)
+    code, err := monkutil.CompileLLL(filename)
     if err != nil{
         fmt.Println("error compiling lll!", err)
         return ""
     }
-    return "0x"+ethutil.Bytes2Hex(code)
+    return "0x"+monkutil.Bytes2Hex(code)
 }
 
 // some convenience functions
@@ -432,15 +497,15 @@ func homeDir() string{
 
 // convert a big int from string to hex
 func BigNumStrToHex(s string) string{
-    bignum := ethutil.Big(s)
-    bignum_bytes := ethutil.BigToBytes(bignum, 16)
-    return ethutil.Bytes2Hex(bignum_bytes)
+    bignum := monkutil.Big(s)
+    bignum_bytes := monkutil.BigToBytes(bignum, 16)
+    return monkutil.Bytes2Hex(bignum_bytes)
 }
 
 // takes a string, converts to bytes, returns hex
 func SHA3(tohash string) string{
-    h := ethcrypto.Sha3Bin([]byte(tohash))
-    return ethutil.Bytes2Hex(h)
+    h := monkcrypto.Sha3Bin([]byte(tohash))
+    return monkutil.Bytes2Hex(h)
 }
 
 // pack data into acceptable format for transaction
@@ -455,18 +520,18 @@ func PackTxDataArgs(args ... string) string{
             if len(t) % 2 == 1{
                 t = "0"+t
             }
-            x := ethutil.Hex2Bytes(t)
+            x := monkutil.Hex2Bytes(t)
             //fmt.Println(x)
             l := len(x)
-            ret = append(ret, ethutil.LeftPadBytes(x, 32*((l + 31)/32))...)
+            ret = append(ret, monkutil.LeftPadBytes(x, 32*((l + 31)/32))...)
         }else{
             x := []byte(s)
             l := len(x)
             // TODO: just changed from right to left. yabadabadoooooo take care!
-            ret = append(ret, ethutil.LeftPadBytes(x, 32*((l + 31)/32))...)
+            ret = append(ret, monkutil.LeftPadBytes(x, 32*((l + 31)/32))...)
         }
     }
-    return "0x" + ethutil.Bytes2Hex(ret)
+    return "0x" + monkutil.Bytes2Hex(ret)
    // return ret
 }
 

@@ -7,18 +7,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eris-ltd/thelonious/ethchain"
-	"github.com/eris-ltd/thelonious/ethlog"
-	"github.com/eris-ltd/thelonious/ethutil"
-	"github.com/eris-ltd/thelonious/ethwire"
+	"github.com/eris-ltd/thelonious/monkchain"
+	"github.com/eris-ltd/thelonious/monklog"
+	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
-var poollogger = ethlog.NewLogger("BPOOL")
+var poollogger = monklog.NewLogger("BPOOL")
 
 type block struct {
 	from      *Peer
 	peer      *Peer
-	block     *ethchain.Block
+	block     *monkchain.Block
 	reqAt     time.Time
 	requested int
 }
@@ -44,7 +44,7 @@ func NewBlockPool(eth *Ethereum) *BlockPool {
 	return &BlockPool{
 		eth:  eth,
 		pool: make(map[string]*block),
-		td:   ethutil.Big0,
+		td:   monkutil.Big0,
 		quit: make(chan bool),
 	}
 }
@@ -64,7 +64,7 @@ func (self *BlockPool) HasCommonHash(hash []byte) bool {
 	return self.eth.BlockChain().GetBlock(hash) != nil
 }
 
-func (self *BlockPool) Blocks() (blocks ethchain.Blocks) {
+func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
 	for _, item := range self.pool {
 		if item.block != nil {
 			blocks = append(blocks, item.block)
@@ -85,7 +85,7 @@ func (self *BlockPool) AddHash(hash []byte, peer *Peer) {
 	}
 }
 
-func (self *BlockPool) Add(b *ethchain.Block, peer *Peer) {
+func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
@@ -99,7 +99,7 @@ func (self *BlockPool) Add(b *ethchain.Block, peer *Peer) {
 
 		if !self.eth.BlockChain().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
 			poollogger.Infof("Unknown block, requesting parent (%x...)\n", b.PrevHash[0:4])
-			//peer.QueueMessage(ethwire.NewMessage(ethwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
+			//peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
 		}
 	} else if self.pool[hash] != nil {
 		self.pool[hash].block = b
@@ -112,14 +112,14 @@ func (self *BlockPool) Remove(hash []byte) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
-	self.hashPool = ethutil.DeleteFromByteSlice(self.hashPool, hash)
+	self.hashPool = monkutil.DeleteFromByteSlice(self.hashPool, hash)
 	delete(self.pool, string(hash))
 }
 
-func (self *BlockPool) ProcessCanonical(f func(block *ethchain.Block)) (procAmount int) {
+func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmount int) {
 	blocks := self.Blocks()
 
-	ethchain.BlockBy(ethchain.Number).Sort(blocks)
+	monkchain.BlockBy(monkchain.Number).Sort(blocks)
 	for _, block := range blocks {
 		if self.eth.BlockChain().HasBlock(block.PrevHash) {
 			procAmount++
@@ -160,7 +160,7 @@ func (self *BlockPool) DistributeHashes() {
 					peer = item.from
 				} else {
 					// Remove it
-					self.hashPool = ethutil.DeleteFromByteSlice(self.hashPool, hash)
+					self.hashPool = monkutil.DeleteFromByteSlice(self.hashPool, hash)
 					delete(self.pool, string(hash))
 				}
 			} else if lastFetchFailed || item.peer == nil {
@@ -237,7 +237,7 @@ out:
 			// XXX We can optimize this lifting this on to a new goroutine.
 			// We'd need to make sure that the pools are properly protected by a mutex
 			// XXX This should moved in The Great Refactor(TM)
-			amount := self.ProcessCanonical(func(block *ethchain.Block) {
+			amount := self.ProcessCanonical(func(block *monkchain.Block) {
 				err := self.eth.StateManager().Process(block, false)
 				if err != nil {
 					poollogger.Infoln(err)
@@ -249,7 +249,7 @@ out:
 			// Do not propagate to the network on catchups
 			if amount == 1 {
 				block := self.eth.BlockChain().CurrentBlock
-				self.eth.Broadcast(ethwire.MsgBlockTy, []interface{}{block.Value().Val})
+				self.eth.Broadcast(monkwire.MsgBlockTy, []interface{}{block.Value().Val})
 			}
 		}
 	}

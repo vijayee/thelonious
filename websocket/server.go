@@ -3,12 +3,12 @@ package websocket
 import (
 	"net/http"
 
-	"github.com/eris-ltd/thelonious/ethlog"
+	"github.com/eris-ltd/thelonious/monklog"
 
 	ws "code.google.com/p/go.net/websocket"
 )
 
-var logger = ethlog.NewLogger("WS")
+var logger = monklog.NewLogger("WS")
 
 // Chat server.
 type Server struct {

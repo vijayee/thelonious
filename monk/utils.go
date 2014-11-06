@@ -14,21 +14,21 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/thelonious"
-	"github.com/eris-ltd/thelonious/ethcrypto"
-	"github.com/eris-ltd/thelonious/ethdb"
-	"github.com/eris-ltd/thelonious/ethlog"
-	"github.com/eris-ltd/thelonious/ethminer"
-	"github.com/eris-ltd/thelonious/ethpipe"
-	"github.com/eris-ltd/thelonious/ethrpc"
-	"github.com/eris-ltd/thelonious/ethutil"
-	"github.com/eris-ltd/thelonious/ethwire"
+	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monkdb"
+	"github.com/eris-ltd/thelonious/monklog"
+	"github.com/eris-ltd/thelonious/monkminer"
+	"github.com/eris-ltd/thelonious/monkpipe"
+	"github.com/eris-ltd/thelonious/monkrpc"
+	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 // this is basically go-etheruem/utils
 
 // i think for now we only use StartMining, but there's porbably other goodies...
 
-//var logger = ethlog.NewLogger("CLI")
+//var logger = monklog.NewLogger("CLI")
 var interruptCallbacks = []func(os.Signal){}
 
 // Register interrupt handlers callbacks
@@ -101,16 +101,16 @@ func InitLogging(Datadir string, LogFile string, LogLevel int, DebugFile string)
 	} else {
 		writer = openLogFile(Datadir, LogFile)
 	}
-	ethlog.AddLogSystem(ethlog.NewStdLogSystem(writer, log.LstdFlags, ethlog.LogLevel(LogLevel)))
+	monklog.AddLogSystem(monklog.NewStdLogSystem(writer, log.LstdFlags, monklog.LogLevel(LogLevel)))
 	if DebugFile != "" {
 		writer = openLogFile(Datadir, DebugFile)
-		ethlog.AddLogSystem(ethlog.NewStdLogSystem(writer, log.LstdFlags, ethlog.DebugLevel))
+		monklog.AddLogSystem(monklog.NewStdLogSystem(writer, log.LstdFlags, monklog.DebugLevel))
 	}
 }
 
-func InitConfig(ConfigFile string, Datadir string, EnvPrefix string) *ethutil.ConfigManager {
+func InitConfig(ConfigFile string, Datadir string, EnvPrefix string) *monkutil.ConfigManager {
 	InitDataDir(Datadir)
-	return ethutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
+	return monkutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
 }
 
 func exit(err error) {
@@ -120,24 +120,24 @@ func exit(err error) {
 		logger.Errorln("Fatal: ", err)
 		status = 1
 	}
-	ethlog.Flush()
+	monklog.Flush()
 	os.Exit(status)
 }
 
-func NewDatabase(dbName string) ethutil.Database {
-	db, err := ethdb.NewLDBDatabase(dbName)
+func NewDatabase(dbName string) monkutil.Database {
+	db, err := monkdb.NewLDBDatabase(dbName)
 	if err != nil {
 		exit(err)
 	}
 	return db
 }
 
-func NewClientIdentity(clientIdentifier, version, customIdentifier string) *ethwire.SimpleClientIdentity {
+func NewClientIdentity(clientIdentifier, version, customIdentifier string) *monkwire.SimpleClientIdentity {
 	logger.Infoln("identity created")
-	return ethwire.NewSimpleClientIdentity(clientIdentifier, version, customIdentifier)
+	return monkwire.NewSimpleClientIdentity(clientIdentifier, version, customIdentifier)
 }
 
-func NewEthereum(db ethutil.Database, clientIdentity ethwire.ClientIdentity, keyManager *ethcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Ethereum {
+func NewEthereum(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Ethereum {
 	ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, usePnp)
 	if err != nil {
 		logger.Fatalln("eth start err:", err)
@@ -152,7 +152,7 @@ func StartEthereum(ethereum *eth.Ethereum, UseSeed bool) {
 	ethereum.Start(UseSeed)
 	RegisterInterrupt(func(sig os.Signal) {
 		ethereum.Stop()
-		ethlog.Flush()
+		monklog.Flush()
 	})
 }
 
@@ -161,13 +161,13 @@ func ShowGenesis(ethereum *eth.Ethereum) {
 	exit(nil)
 }
 
-func NewKeyManager(KeyStore string, Datadir string, db ethutil.Database) *ethcrypto.KeyManager {
-	var keyManager *ethcrypto.KeyManager
+func NewKeyManager(KeyStore string, Datadir string, db monkutil.Database) *monkcrypto.KeyManager {
+	var keyManager *monkcrypto.KeyManager
 	switch {
 	case KeyStore == "db":
-		keyManager = ethcrypto.NewDBKeyManager(db)
+		keyManager = monkcrypto.NewDBKeyManager(db)
 	case KeyStore == "file":
-		keyManager = ethcrypto.NewFileKeyManager(Datadir)
+		keyManager = monkcrypto.NewFileKeyManager(Datadir)
 	default:
 		exit(fmt.Errorf("unknown keystore type: %s", KeyStore))
 	}
@@ -199,7 +199,7 @@ func DefaultAssetPath() string {
 	return assetPath
 }
 
-func KeyTasks(keyManager *ethcrypto.KeyManager, KeyRing string, GenAddr bool, SecretFile string, ExportDir string, NonInteractive bool) {
+func KeyTasks(keyManager *monkcrypto.KeyManager, KeyRing string, GenAddr bool, SecretFile string, ExportDir string, NonInteractive bool) {
 
 	var err error
 	switch {
@@ -209,7 +209,7 @@ func KeyTasks(keyManager *ethcrypto.KeyManager, KeyRing string, GenAddr bool, Se
 		}
 		exit(err)
 	case len(SecretFile) > 0:
-		SecretFile = ethutil.ExpandHomePath(SecretFile)
+		SecretFile = monkutil.ExpandHomePath(SecretFile)
 
 		if NonInteractive || confirm("This action overwrites your old private key.") {
 			err = keyManager.InitFromSecretsFile(KeyRing, 0, SecretFile)
@@ -232,7 +232,7 @@ func KeyTasks(keyManager *ethcrypto.KeyManager, KeyRing string, GenAddr bool, Se
 
 func StartRpc(ethereum *eth.Ethereum, RpcPort int) {
 	var err error
-	ethereum.RpcServer, err = ethrpc.NewJsonRpcServer(ethpipe.NewJSPipe(ethereum), RpcPort)
+	ethereum.RpcServer, err = monkrpc.NewJsonRpcServer(monkpipe.NewJSPipe(ethereum), RpcPort)
 	if err != nil {
 		logger.Errorf("Could not start RPC interface (port %v): %v", RpcPort, err)
 	} else {
@@ -240,9 +240,9 @@ func StartRpc(ethereum *eth.Ethereum, RpcPort int) {
 	}
 }
 
-var miner *ethminer.Miner
+var miner *monkminer.Miner
 
-func GetMiner() *ethminer.Miner {
+func GetMiner() *monkminer.Miner {
 	return miner
 }
 
@@ -255,7 +255,7 @@ func StartMining(ethereum *eth.Ethereum) bool {
 		go func() {
 			logger.Infoln("Start mining")
 			if miner == nil {
-				miner = ethminer.NewDefaultMiner(addr, ethereum)
+				miner = monkminer.NewDefaultMiner(addr, ethereum)
 			}
 			// Give it some time to connect with peers
 			time.Sleep(3 * time.Second)
@@ -273,10 +273,10 @@ func StartMining(ethereum *eth.Ethereum) bool {
 }
 
 func FormatTransactionData(data string) []byte {
-	d := ethutil.StringToByteFunc(data, func(s string) (ret []byte) {
+	d := monkutil.StringToByteFunc(data, func(s string) (ret []byte) {
 		slice := regexp.MustCompile("\\n|\\s").Split(s, 1000000000)
 		for _, dataItem := range slice {
-			d := ethutil.FormatData(dataItem)
+			d := monkutil.FormatData(dataItem)
 			ret = append(ret, d...)
 		}
 		return

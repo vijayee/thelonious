@@ -3,10 +3,10 @@ package monk
 import (
     "fmt"
     "time"
-    "github.com/eris-ltd/thelonious/ethchain"
-    "github.com/eris-ltd/thelonious/ethreact"
-    "github.com/eris-ltd/thelonious/ethutil"
-    "github.com/eris-ltd/thelonious/ethstate"
+    "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkreact"
+    "github.com/eris-ltd/thelonious/monkutil"
+    "github.com/eris-ltd/thelonious/monkstate"
 )   
 
 // environment object for running custom tests (ie. not used in `go test`)
@@ -14,7 +14,7 @@ import (
 type Test struct{
     genesis string
     blocks int
-    eth *EthChain
+    mod *MonkModule
        
     // test specific 
     testerFunc string
@@ -23,7 +23,7 @@ type Test struct{
 
     gendougaddr string //hex address
 
-    reactor *ethreact.ReactorEngine
+    reactor *monkreact.ReactorEngine
 
     failed []string // failed tests
 }
@@ -65,61 +65,61 @@ func (t *Test) Run(){
 
 // general tester function on an eth node
 // note, you ought to call eth.Start() somewhere in testing()!
-func (t *Test) tester(name string, testing func(eth *EthChain), end int){
-    eth := t.eth
-    if eth == nil{
-        eth = NewEth(nil) 
-        t.eth = eth
+func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
+    mod := t.mod
+    if mod == nil{
+        mod = NewMonk(nil) 
+        t.mod = mod
     } 
-    eth.ReadConfig("eth-config.json")
-    eth.Config.Mining = true
-    eth.Config.DbName = "tests/"+name
-    ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    ethchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
-    t.gendougaddr = ethutil.Bytes2Hex(ethchain.GENDOUG)
-    eth.Init()
+    mod.ReadConfig("eth-config.json")
+    mod.monk.Config.Mining = true
+    mod.monk.Config.DbName = "tests/"+name
+    monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    monkchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
+    t.gendougaddr = monkutil.Bytes2Hex(monkchain.GENDOUG)
+    mod.Init()
 
-    t.reactor = eth.Ethereum.Reactor()
-    testing(eth)
+    t.reactor = mod.monk.Ethereum.Reactor()
+    testing(mod)
     
     if end > 0{
         time.Sleep(time.Second*time.Duration(end))
     }
-    eth.Stop()
-    t.eth = nil
+    mod.Shutdown()
+    t.mod = nil
     time.Sleep(time.Second*3)
 }
 
 // called by `go test` functions
-func tester(name string, testing func(eth *EthChain), end int){
-    eth := NewEth(nil) 
-    eth.ReadConfig("eth-config.json")
-    eth.Config.Mining = true
-    eth.Config.DbName = "tests/"+name
+func tester(name string, testing func(mod *MonkModule), end int){
+    mod := NewMonk(nil) 
+    mod.ReadConfig("eth-config.json")
+    mod.monk.Config.Mining = true
+    mod.monk.Config.DbName = "tests/"+name
     //TODO: genesis
-    //ethchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    ethchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
-    eth.Init()
+    //monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    monkchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
+    mod.Init()
 
-    testing(eth)
+    testing(mod)
     
     if end > 0{
         time.Sleep(time.Second*time.Duration(end))
     }
-    eth.Stop()
+    mod.Shutdown()
     time.Sleep(time.Second*3)
 }
 
-func callback(name string, eth *EthChain, caller func()) {
-    ch := make(chan ethreact.Event, 1)
-    eth.Ethereum.Reactor().Subscribe("newBlock", ch)
+func callback(name string, mod *MonkModule, caller func()) {
+    ch := make(chan monkreact.Event, 1)
+    mod.monk.Ethereum.Reactor().Subscribe("newBlock", ch)
     _ = <- ch
     fmt.Println("####RESPONSE: "+ name +  " ####")
     caller()
 } 
 
-func (t *Test) callback(name string, eth *EthChain, caller func()) {
-    ch := make(chan ethreact.Event, 1)
+func (t *Test) callback(name string, mod *MonkModule, caller func()) {
+    ch := make(chan monkreact.Event, 1)
     t.reactor.Subscribe("newBlock", ch)
     _ = <- ch
     fmt.Println("####RESPONSE: "+ name +  " ####")
@@ -127,43 +127,43 @@ func (t *Test) callback(name string, eth *EthChain, caller func()) {
 } 
 
 
-func PrettyPrintAccount(obj *ethstate.StateObject){
-    fmt.Println("Address", ethutil.Bytes2Hex(obj.Address())) //ethutil.Bytes2Hex([]byte(addr)))
+func PrettyPrintAccount(obj *monkstate.StateObject){
+    fmt.Println("Address", monkutil.Bytes2Hex(obj.Address())) //monkutil.Bytes2Hex([]byte(addr)))
     fmt.Println("\tNonce", obj.Nonce)
     fmt.Println("\tBalance", obj.Balance)
     if true { // only if contract, but how?!
-        fmt.Println("\tInit", ethutil.Bytes2Hex(obj.InitCode))
-        fmt.Println("\tCode", ethutil.Bytes2Hex(obj.Code))
+        fmt.Println("\tInit", monkutil.Bytes2Hex(obj.InitCode))
+        fmt.Println("\tCode", monkutil.Bytes2Hex(obj.Code))
         fmt.Println("\tStorage:")
-        obj.EachStorage(func(key string, val *ethutil.Value){
+        obj.EachStorage(func(key string, val *monkutil.Value){
             val.Decode()
-            fmt.Println("\t\t", ethutil.Bytes2Hex([]byte(key)), "\t:\t", ethutil.Bytes2Hex([]byte(val.Str())))
+            fmt.Println("\t\t", monkutil.Bytes2Hex([]byte(key)), "\t:\t", monkutil.Bytes2Hex([]byte(val.Str())))
         }) 
     }
 }
 
 // print all accounts and storage in a block
-func PrettyPrintBlockAccounts(block *ethchain.Block){
+func PrettyPrintBlockAccounts(block *monkchain.Block){
     state := block.State()
     it := state.Trie.NewIterator()   
-    it.Each(func(key string, value *ethutil.Value) {  
-        addr := ethutil.Address([]byte(key))
-//        obj := ethstate.NewStateObjectFromBytes(addr, value.Bytes())
+    it.Each(func(key string, value *monkutil.Value) {  
+        addr := monkutil.Address([]byte(key))
+//        obj := monkstate.NewStateObjectFromBytes(addr, value.Bytes())
         obj := block.State().GetAccount(addr)
         PrettyPrintAccount(obj)
     })
 }
 
 // print all accounts and storage in the latest block
-func PrettyPrintChainAccounts(eth *EthChain){
-    curchain := eth.Ethereum.BlockChain()
+func PrettyPrintChainAccounts(mod *MonkModule){
+    curchain := mod.monk.Ethereum.BlockChain()
     block := curchain.CurrentBlock
     PrettyPrintBlockAccounts(block)
 }
 
 // compare expected and recovered vals
 func check_recovered(expected, recovered string) bool{
-    if ethutil.Coerce2Hex(recovered) == ethutil.Coerce2Hex(expected){
+    if monkutil.Coerce2Hex(recovered) == monkutil.Coerce2Hex(expected){
         fmt.Println("Test passed")
         return true
     } else{

@@ -18,6 +18,10 @@ def replace_all(path='.', old="github.com/ethereum", new="github.com/project-dou
                 d.write(s)
             d.close()
 
+mods = ["ethchain", "ethstate", "ethvm", "ethwire", "ethtrie", "ethutil", "ethdb", "ethlog", "ethminer", "ethcrypto", "ethpipe", "ethreact", "ethrpc", "ethtest"]
 
-replace_all(old="github.com/eris-ltd/eth-go-mods", new="github.com/eris-ltd/thelonious")
+
+for m in mods:
+    #replace_all(old="github.com/eris-ltd/thelonious/"+m, new="github.com/eris-ltd/thelonious/monk"+m[3:])
+    replace_all(old=m, new="monk"+m[3:])
 
