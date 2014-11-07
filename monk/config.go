@@ -61,7 +61,7 @@ var DefaultConfig = &ChainConfig{
 
 // can these methods be functions in decerver that take the modules as argument?
 func (mod *MonkModule) WriteConfig(config_file string){
-    b, err := json.Marshal(mod.monk.Config)
+    b, err := json.Marshal(mod.monk.config)
     if err != nil{
         fmt.Println("error marshalling config:", err)
         return
@@ -83,16 +83,16 @@ func (mod *MonkModule) ReadConfig(config_file string){
     if err != nil{
         fmt.Println("error unmarshalling config from file:", err)
         fmt.Println("resorting to defaults")
-        mod.monk.Config = DefaultConfig
+        mod.monk.config = DefaultConfig
         return
     }
-    mod.monk.Config = &config
+    mod.monk.config = &config
 }
 func (mod *MonkModule) SetConfig(config interface{}) error{
     if s, ok := config.(string); ok{
         mod.ReadConfig(s)
     } else if s, ok := config.(ChainConfig); ok{
-        mod.monk.Config = &s
+        mod.monk.config = &s
     } else {
         return errors.New("could not set config")
     }
@@ -101,7 +101,7 @@ func (mod *MonkModule) SetConfig(config interface{}) error{
 
 // configure an ethereum node
 func (monk *Monk) EthConfig() {
-    cfg := monk.Config
+    cfg := monk.config
     if cfg.LLLPath != ""{
 	    monkutil.PathToLLL = cfg.LLLPath
     }

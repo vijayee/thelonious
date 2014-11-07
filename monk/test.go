@@ -72,14 +72,14 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
         t.mod = mod
     } 
     mod.ReadConfig("eth-config.json")
-    mod.monk.Config.Mining = true
-    mod.monk.Config.DbName = "tests/"+name
+    mod.monk.config.Mining = true
+    mod.monk.config.DbName = "tests/"+name
     monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
     monkchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
     t.gendougaddr = monkutil.Bytes2Hex(monkchain.GENDOUG)
     mod.Init()
 
-    t.reactor = mod.monk.Ethereum.Reactor()
+    t.reactor = mod.monk.ethereum.Reactor()
     testing(mod)
     
     if end > 0{
@@ -94,8 +94,8 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
 func tester(name string, testing func(mod *MonkModule), end int){
     mod := NewMonk(nil) 
     mod.ReadConfig("eth-config.json")
-    mod.monk.Config.Mining = true
-    mod.monk.Config.DbName = "tests/"+name
+    mod.monk.config.Mining = true
+    mod.monk.config.DbName = "tests/"+name
     //TODO: genesis
     //monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
     monkchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
@@ -112,7 +112,7 @@ func tester(name string, testing func(mod *MonkModule), end int){
 
 func callback(name string, mod *MonkModule, caller func()) {
     ch := make(chan monkreact.Event, 1)
-    mod.monk.Ethereum.Reactor().Subscribe("newBlock", ch)
+    mod.monk.ethereum.Reactor().Subscribe("newBlock", ch)
     _ = <- ch
     fmt.Println("####RESPONSE: "+ name +  " ####")
     caller()
@@ -156,7 +156,7 @@ func PrettyPrintBlockAccounts(block *monkchain.Block){
 
 // print all accounts and storage in the latest block
 func PrettyPrintChainAccounts(mod *MonkModule){
-    curchain := mod.monk.Ethereum.BlockChain()
+    curchain := mod.monk.ethereum.BlockChain()
     block := curchain.CurrentBlock
     PrettyPrintBlockAccounts(block)
 }

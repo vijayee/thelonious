@@ -20,7 +20,7 @@ func TestTraverseGenesis(t *testing.T){
     tester("traverse to genesis", func(mod *MonkModule){
         mod.Start()
         callback("traverse_to_genesis", mod, func(){
-            curchain := mod.monk.Ethereum.BlockChain()
+            curchain := mod.monk.ethereum.BlockChain()
             curblock := curchain.CurrentBlock
             gen_tr := traverse_to_genesis(curchain, curblock)
             gen := curchain.Genesis()

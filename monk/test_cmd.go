@@ -6,6 +6,7 @@ import (
     "os"
     "path"
     "fmt"
+    "log"
     "time"
     "strconv"
 )
@@ -26,7 +27,7 @@ func (t* Test) TestRun(){
         // mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
         fmt.Println("mining addresS", mod.monk.FetchAddr())
         mod.Start()
-        mod.monk.Ethereum.WaitForShutdown()
+        mod.monk.ethereum.WaitForShutdown()
     }, 0)
 }
 
@@ -54,7 +55,7 @@ func (t *Test) TestStopMining(){
 // mine, stop mining, start mining
 func (t *Test) TestStopListening(){
     t.tester("mining", func(mod *MonkModule){
-        mod.monk.Config.Mining = false
+        mod.monk.config.Mining = false
         mod.Start()
         time.Sleep(time.Second*1)
         fmt.Println("stopping listening")
@@ -67,14 +68,14 @@ func (t *Test) TestStopListening(){
 
 func (t *Test) TestRestart(){
     mod := NewMonk(nil)
-    mod.monk.Config.Mining = true
+    mod.monk.config.Mining = true
     mod.Init()
     mod.Start()
     time.Sleep(time.Second*5)
     mod.Shutdown()
     time.Sleep(time.Second*5)
     mod = NewMonk(nil)
-    mod.monk.Config.Mining = true
+    mod.monk.config.Mining = true
     mod.Init()
     mod.Start()
     time.Sleep(time.Second*5)
@@ -93,7 +94,7 @@ func (t *Test) TestBig(){
 func (t *Test) TestMaxGas(){
     t.tester("max gas", func(mod *MonkModule){
         //mod.Start()
-        v := monkchain.DougValue("maxgas", "values", mod.monk.Ethereum.BlockChain().CurrentBlock.State())
+        v := monkchain.DougValue("maxgas", "values", mod.monk.ethereum.BlockChain().CurrentBlock.State())
         fmt.Println(v)
         os.Exit(0)
     }, 0)
@@ -104,7 +105,7 @@ func (t *Test) TestMaxGas(){
 func (t *Test) TestValidate(){
     t.tester("validate", func(mod *MonkModule){
         PrettyPrintChainAccounts(mod)
-        gen := mod.monk.Ethereum.BlockChain().Genesis()
+        gen := mod.monk.ethereum.BlockChain().Genesis()
         a1 := monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
         a2 := monkutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
         a3 := monkutil.Hex2Bytes("cced0756041f7aed3ce278c56ee638bade96d001")
@@ -120,7 +121,7 @@ func (t *Test) TestValidate(){
 // print the genesis state
 func (t *Test) TestGenesisAccounts(){
     t.tester("genesis contract", func(mod *MonkModule){
-        curchain := mod.monk.Ethereum.BlockChain()
+        curchain := mod.monk.ethereum.BlockChain()
         block := curchain.CurrentBlock
         PrettyPrintBlockAccounts(block)
         os.Exit(0)
@@ -131,7 +132,7 @@ func (t *Test) TestGenesisAccounts(){
 func (t *Test) TestBlockNum(){
 
     t.tester("block num", func(mod *MonkModule){
-        curchain := mod.monk.Ethereum.BlockChain()
+        curchain := mod.monk.ethereum.BlockChain()
         block := curchain.CurrentBlock
         fmt.Println(curchain.LastBlockNumber)
         fmt.Println(block.Number)
@@ -161,7 +162,10 @@ func (t *Test) TestCompression(){
         monkutil.COMPRESS = compress
         fmt.Println("compress:", monkutil.COMPRESS)
         t.tester(name, func(mod *MonkModule){
-            contract_addr := mod.Script(path.Join(monkchain.ContractPath, "tests/lots-of-stuff.lll"), "lll")
+            contract_addr, err := mod.Script(path.Join(monkchain.ContractPath, "tests/lots-of-stuff.lll"), "lll")
+            if err != nil{
+                log.Fatal(err)
+            }
             // send many msgs
             start := time.Now()
             for i := 0; i < 10000; i++{
@@ -171,8 +175,8 @@ func (t *Test) TestCompression(){
                 fmt.Println(i)
             }
             results_time[name] = time.Since(start)
-            root = mod.monk.Config.RootDir
-            db = mod.monk.Config.DbName
+            root = mod.monk.config.RootDir
+            db = mod.monk.config.DbName
             f := path.Join(root, db)
             fi, err := os.Stat(f)
             if err != nil{
