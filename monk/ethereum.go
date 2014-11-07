@@ -142,36 +142,36 @@ func (mod *MonkModule) Name() string {
    Wrapper so module satisfies Blockchain
 */
 
-func (mod *MonkModule) GetWorldState() *modules.WorldState {
-	return mod.monk.GetWorldState()
+func (mod *MonkModule) WorldState() *modules.WorldState {
+	return mod.monk.WorldState()
 }
 
-func (mod *MonkModule) GetState() *modules.State {
-	return mod.monk.GetState()
+func (mod *MonkModule) State() *modules.State {
+	return mod.monk.State()
 }
 
-func (mod *MonkModule) GetStorage(target string) *modules.Storage {
-	return mod.monk.GetStorage(target)
+func (mod *MonkModule) Storage(target string) *modules.Storage {
+	return mod.monk.Storage(target)
 }
 
-func (mod *MonkModule) GetAccount(target string) *modules.Account {
-	return mod.monk.GetAccount(target)
+func (mod *MonkModule) Account(target string) *modules.Account {
+	return mod.monk.Account(target)
 }
 
-func (mod *MonkModule) GetStorageAt(target, storage string) string {
-	return mod.monk.GetStorageAt(target, storage)
+func (mod *MonkModule) StorageAt(target, storage string) string {
+	return mod.monk.StorageAt(target, storage)
 }
 
-func (mod *MonkModule) GetBlockCount() int {
-	return mod.monk.GetBlockCount()
+func (mod *MonkModule) BlockCount() int {
+	return mod.monk.BlockCount()
 }
 
-func (mod *MonkModule) GetLatestBlock() string {
-	return mod.monk.GetLatestBlock()
+func (mod *MonkModule) LatestBlock() string {
+	return mod.monk.LatestBlock()
 }
 
-func (mod *MonkModule) GetBlock(hash string) *modules.Block {
-	return mod.monk.GetBlock(hash)
+func (mod *MonkModule) Block(hash string) *modules.Block {
+	return mod.monk.Block(hash)
 }
 
 func (mod *MonkModule) IsScript(target string) bool {
@@ -206,12 +206,12 @@ func (mod *MonkModule) IsAutocommit() bool {
    Module should also satisfy KeyManager
 */
 
-func (mod *MonkModule) GetActiveAddress() string {
-	return mod.monk.GetActiveAddress()
+func (mod *MonkModule) ActiveAddress() string {
+	return mod.monk.ActiveAddress()
 }
 
-func (mod *MonkModule) GetAddress(n int) (string, error) {
-	return mod.monk.GetAddress(n)
+func (mod *MonkModule) Address(n int) (string, error) {
+	return mod.monk.Address(n)
 }
 
 func (mod *MonkModule) SetAddress(addr string) error {
@@ -234,7 +234,7 @@ func (mod *MonkModule) AddressCount() int {
    Implement Blockchain
 */
 
-func (monk *Monk) GetWorldState() *modules.WorldState {
+func (monk *Monk) WorldState() *modules.WorldState {
 	state := monk.pipe.World().State()
 	stateMap := &modules.WorldState{make(map[string]*modules.Account), []string{}}
 
@@ -242,13 +242,13 @@ func (monk *Monk) GetWorldState() *modules.WorldState {
 	trieIterator.Each(func(addr string, acct *monkutil.Value) {
 		hexAddr := monkutil.Bytes2Hex([]byte(addr))
 		stateMap.Order = append(stateMap.Order, hexAddr)
-		stateMap.Accounts[hexAddr] = monk.GetAccount(hexAddr)
+		stateMap.Accounts[hexAddr] = monk.Account(hexAddr)
 
 	})
 	return stateMap
 }
 
-func (monk *Monk) GetState() *modules.State {
+func (monk *Monk) State() *modules.State {
 	state := monk.pipe.World().State()
 	stateMap := &modules.State{make(map[string]*modules.Storage), []string{}}
 
@@ -256,13 +256,13 @@ func (monk *Monk) GetState() *modules.State {
 	trieIterator.Each(func(addr string, acct *monkutil.Value) {
 		hexAddr := monkutil.Bytes2Hex([]byte(addr))
 		stateMap.Order = append(stateMap.Order, hexAddr)
-		stateMap.State[hexAddr] = monk.GetStorage(hexAddr)
+		stateMap.State[hexAddr] = monk.Storage(hexAddr)
 
 	})
 	return stateMap
 }
 
-func (monk *Monk) GetStorage(addr string) *modules.Storage {
+func (monk *Monk) Storage(addr string) *modules.Storage {
 	w := monk.pipe.World()
 	obj := w.SafeGet(monkutil.UserHex2Bytes(addr)).StateObject
 	ret := &modules.Storage{make(map[string]string), []string{}}
@@ -275,14 +275,14 @@ func (monk *Monk) GetStorage(addr string) *modules.Storage {
 	return ret
 }
 
-func (monk *Monk) GetAccount(target string) *modules.Account {
+func (monk *Monk) Account(target string) *modules.Account {
 	w := monk.pipe.World()
 	obj := w.SafeGet(monkutil.UserHex2Bytes(target)).StateObject
 
 	bal := obj.Balance.String()
 	nonce := obj.Nonce
 	script := monkutil.Bytes2Hex(obj.Code)
-	storage := monk.GetStorage(target)
+	storage := monk.Storage(target)
 	isscript := len(storage.Order) > 0 || len(script) > 0
 
 	return &modules.Account{
@@ -295,7 +295,7 @@ func (monk *Monk) GetAccount(target string) *modules.Account {
 	}
 }
 
-func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string {
+func (monk *Monk) StorageAt(contract_addr string, storage_addr string) string {
 	var saddr *big.Int
 	if monkutil.IsHex(storage_addr) {
 		saddr = monkutil.BigD(monkutil.Hex2Bytes(monkutil.StripHex(storage_addr)))
@@ -316,15 +316,15 @@ func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string
 	return monkutil.Bytes2Hex(ret.Bytes())
 }
 
-func (monk *Monk) GetBlockCount() int {
+func (monk *Monk) BlockCount() int {
 	return int(monk.ethereum.BlockChain().LastBlockNumber)
 }
 
-func (monk *Monk) GetLatestBlock() string {
+func (monk *Monk) LatestBlock() string {
 	return monkutil.Bytes2Hex(monk.ethereum.BlockChain().LastBlockHash)
 }
 
-func (monk *Monk) GetBlock(hash string) *modules.Block {
+func (monk *Monk) Block(hash string) *modules.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
 	block := monk.ethereum.BlockChain().GetBlock(hashBytes)
 	b := &modules.Block{}
@@ -368,7 +368,7 @@ func (monk *Monk) convertTx(containingBlock *monkchain.Block, monkTx *monkchain.
 
 func (monk *Monk) IsScript(target string) bool {
 	// is contract if storage is empty and no bytecode
-	obj := monk.GetAccount(target)
+	obj := monk.Account(target)
 	storage := obj.Storage
 	if len(storage.Order) == 0 && obj.Script == "" {
 		return false
@@ -490,13 +490,13 @@ func (m *Monk) IsAutocommit() bool {
    Blockchain interface should also satisfy KeyManager
 */
 
-func (monk *Monk) GetActiveAddress() string {
+func (monk *Monk) ActiveAddress() string {
 	keypair := monk.keyManager.KeyPair()
 	addr := monkutil.Bytes2Hex(keypair.Address())
 	return addr
 }
 
-func (monk *Monk) GetAddress(n int) (string, error) {
+func (monk *Monk) Address(n int) (string, error) {
 	ring := monk.keyManager.KeyRing()
 	if n >= ring.Len() {
 		return "", fmt.Errorf("cursor %d out of range (0..%d)", n, ring.Len())

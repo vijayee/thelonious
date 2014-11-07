@@ -46,7 +46,7 @@ func TestGenesisMsg(t *testing.T){
             gendoug := monkutil.Bytes2Hex(monkchain.GENDOUG)
             mod.Msg(gendoug, []string{key, value})
             callback("genesis msg", mod, func(){
-                recovered := "0x"+ mod.GetStorageAt(gendoug, key)
+                recovered := "0x"+ mod.StorageAt(gendoug, key)
                 if !check_recovered(value, recovered){
                     fmt.Println("got:", recovered, "expected:", value)
                 }

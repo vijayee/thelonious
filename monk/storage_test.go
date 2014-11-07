@@ -48,7 +48,7 @@ func TestSimpleStorage(t *testing.T){
         mod.Start()
         // callback when block is mined
         callback("simple storage", mod, func(){
-            recovered := "0x" + mod.GetStorageAt(contract_addr, key)
+            recovered := "0x" + mod.StorageAt(contract_addr, key)
             result := check_recovered(value, recovered)
             if !result{
                 t.Error("got:", recovered, "expected:", value)
@@ -72,7 +72,7 @@ func TestMsgStorage(t *testing.T){
             mod.Msg(contract_addr, []string{key, value})
             callback("test key-value", mod, func(){
                 start := time.Now()
-                recovered := "0x"+mod.GetStorageAt(contract_addr, key)
+                recovered := "0x"+mod.StorageAt(contract_addr, key)
                 dif := time.Since(start)
                 fmt.Println("get storage took", dif)
                 result := check_recovered(value, recovered)
