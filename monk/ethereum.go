@@ -305,10 +305,8 @@ func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string
 
 	contract_addr = monkutil.StripHex(contract_addr)
 	caddr := monkutil.Hex2Bytes(contract_addr)
-	//saddr := monkutil.Hex2Bytes(storage_addr)
 	w := monk.pipe.World()
 	ret := w.SafeGet(caddr).GetStorage(saddr)
-	//ret := e.Pipe.Storage(caddr, saddr)
 	//returns an ethValue
 	// TODO: figure it out!
 	//val := BigNumStrToHex(ret)
@@ -578,19 +576,6 @@ func (monk *Monk) GenDoug() string {
 	return monkutil.Bytes2Hex(monkchain.GENDOUG)
 }
 
-// TODO: return hex string
-func (monk *Monk) _GetStorage(contract_addr string) map[string]*monkutil.Value {
-	acct := monk.pipe.World().SafeGet(monkutil.Hex2Bytes(contract_addr)).StateObject
-	m := make(map[string]*monkutil.Value)
-	acct.EachStorage(func(k string, v *monkutil.Value) {
-		kk := monkutil.Bytes2Hex([]byte(k))
-		fmt.Println("each storage", v)
-		fmt.Println("each storage val", v.Val)
-		m[kk] = v
-	})
-	return m
-}
-
 func (monk *Monk) StartMining() bool {
 	return StartMining(monk.ethereum)
 }
@@ -611,13 +596,6 @@ func (monk *Monk) StopListening() {
    some key management stuff
 */
 
-//TODO: deprecate (now GetActiveAddress)
-func (monk *Monk) FetchAddr() string {
-	keypair := monk.keyManager.KeyPair()
-	pub := monkutil.Bytes2Hex(keypair.Address())
-	return pub
-}
-
 func (monk *Monk) fetchPriv() string {
 	keypair := monk.keyManager.KeyPair()
 	priv := monkutil.Bytes2Hex(keypair.PrivateKey)
@@ -632,12 +610,6 @@ func (monk *Monk) fetchKeyPair() *monkcrypto.KeyPair {
 // TODO: deprecate!
 func (monk *Monk) FetchPriv() string {
 	return monk.fetchPriv()
-}
-
-// switch current key
-// TODO: deprecate (SetAddressN)
-func (monk *Monk) SetCursor(n int) {
-	monk.keyManager.SetCursor(n)
 }
 
 func (monk *Monk) Stop() {

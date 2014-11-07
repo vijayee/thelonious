@@ -15,7 +15,7 @@ import (
 func (t *Test) TestBasic(){
     t.tester("basic", func(mod *MonkModule){
         // mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
-        fmt.Println("mining addresS", mod.monk.FetchAddr())
+        fmt.Println("mining addresS", mod.monk.GetActiveAddress())
         mod.Start()
         fmt.Println("the node should be running and mining. if not, there are problems. it will stop in 10 seconds ...")
     }, 10)
@@ -25,7 +25,7 @@ func (t *Test) TestBasic(){
 func (t* Test) TestRun(){
     t.tester("basic", func(mod *MonkModule){
         // mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
-        fmt.Println("mining addresS", mod.monk.FetchAddr())
+        fmt.Println("mining addresS", mod.monk.GetActiveAddress())
         mod.Start()
         mod.monk.ethereum.WaitForShutdown()
     }, 0)
@@ -41,7 +41,7 @@ func (t *Test) TestState(){
 // mine, stop mining, start mining
 func (t *Test) TestStopMining(){
     t.tester("mining", func(mod *MonkModule){
-        fmt.Println("mining addresS", mod.monk.FetchAddr())
+        fmt.Println("mining addresS", mod.monk.GetActiveAddress())
         mod.Start()
         time.Sleep(time.Second*10)
         fmt.Println("stopping mining")
