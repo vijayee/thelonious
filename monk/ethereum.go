@@ -36,9 +36,14 @@ var logger *monklog.Logger = monklog.NewLogger("EthChain(deCerver)")
 // implements decerver-interfaces Module
 type MonkModule struct{
     monk *Monk
+
+	wsAPIServiceFactory api.WsAPIServiceFactory
+	httpAPIService      interface{}
+	eventReg events.EventRegistry
 }
 
-// implements decerver-interfaces Database
+// implements decerver-interfaces Blockchain 
+// TODO: privatize everything bitch
 type Monk struct{
     Config *ChainConfig
     Ethereum *eth.Ethereum
@@ -135,15 +140,11 @@ func (mod *MonkModule) Name() string{
 }
 
 /*
-    Wrapper so module satisfies Database
+    Wrapper so module satisfies Blockchain
 */
 
-func (mod *MonkModule) Get(cmd string, params ...string) (interface{}, error){
-    return mod.monk.Get(cmd, params...)    
-}
-
-func (mod *MonkModule) Push(cmd string, params ...string) (string, error){
-    return mod.monk.Push(cmd, params...)
+func (mod *MonkModule) GetWorldState() modules.WorldState{
+    return mod.monk.GetWorldState()
 }
 
 func (mod *MonkModule) GetState() modules.State{
@@ -154,8 +155,28 @@ func (mod *MonkModule) GetStorage(target string) modules.Storage{
     return mod.monk.GetStorage(target)
 }
 
+func (mod *MonkModule) GetAccount(target string) modules.Account{
+    return mod.monk.GetAccount(target)
+}
+
 func (mod *MonkModule) GetStorageAt(target, storage string) string{
     return mod.monk.GetStorageAt(target, storage)
+}
+
+func (mod *MonkModule) GetBlockCount() int{
+    return mod.monk.GetBlockCount()
+}
+
+func (mod *MonkModule) GetLatestBlock() string{
+    return mod.monk.GetLatestBlock()
+}
+
+func (mod *MonkModule) GetBlock(hash string) Block{
+    return mod.monk.GetBlock(hash)
+}
+
+func (mod *MonkModule) IsScript(target string) bool{
+    return mod.monk.IsScript(target)
 }
 
 func (mod *MonkModule) Tx(addr, amt string){
@@ -182,17 +203,41 @@ func (mod *MonkModule) IsAutocommit() bool{
     return mod.monk.IsAutocommit()
 }
 
-
 /*
-    Implement Database
+    Module should also satisfy KeyManager
 */
 
-func (monk *Monk) Get(cmd string, params ... string) (interface{}, error){
-    return nil, nil
+func (mod *MonkModule) GetActiveAddress() string{
+    return mod.monk.GetActiveAddress()
 }
 
-func (monk *Monk) Push(cmd string, params ... string) (string, error){
-    return "", nil
+func (mod *MonkModule) GetAddress(n int) (string, error){
+    return mod.monk.GetAddress(n)
+}
+
+func (mod *MonkModule) SetAddress(addr string) error{
+    return mod.monk.SetAddress(addr)
+}
+
+func (mod *MonkModule) SetAddressN(n int) error{
+    return mod.monk.SetAddressN(n)
+}
+
+func (mod *MonkModule) NewAddress(set bool) string{
+    return mod.monk.NewAddress(set)
+}
+
+func (mod *MonkModule) AddressCount() int{
+    return mod.monk.AddressCount()
+}
+
+
+/*
+    Implement Blockchain
+*/
+
+func (monk *Monk) GetWorldState() WorldState{
+    //TODO:
 }
 
 func (monk *Monk) GetState() modules.State{
@@ -203,7 +248,7 @@ func (monk *Monk) GetState() modules.State{
     trieIterator.Each(func (addr string, acct *monkutil.Value){
         hexAddr := monkutil.Bytes2Hex([]byte(addr))
         stateMap.Order = append(stateMap.Order, hexAddr)
-        stateMap.State[hexAddr] = modules.Storage{make(map[string]interface{}), []string{}}
+        stateMap.State[hexAddr] = modules.Storage{make(map[string]string), []string{}}
 
         acctObj := monkstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
         acctObj.EachStorage(func (storage string, value *monkutil.Value){
@@ -221,7 +266,7 @@ func (monk *Monk) GetState() modules.State{
 func (monk *Monk) GetStorage(addr string) modules.Storage{
     w := monk.Pipe.World()
     obj := w.SafeGet(monkutil.UserHex2Bytes(addr)).StateObject
-    ret := modules.Storage{make(map[string]interface{}), []string{}}
+    ret := modules.Storage{make(map[string]string), []string{}}
     obj.EachStorage(func(k string, v *monkutil.Value){
         kk := monkutil.Bytes2Hex([]byte(k))
         vv := monkutil.Bytes2Hex(v.Bytes())
@@ -231,6 +276,9 @@ func (monk *Monk) GetStorage(addr string) modules.Storage{
     return ret
 }
 
+func (monk *Monk) GetAccount(target string) Account{
+ // TODO: this!
+}
 
 func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string{
     var saddr *big.Int
@@ -255,9 +303,34 @@ func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string
     return monkutil.Bytes2Hex(ret.Bytes())
 }
 
+func (monk *Monk) GetBlockCount() int{
+    return monk.Ethereum.Blockchain().LastBlockNumber
+}
+
+func (monk *Monk) GetLatestBlock() string{
+   return monkutil.Bytes2Hex(monk.Ethereum.Blockchain().LastBlockHash)
+}
+
+func (monk *Monk) GetBlock(hash string) Block{
+   hashBytes := monkutil.Hex2Bytes(hash) 
+   block := monk.Ethereum.Blockchain().GetBlock(hashBytes)
+    
+   // TODO: convert eth block to module block
+
+}
+
+func (monk *Monk) IsScript(target string) bool{
+    // is contract if storage is empty and no bytecode
+    obj := monk.GetAccount(target)
+    storage := obj.Storage 
+    if len(storage.Order) == 0 && obj.Script == ""{
+        return false
+    }
+    return true
+}
+
 // send a tx
-// TODO: return hash
-func (monk *Monk) Tx(addr, amt string){
+func (monk *Monk) Tx(addr, amt string) (string, error){
     keys := monk.fetchKeyPair()
     addr = monkutil.StripHex(addr)
     if addr[:2] == "0x"{
@@ -266,28 +339,29 @@ func (monk *Monk) Tx(addr, amt string){
     byte_addr := monkutil.Hex2Bytes(addr)
     // note, NewValue will not turn a string int into a big int..
     start := time.Now()
-    _, err := monk.Pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big("20000000000")), monkutil.NewValue(monkutil.Big("100000")), "")
+    hash, err := monk.Pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big("20000000000")), monkutil.NewValue(monkutil.Big("100000")), "")
     dif := time.Since(start)
     fmt.Println("pipe tx took ", dif)
     if err != nil{
-        log.Fatal("tx err", err)
+        return "", err
     }
+    return monkutil.Bytes2Hex(hash), nil
 }
 
 // send a message to a contract
-func (monk *Monk) Msg(addr string, data []string){
+func (monk *Monk) Msg(addr string, data []string) (string, error){
     packed := PackTxDataArgs(data...)
     keys := monk.fetchKeyPair()
     addr = monkutil.StripHex(addr)
     byte_addr := monkutil.Hex2Bytes(addr)
-    _, err := monk.Pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big("350")), monkutil.NewValue(monkutil.Big("200000000000")), monkutil.NewValue(monkutil.Big("1000000")), packed)
+    hash, err := monk.Pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big("350")), monkutil.NewValue(monkutil.Big("200000000000")), monkutil.NewValue(monkutil.Big("1000000")), packed)
     if err != nil{
-        //TODO: don't be so mean
-        log.Fatal("tx err", err)
+        return "", err
     }
+    return monkutil.Bytes2Hex(hash), nil
 }
 
-func (monk *Monk) Script(file, lang string) string{
+func (monk *Monk) Script(file, lang string) (string, error){
     var script string
     if lang == "lll"{
         script = CompileLLL(file) // if lll, compile and pass along
@@ -306,15 +380,16 @@ func (monk *Monk) Script(file, lang string) string{
     // well isn't this pretty! barf
     contract_addr, err := monk.Pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("271")), monkutil.NewValue(monkutil.Big("2000000000000")), monkutil.NewValue(monkutil.Big("1000000")), script)
     if err != nil{
-        log.Fatal("could not deploy contract", err)
+        return "", err
     }
-    return monkutil.Bytes2Hex(contract_addr)
+    return monkutil.Bytes2Hex(contract_addr), nil
 }
 
 
 
 // subscribe to an address (hex)
 // returns a chanel that will fire when address is updated
+// TODO: cast resource to proper interfaces
 func (monk *Monk) Subscribe(name, event, target string) chan events.Event{
     eth_ch := make(chan monkreact.Event, 1)
     if target != ""{
@@ -365,6 +440,62 @@ func (m *Monk) AutoCommit(toggle bool){
 
 func (m *Monk) IsAutocommit() bool{
     return m.Ethereum.IsMining()
+}
+
+/*
+    Blockchain interface should also satisfy KeyManager
+*/
+
+func (monk *Monk) GetActiveAddress() string{
+    keypair := monk.keyManager.KeyPair()
+    addr := monkutil.Bytes2Hex(keypair.Address())
+    return addr
+}
+
+func (monk *Monk) GetAddress(n int) (string, error){
+    ring := monk.keyManager.KeyRing()
+    if n >= ring.Len(){
+	    return "", fmt.Errorf("cursor %d out of range (0..%d)", n, ring.Len())
+    }
+    pair := ring.GetKeyPair(n)
+    addr := monkutil.Bytes2Hex(pair.Address())
+    return addr, nil
+}
+
+func (monk *Monk) SetAddress(addr string) error{
+    n := -1
+    i := 0
+    ring := monk.keyManager.KeyRing()
+    ring.Each(func(kp *monkcrypto.KeyPair){
+        a := monkutil.Bytes2Hex(kp.Address())
+        if a == addr{
+            n = i
+        }
+        i += 1
+    })
+    if n == -1{
+        return fmt.Errorf("Address %s not found in keyring", addr)
+    }
+    return monk.SetAddressN(n)
+}
+
+func (monk *Monk) SetAddressN(n int) error{
+    return monk.keyManager.SetCursor(n)
+}
+
+func (monk *Monk) NewAddress(set bool) string{
+    newpair := monkcrypto.GenerateNewKeyPair()
+    addr := monkutil.Bytes2Hex(newpair.Address())
+    ring := monk.keyManager.KeyRing()
+    ring.AddKeyPair(newpair)
+    if set{
+        monk.SetAddressN(ring.Len()-1)
+    }
+    return addr
+}
+
+func (monk *Monk) AddressCount() int{
+    return monk.keyManager.KeyRing().Len()
 }
 
 
@@ -435,6 +566,7 @@ func (monk *Monk) StopListening() {
     some key management stuff
 */
 
+//TODO: deprecate (now GetActiveAddress)
 func (monk *Monk) FetchAddr() string{
     keypair := monk.keyManager.KeyPair()
     pub := monkutil.Bytes2Hex(keypair.Address())
@@ -452,11 +584,13 @@ func (monk *Monk) fetchKeyPair() *monkcrypto.KeyPair{
 }
 
 // this is bad but I need it for testing
+// TODO: deprecate!
 func (monk *Monk) FetchPriv() string{
     return monk.fetchPriv()
 }
 
 // switch current key
+// TODO: deprecate (SetAddressN)
 func (monk *Monk) SetCursor(n int){
     monk.keyManager.SetCursor(n)
 }
