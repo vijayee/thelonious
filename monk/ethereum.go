@@ -237,7 +237,17 @@ func (mod *MonkModule) AddressCount() int{
 */
 
 func (monk *Monk) GetWorldState() WorldState{
-    //TODO:
+    state := monk.Pipe.World().State()
+    stateMap := modules.State{make(map[string]modules.Account), []string{}}
+
+    trieIterator := state.Trie.NewIterator()
+    trieIterator.Each(func (addr string, acct *monkutil.Value){
+        hexAddr := monkutil.Bytes2Hex([]byte(addr))
+        stateMap.Order = append(stateMap.Order, hexAddr)
+        stateMap.Accounts[hexAddr] = monk.GetAccount(hexAddr)
+
+    })
+    return stateMap
 }
 
 func (monk *Monk) GetState() modules.State{
@@ -248,17 +258,8 @@ func (monk *Monk) GetState() modules.State{
     trieIterator.Each(func (addr string, acct *monkutil.Value){
         hexAddr := monkutil.Bytes2Hex([]byte(addr))
         stateMap.Order = append(stateMap.Order, hexAddr)
-        stateMap.State[hexAddr] = modules.Storage{make(map[string]string), []string{}}
+        stateMap.State[hexAddr] = monk.GetStorage(hexAddr)
 
-        acctObj := monkstate.NewStateObjectFromBytes([]byte(addr), acct.Bytes())
-        acctObj.EachStorage(func (storage string, value *monkutil.Value){
-            value.Decode()
-            hexStorage := monkutil.Bytes2Hex([]byte(storage))
-            storageState := stateMap.State[hexAddr]
-            storageState.Order = append(stateMap.State[hexAddr].Order, hexStorage)
-            storageState.Storage[hexStorage] = monkutil.Bytes2Hex(value.Bytes())
-            stateMap.State[hexAddr] = storageState
-        })
     })
     return stateMap
 }
@@ -277,7 +278,23 @@ func (monk *Monk) GetStorage(addr string) modules.Storage{
 }
 
 func (monk *Monk) GetAccount(target string) Account{
- // TODO: this!
+    w := monk.Pipe.World()
+    obj := w.SafeGet(monkutil.UserHex2Bytes(addr)).StateObject
+
+    bal := obj.Balance.String()
+    nonce := strconv.Itoa(obj.Nonce)
+    script := monkutil.Bytes2Hex(obj.Code)
+    storage := monk.GetStorage(target)
+    isscript := len(storage.Order) > 0 || len(script) > 0
+
+    return modules.Account{
+        Address: target,
+        Balance: bal,
+        Nonce: nonce,
+        Script: script,
+        Storage: storage,
+        IsScript: isscript,
+    }
 }
 
 func (monk *Monk) GetStorageAt(contract_addr string, storage_addr string) string{
