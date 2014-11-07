@@ -51,6 +51,7 @@ type Monk struct {
 	reactor    *monkreact.ReactorEngine
 	started    bool
 	chans      map[string]chan events.Event
+    ethchans   map[string]chan monkreact.Event
 }
 
 /*
@@ -107,6 +108,7 @@ func (mod *MonkModule) Init() error {
 
 	// subscribe to the new block
 	m.chans = make(map[string]chan events.Event)
+	m.ethchans = make(map[string]chan monkreact.Event)
 	m.Subscribe("newBlock", "newBlock", "")
 
 	log.Println(m.ethereum.Port)
@@ -178,16 +180,24 @@ func (mod *MonkModule) IsScript(target string) bool {
 	return mod.monk.IsScript(target)
 }
 
-func (mod *MonkModule) Tx(addr, amt string) {
-	mod.monk.Tx(addr, amt)
+func (mod *MonkModule) Tx(addr, amt string) (string, error){
+	return mod.monk.Tx(addr, amt)
 }
 
-func (mod *MonkModule) Msg(addr string, data []string) {
-	mod.monk.Msg(addr, data)
+func (mod *MonkModule) Msg(addr string, data []string) (string, error){
+	return mod.monk.Msg(addr, data)
 }
 
 func (mod *MonkModule) Script(file, lang string) (string, error) {
 	return mod.monk.Script(file, lang)
+}
+
+func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event{
+    return mod.monk.Subscribe(name, event, target)
+}
+
+func (mod *MonkModule) UnSubscribe(name string){
+    mod.monk.UnSubscribe(name)
 }
 
 func (mod *MonkModule) Commit() {
@@ -327,43 +337,7 @@ func (monk *Monk) LatestBlock() string {
 func (monk *Monk) Block(hash string) *modules.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
 	block := monk.ethereum.BlockChain().GetBlock(hashBytes)
-	b := &modules.Block{}
-	b.Coinbase = hex.EncodeToString(block.Coinbase)
-	b.Difficulty = block.Difficulty.String()
-	b.GasLimit = block.GasLimit.String()
-	b.GasUsed = block.GasUsed.String()
-	b.Hash = hex.EncodeToString(block.Hash())
-	b.MinGasPrice = block.MinGasPrice.String()
-	b.Nonce = hex.EncodeToString(block.Nonce)
-	b.Number = block.Number.String()
-	b.PrevHash = hex.EncodeToString(block.PrevHash)
-	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction,len(block.Transactions()))
-	for idx , tx := range block.Transactions() {
-		txs[idx] = monk.convertTx(block,tx)
-	}
-	b.Transactions = txs
-	b.TxRoot = hex.EncodeToString(block.TxSha)
-	b.UncleRoot = hex.EncodeToString(block.UncleSha)
-	b.Uncles = make([]string,len(block.Uncles))
-	for idx, u := range block.Uncles {
-		b.Uncles[idx] = hex.EncodeToString(u.Hash())
-	}
-	return nil
-}
-
-func (monk *Monk) convertTx(containingBlock *monkchain.Block, monkTx *monkchain.Transaction) *modules.Transaction {
-	tx := &modules.Transaction{}
-	tx.BlockHash = hex.EncodeToString(containingBlock.Hash())
-	tx.ContractCreation = monkTx.CreatesContract()
-	tx.Gas = monkTx.Gas.String()
-	tx.GasCost = monkTx.GasPrice.String()
-	tx.Hash = hex.EncodeToString(monkTx.Hash())
-	tx.Nonce = fmt.Sprintf("%d",monkTx.Nonce)
-	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
-	tx.Sender = hex.EncodeToString(monkTx.Sender())
-	tx.Value = monkTx.Value.String()
-	return tx
+	return convertBlock(block)
 }
 
 func (monk *Monk) IsScript(target string) bool {
@@ -432,9 +406,7 @@ func (monk *Monk) Script(file, lang string) (string, error) {
 	return monkutil.Bytes2Hex(contract_addr), nil
 }
 
-// subscribe to an address (hex)
 // returns a chanel that will fire when address is updated
-// TODO: cast resource to proper interfaces
 func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 	eth_ch := make(chan monkreact.Event, 1)
 	if target != "" {
@@ -444,23 +416,45 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 		monk.reactor.Subscribe(event, eth_ch)
 	}
 
-	monk.chans[name] = make(chan events.Event)
-	ch := monk.chans[name]
+    ch := make(chan events.Event) 
+	monk.chans[name] = ch
+    monk.ethchans[name] = eth_ch
 
 	// fire up a goroutine and broadcast module specific chan on our main chan
 	go func() {
 		for {
-			r := <-eth_ch
-			ch <- events.Event{
+			eve, isUp := <-eth_ch
+            if !isUp{
+                break
+            }
+            returnEvent := events.Event{
 				Event:     event,
 				Target:    target,
 				Source:    "monk",
-				Resource:  r,
 				TimeStamp: time.Now(),
 			}
+            // cast resource to appropriate type
+            resource := eve.Resource
+            if block, ok := resource.(monkchain.Block); ok{
+                returnEvent.Resource = convertBlock(&block)
+            } else if tx, ok := resource.(monkchain.Transaction); ok{
+                returnEvent.Resource = convertTx(&tx)
+            } else if txFail, ok := resource.(monkchain.TxFail); ok{
+                tx := convertTx(txFail.Tx)
+                tx.Error = txFail.Err.Error()
+                returnEvent.Resource = tx
+            }
+            ch <- returnEvent
 		}
 	}()
 	return ch
+}
+
+func (monk *Monk) UnSubscribe(name string){
+    close(monk.chans[name])
+    close(monk.ethchans[name])
+    delete(monk.chans, name)
+    delete(monk.ethchans, name)
 }
 
 // Mine a block
@@ -683,3 +677,45 @@ func PackTxDataArgs(args ...string) string {
 	return "0x" + monkutil.Bytes2Hex(ret)
 	// return ret
 }
+
+// convert ethereum block to modules block
+func convertBlock(block *monkchain.Block) *modules.Block{
+	b := &modules.Block{}
+	b.Coinbase = hex.EncodeToString(block.Coinbase)
+	b.Difficulty = block.Difficulty.String()
+	b.GasLimit = block.GasLimit.String()
+	b.GasUsed = block.GasUsed.String()
+	b.Hash = hex.EncodeToString(block.Hash())
+	b.MinGasPrice = block.MinGasPrice.String()
+	b.Nonce = hex.EncodeToString(block.Nonce)
+	b.Number = block.Number.String()
+	b.PrevHash = hex.EncodeToString(block.PrevHash)
+	b.Time = int(block.Time)
+	txs := make([]*modules.Transaction,len(block.Transactions()))
+	for idx , tx := range block.Transactions() {
+		txs[idx] = convertTx(tx)
+	}
+	b.Transactions = txs
+	b.TxRoot = hex.EncodeToString(block.TxSha)
+	b.UncleRoot = hex.EncodeToString(block.UncleSha)
+	b.Uncles = make([]string,len(block.Uncles))
+	for idx, u := range block.Uncles {
+		b.Uncles[idx] = hex.EncodeToString(u.Hash())
+	}
+    return b
+}
+
+// convert ethereum tx to modules tx
+func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
+	tx := &modules.Transaction{}
+	tx.ContractCreation = monkTx.CreatesContract()
+	tx.Gas = monkTx.Gas.String()
+	tx.GasCost = monkTx.GasPrice.String()
+	tx.Hash = hex.EncodeToString(monkTx.Hash())
+	tx.Nonce = fmt.Sprintf("%d",monkTx.Nonce)
+	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
+	tx.Sender = hex.EncodeToString(monkTx.Sender())
+	tx.Value = monkTx.Value.String()
+	return tx
+}
+
