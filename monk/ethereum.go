@@ -36,6 +36,7 @@ var logger *monklog.Logger = monklog.NewLogger("EthChain(deCerver)")
 // implements decerver-interfaces Module
 type MonkModule struct {
 	monk *Monk
+    Config *ChainConfig
 
 	wsAPIServiceFactory api.WsAPIServiceFactory
 	httpAPIService      interface{}
@@ -43,6 +44,8 @@ type MonkModule struct {
 }
 
 // implements decerver-interfaces Blockchain
+// this will get passed to Otto (javascript vm)
+// as such, it does not have "administrative" methods
 type Monk struct {
 	config     *ChainConfig
 	ethereum   *eth.Ethereum
@@ -58,23 +61,24 @@ type Monk struct {
    First, the functions to satisfy Module
 */
 
-// new monkchain with default config
-// it allows you to pass in an etheruem instance
-// btu it will not start a new one otherwise
-// this gives you a chance to set config options after
-//      creating the EthChain
+// Create a new MonkModule and internal Monk, with default config. 
+// Accepts an etheruem instance to yield a new
+// interface into the same chain.
+// It will not initialize an ethereum object for you,
+// giving you a chance to adjust configs before calling `Init()`
 func NewMonk(ethereum *eth.Ethereum) *MonkModule {
-	e := new(MonkModule)
+	mm := new(MonkModule)
 	m := new(Monk)
-	// here we load default config and leave it to caller
+	// Here we load default config and leave it to caller
 	// to read a config file to overwrite
-	m.config = DefaultConfig
+	mm.Config = DefaultConfig
+    m.config = mm.Config
 	if ethereum != nil {
 		m.ethereum = ethereum
 	}
 	m.started = false
-	e.monk = m
-	return e
+	mm.monk = m
+	return mm
 }
 
 // register the module with the decerver javascript vm
@@ -100,7 +104,6 @@ func (mod *MonkModule) Init() error {
 	// public interface
 	pipe := monkpipe.New(m.ethereum)
 	// load keys from file. genesis block keys. convenient for testing
-	LoadKeys(m.config.KeyFile, m.ethereum.KeyManager())
 
 	m.pipe = pipe
 	m.keyManager = m.ethereum.KeyManager()
@@ -482,14 +485,17 @@ func (m *Monk) IsAutocommit() bool {
 
 /*
    Blockchain interface should also satisfy KeyManager
+   All values are hex encoded
 */
 
+// Return the active address
 func (monk *Monk) ActiveAddress() string {
 	keypair := monk.keyManager.KeyPair()
 	addr := monkutil.Bytes2Hex(keypair.Address())
 	return addr
 }
 
+// Return the nth address in the ring
 func (monk *Monk) Address(n int) (string, error) {
 	ring := monk.keyManager.KeyRing()
 	if n >= ring.Len() {
@@ -500,6 +506,7 @@ func (monk *Monk) Address(n int) (string, error) {
 	return addr, nil
 }
 
+// Set the address
 func (monk *Monk) SetAddress(addr string) error {
 	n := -1
 	i := 0
@@ -517,10 +524,12 @@ func (monk *Monk) SetAddress(addr string) error {
 	return monk.SetAddressN(n)
 }
 
+// Set the address to be the nth in the ring
 func (monk *Monk) SetAddressN(n int) error {
 	return monk.keyManager.SetCursor(n)
 }
 
+// Generate a new address
 func (monk *Monk) NewAddress(set bool) string {
 	newpair := monkcrypto.GenerateNewKeyPair()
 	addr := monkutil.Bytes2Hex(newpair.Address())
@@ -532,6 +541,7 @@ func (monk *Monk) NewAddress(set bool) string {
 	return addr
 }
 
+// Return the number of available addresses
 func (monk *Monk) AddressCount() int {
 	return monk.keyManager.KeyRing().Len()
 }
@@ -546,8 +556,11 @@ func (monk *Monk) AddressCount() int {
 func (m *Monk) NewEthereum() {
 	db := NewDatabase(m.config.DbName)
 
-	keyManager := NewKeyManager(m.config.KeyStore, m.config.DataDir, db)
-	keyManager.Init("", 0, true)
+	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
+	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
+    if err != nil{
+        log.Fatal(err)
+    }
 	m.keyManager = keyManager
 
 	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
