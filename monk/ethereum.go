@@ -387,8 +387,11 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 
 func (monk *Monk) Script(file, lang string) (string, error) {
 	var script string
+    if lang == "lll-literal"{
+        script = CompileLLL(file, true)
+    }
 	if lang == "lll" {
-		script = CompileLLL(file) // if lll, compile and pass along
+		script = CompileLLL(file, false) // if lll, compile and pass along
 	} else if lang == "mutan" {
 		s, _ := ioutil.ReadFile(file) // if mutan, pass along and pipe will compile
 		script = string(s)
@@ -456,10 +459,14 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 }
 
 func (monk *Monk) UnSubscribe(name string){
-    close(monk.ethchans[name])
-    close(monk.chans[name])
-    delete(monk.chans, name)
-    delete(monk.ethchans, name)
+    if c, ok := monk.ethchans[name]; ok{
+        close(c)
+        delete(monk.ethchans, name)
+    }
+    if c, ok := monk.chans[name]; ok{
+        close(c)
+        delete(monk.chans, name)
+    }
 }
 
 
@@ -637,8 +644,8 @@ func (monk *Monk) Stop() {
 
 // compile LLL file into evm bytecode
 // returns hex
-func CompileLLL(filename string) string {
-	code, err := monkutil.CompileLLL(filename)
+func CompileLLL(filename string, literal bool) string {
+	code, err := monkutil.CompileLLL(filename, literal)
 	if err != nil {
 		fmt.Println("error compiling lll!", err)
 		return ""
