@@ -148,13 +148,15 @@ func (monk *Monk) EthConfig() {
             Copy(cfg.KeyFile, path.Join(cfg.RootDir, cfg.KeySession)+".prv")
         }
     }
-    //eth-go uses a global monkutil.Config object. This will set it up for us, but we do our config of course our way
-    monkutil.ReadConfig("config", cfg.RootDir, "huh")
+    // eth-go uses a global monkutil.Config object. This will set it up for us, but we do our config of course our way
+    // it also uses rakyl/globalconf, but fuck that for now
+    monkutil.Config = &monkutil.ConfigManager{ExecPath: cfg.RootDir, Debug: true, Paranoia: true}
     // data dir, logfile, log level, debug file
     // TODO: enhance this with more pkg level control
     InitLogging(cfg.RootDir, cfg.LogFile, cfg.LogLevel, "")
 }
 
+// common golang, really?
 func Copy(src, dst string){
     r, err := os.Open(src)
     if err != nil{
