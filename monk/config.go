@@ -139,6 +139,9 @@ func (monk *Monk) EthConfig() {
     }
     monkchain.DougDifficulty = monkutil.BigPow(2, cfg.DougDifficulty)
 
+    // TODO: configurable
+    monkchain.GenDoug = new(monkdoug.GenDoug)
+
     // check on data dir
     // create keys
     _, err := os.Stat(cfg.RootDir)

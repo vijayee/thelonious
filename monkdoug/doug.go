@@ -29,7 +29,7 @@ var (
 // called by setLastBlock when a new blockchain is created
 // ie. Load a genesis.json and deploy
 // if GENDOUG is nil, simply bankroll the accounts (no doug)
-func GenesisPointer(block *monkchain.Block){
+func (gg *GenDoug) GenesisPointer(block *monkchain.Block){
     g := LoadGenesis()
 
     fmt.Println("PRE DEPLOY")
@@ -66,8 +66,11 @@ func SetDougModel(model string){
     }
 }
 
+type GenDoug struct{
+}
+
 // use gendoug and permissions model to validate addr's role
-func DougValidate(addr []byte, state *monkstate.State, role string) bool{
+func (g *GenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
     if GENDOUG == nil || Model == nil{
         return true
     }
@@ -79,11 +82,14 @@ func DougValidate(addr []byte, state *monkstate.State, role string) bool{
 }
 
 // look up a special doug param
-func DougValue(key, namespace string, state *monkstate.State) []byte{
+func (g *GenDoug) ValidateValue(name string, value interface{}, state *monkstate.State) bool { //[]byte{
+    return true
+    /*
     if GENDOUG == nil{
         return nil 
     }
     return Model.GetValue(key, namespace, state)
+    */
 }
 
 

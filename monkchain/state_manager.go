@@ -63,11 +63,11 @@ func (d *NoGenDoug) GenesisPointer(block *Block){
 }
 
 func (d *NoGenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
-    return true
+    return false
 }
 
 func (d *NoGenDoug) ValidateValue(name string, value interface{}, state *monkstate.State) bool{
-    return true
+    return false
 }
 
 // this should be overwritten with a model from monkdoug
