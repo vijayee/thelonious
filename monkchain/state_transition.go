@@ -142,7 +142,7 @@ func (self *StateTransition) preCheck() (err error) {
    
     // state transition only has the genesis block if 
     // created by Eris 
-    if self.genesis != nil && !GenDoug.ValidatePerm(sender.Address(), "transact", self.block.State()){
+    if self.genesis != nil && !genDoug.ValidatePerm(sender.Address(), "transact", self.block.State()){
         return InvalidPermError(monkutil.Bytes2Hex(sender.Address()), "transact")
     }
 
@@ -151,7 +151,7 @@ func (self *StateTransition) preCheck() (err error) {
 		return NonceError(tx.Nonce, sender.Nonce)
 	}
 
-    if !GenDoug.ValidateValue("maxgas", self.tx.GasValue(), self.block.State()){
+    if !genDoug.ValidateValue("maxgas", self.tx.GasValue(), self.block.State()){
             return fmt.Errorf("max gas err")
             //TODO: return GasLimitTxError(gas, maxBig)
     }

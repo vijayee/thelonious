@@ -137,6 +137,7 @@ func NewClientIdentity(clientIdentifier, version, customIdentifier string) *monk
 	return monkwire.NewSimpleClientIdentity(clientIdentifier, version, customIdentifier)
 }
 
+/*
 func NewEthereum(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Ethereum {
 	ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, usePnp)
 	if err != nil {
@@ -145,7 +146,7 @@ func NewEthereum(db monkutil.Database, clientIdentity monkwire.ClientIdentity, k
 	ethereum.Port = OutboundPort
 	ethereum.MaxPeers = MaxPeer
 	return ethereum
-}
+}*/
 
 func StartEthereum(ethereum *eth.Ethereum, UseSeed bool) {
 	logger.Infof("Starting %s", ethereum.ClientIdentity())

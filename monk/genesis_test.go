@@ -43,7 +43,7 @@ func TestGenesisMsg(t *testing.T){
         mod.Start()
             key := "0x21"
             value := "0x400"
-            gendoug := monkutil.Bytes2Hex(monkchain.GENDOUG)
+            gendoug := monkutil.Bytes2Hex(monkchain.GenDougByteAddr)
             mod.Msg(gendoug, []string{key, value})
             callback("genesis msg", mod, func(){
                 recovered := "0x"+ mod.StorageAt(gendoug, key)

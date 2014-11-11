@@ -13,9 +13,8 @@ import (
 )
 
 /*
-    configure a new genesis block from genesis.json
-    deploy the genesis block from json 
-    something of a shell for epm
+    Configure a new genesis block from genesis.json
+    Deploy the genesis block
 */
 
 type Account struct{
@@ -27,11 +26,16 @@ type Account struct{
     Stake int `json:"stake"`
 }
 
-type GenesisJSON struct{
+type GenesisConfig struct{
     // MetaGenDoug
-    Address string  `json:"address"`
+    Address string  `json:"address"` // bytes
     DougPath string `json:"doug"`
-    Model string `json:"model"`
+    ModelName string `json:"model"`
+    NoGenDoug bool `json:"no-gendoug"`
+    
+    HexAddr string 
+    ByteAddr []byte
+    ContractPath string 
 
     // Global GenDoug Singles
     Consensus string `json:"consensus"`
@@ -44,25 +48,19 @@ type GenesisJSON struct{
     // Accounts (permissions and stake)
     Accounts []*Account `json:"accounts"`
 
-    f string // other things to do
+    Model monkchain.GenDougModel
 }
 
-// load the genesis block info from genesis.json
-func LoadGenesis() *GenesisJSON{
-    _, err := os.Stat(GenesisConfig)
-    if err != nil{
-        fmt.Println("No genesis.json file found. Resorting to default")
-        GenesisConfig = defaultGenesisConfig
-    }
-
-    fmt.Println("reading ", GenesisConfig)
-    b, err := ioutil.ReadFile(GenesisConfig)
+// Load the genesis block info from genesis.json
+func LoadGenesis(file string) *GenesisConfig{
+    fmt.Println("reading ", file)
+    b, err := ioutil.ReadFile(file)
     if err != nil{
         fmt.Println("err reading genesis.json", err)
         os.Exit(0)
     }
 
-    g := new(GenesisJSON)
+    g := new(GenesisConfig)
     err = json.Unmarshal(b, g)
     if err != nil{
         fmt.Println("error unmarshalling genesis.json", err)
@@ -73,56 +71,77 @@ func LoadGenesis() *GenesisJSON{
     for _, acc := range g.Accounts{
         acc.ByteAddr = monkutil.UserHex2Bytes(acc.Address)
     }
+
+    g.ByteAddr = []byte(g.Address)
+    g.HexAddr = monkutil.Bytes2Hex(g.ByteAddr)
+    g.ContractPath = path.Join(ErisLtd, "eris-std-lib")
+
+    /* TODO: deprecate
     // if the global DougPath is set, overwrite the config file
-    if DougPath != ""{
+    if GenesisConfig.DougPath != ""{
         g.DougPath = DougPath
     }
-    // if the global GENDOUG is set, overwrite the config file
-    if GENDOUG != nil{
-        g.Address = string(GENDOUG)
+    // if the global GenDougByteAddr is set, overwrite the config file
+    if GenDougByteAddr != nil{
+        g.Address = string(GenDougByteAddr)
     }
     
     if NoGenDoug{
-        GENDOUG = nil
+        GenDougByteAddr = nil
         Model = nil
     } else{
         // check doug address validity (addr length is at least 20)
         if len(g.Address) >= 20 {
             if g.Address[:2] == "0x"{
-                GENDOUG = monkutil.Hex2Bytes(g.Address[2:])
+                GenDougByteAddr = monkutil.Hex2Bytes(g.Address[2:])
             } else{
-                GENDOUG = []byte(g.Address)
+                GenDougByteAddr = []byte(g.Address)
             }
-            GENDOUG = GENDOUG[:20]
+            GenDougByteAddr = GenDougByteAddr[:20]
         }
-    }
+    }*/
 
     // set doug model
-    SetDougModel(g.Model)
+    g.Model = NewPermModel(g.ModelName, g.ByteAddr)
 
     return g
 }
 
-// deploy the genesis block
-// converts the genesisJSON info into a populated and functional doug contract in the genesis block
-func (g *GenesisJSON) Deploy(block *monkchain.Block){
+// Deploy the genesis block
+// Converts the GenesisConfiginfo into a populated and functional doug contract in the genesis block
+// if GenDougByteAddr is nil, simply bankroll the accounts (no doug)
+func (g *GenesisConfig) Deploy(block *monkchain.Block){
+    defer func(){
+        block.State().Update()  
+        block.State().Sync()  
+    }()
+    
+    if g.NoGenDoug {
+        // no genesis doug, deploy simple
+        for _, account := range g.Accounts{
+            // direct state modification to create accounts and balances
+            AddAccount(account.ByteAddr, account.Balance, block)
+        }
+        return
+    }
+
     fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
 
     // dummy keys for signing
     keys := monkcrypto.GenerateNewKeyPair() 
 
     // create the genesis doug
-    codePath := path.Join(ContractPath, g.DougPath)
+    codePath := path.Join(g.ContractPath, g.DougPath)
     genAddr := []byte(g.Address)
     MakeApplyTx(codePath, genAddr, nil, keys, block)
 
     // set the global vars
-    Model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-    Model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
-    Model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
-    Model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
-    Model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
-    Model.SetValue(genAddr, []string{"setvar", "blocktime", "0x"+strconv.Itoa(g.BlockTime)}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "blocktime", "0x"+strconv.Itoa(g.BlockTime)}, keys, block)
 
     fmt.Println("done genesis. setting perms...")
 
@@ -130,15 +149,13 @@ func (g *GenesisJSON) Deploy(block *monkchain.Block){
     for _, account := range g.Accounts{
         // direct state modification to create accounts and balances
         AddAccount(account.ByteAddr, account.Balance, block)
-        if Model != nil{
+        if g.Model != nil{
             // issue txs to set perms according to the model
-            Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
+            g.Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
 
-            Model.SetValue(GENDOUG, []string{"addminer", account.Name, account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
+            g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
         }
     }
-    block.State().Update()  
-    block.State().Sync()  
 }
 
 // set balance of an account (does not commit)

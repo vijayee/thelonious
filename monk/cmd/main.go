@@ -14,7 +14,7 @@ import (
 
 var (
     tester = flag.String("t", "", "pick a test: basic, tx, traverse, genesis, genesis-msg, get-storage, msg-storage or all")
-    genesis = flag.String("g", "", "pick a genesis functin:")
+    genesis = flag.String("g", "", "pick a genesis contract:")
     blocks = flag.Int("n", 10, "num blocks to wait before shutdown")
     pure = flag.Bool("pure", false, "run a pure eth-go node")
 )

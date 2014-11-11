@@ -13,65 +13,58 @@ import (
 )
 
 var (
-
     GoPath = os.Getenv("GOPATH")
-
-    DougPath = "" // lets us set the doug contract post config load. Convenient for testing
-
-    // overwritten by monk/config.go
-    DougDifficulty = monkutil.BigPow(2, 17)  // for mining speed
-    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib")
-    GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "genesis.json")
-    // if GenesisConfig is invalid ...
-    defaultGenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "genesis.json")
+    ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
 )
 
-// called by setLastBlock when a new blockchain is created
-// ie. Load a genesis.json and deploy
-// if GENDOUG is nil, simply bankroll the accounts (no doug)
-func (gg *GenDoug) GenesisPointer(block *monkchain.Block){
-    g := LoadGenesis()
-
-    fmt.Println("PRE DEPLOY")
-    fmt.Println("GENDOUG", GENDOUG)
-    if GENDOUG != nil{
-        g.Deploy(block)
-    } else{
-        // no genesis doug, deploy simple
-        for _, account := range g.Accounts{
-            // direct state modification to create accounts and balances
-            AddAccount(account.ByteAddr, account.Balance, block)
-        }
-        // update and commit state
-        block.State().Update()  
-        block.State().Sync()  
+// Load a genesis.json and deploy
+// Called from monkchain by setLastBlock when a new blockchain is created
+// If it can't find the file, fail
+//TODO: deprecate
+func GenesisPointer(jsonFile string, block *monkchain.Block){
+    _, err := os.Stat(jsonFile)
+    if err != nil{
+        fmt.Printf("Genesis.json file %s could not be found")
+        os.Exit(0)
     }
+    gson := LoadGenesis(jsonFile)
+    gson.Deploy(block)
 }
 
 
 /*
-    Model is a global variable set at eth startup
+   Model is a global variable set at eth startup
     DougValidate and DougValue are our windows into the model
 */
-func SetDougModel(model string){
-    switch(model){
+func NewPermModel(modelName string, dougAddr []byte) (model monkchain.GenDougModel){
+    switch(modelName){
         case "fake":
-            Model = NewFakeModel()
+            model = NewFakeModel(dougAddr)
         case "dennis":
-            Model = NewGenDougModel()
+            model = NewGenDougModel(dougAddr)
         case "std":
-            Model = NewStdLibModel()
+            model = NewStdLibModel(dougAddr)
+        case "yes":
+            model = NewYesModel()
+        case "no":
+            model = NewNoModel()
         default:
-            Model = nil 
+            fmt.Println("shitty default")
+            model = NewYesModel()
     }
+    return 
 }
 
+
+/*
+    TODO: deprecate
 type GenDoug struct{
+
 }
 
 // use gendoug and permissions model to validate addr's role
 func (g *GenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
-    if GENDOUG == nil || Model == nil{
+    if GenDougByteAddr == nil || Model == nil{
         return true
     }
 
@@ -84,14 +77,12 @@ func (g *GenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State)
 // look up a special doug param
 func (g *GenDoug) ValidateValue(name string, value interface{}, state *monkstate.State) bool { //[]byte{
     return true
-    /*
     if GENDOUG == nil{
         return nil 
     }
     return Model.GetValue(key, namespace, state)
-    */
 }
-
+*/
 
 /*
     Functions for setting for loading the genesis contract

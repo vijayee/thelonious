@@ -73,11 +73,13 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
         t.mod = mod
     } 
     mod.ReadConfig("eth-config.json")
-    mod.monk.config.Mining = true
-    mod.monk.config.DbName = "tests/"+name
-    monkdoug.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    monkdoug.GENDOUG = []byte("0000000000THISISDOUG") // similarly
-    t.gendougaddr = monkutil.Bytes2Hex(monkdoug.GENDOUG)
+    mod.Config.Mining = true
+    mod.Config.DbName = "tests/"+name
+    g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
+    g.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
+    mod.SetGenesis(g)
+    t.gendougaddr = g.HexAddr
     mod.Init()
 
     t.reactor = mod.monk.ethereum.Reactor()
@@ -97,9 +99,10 @@ func tester(name string, testing func(mod *MonkModule), end int){
     mod.ReadConfig("eth-config.json")
     mod.monk.config.Mining = true
     mod.monk.config.DbName = "tests/"+name
-    //TODO: genesis
-    //monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    monkdoug.GENDOUG = []byte("0000000000THISISDOUG") // similarly
+    g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
+    //g.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
+    mod.SetGenesis(g)
     mod.Init()
 
     testing(mod)
