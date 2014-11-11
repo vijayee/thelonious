@@ -11,6 +11,8 @@ import (
 
 var chainlogger = monklog.NewLogger("CHAIN")
 
+var DougDifficulty = monkutil.BigPow(2, 17)  // for mining speed
+
 type BlockChain struct {
 	Ethereum EthManager
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
@@ -171,7 +173,7 @@ func (bc *BlockChain) Fuck(thing string){
 
 func (bc *BlockChain) setLastBlock() {
 	// Prep genesis
-    GenesisPointer(bc.genesisBlock)
+    GenDoug.GenesisPointer(bc.genesisBlock)
 	//AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
 
 	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))

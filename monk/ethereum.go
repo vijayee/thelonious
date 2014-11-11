@@ -23,6 +23,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkreact"
 	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkdoug"
 )
 
 var (
@@ -590,7 +591,7 @@ func (m *Monk) NewEthereum() {
 
 // returns hex addr of gendoug
 func (monk *Monk) GenDoug() string {
-	return monkutil.Bytes2Hex(monkchain.GENDOUG)
+	return monkutil.Bytes2Hex(monkdoug.GENDOUG)
 }
 
 func (monk *Monk) StartMining() bool {

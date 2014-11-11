@@ -10,7 +10,8 @@ import (
     "io/ioutil"
     "encoding/json"
     "github.com/eris-ltd/thelonious/monkutil"
-    "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkchain" // for difficulty
+    "github.com/eris-ltd/thelonious/monkdoug"
 )
 
 var ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
@@ -131,10 +132,10 @@ func (monk *Monk) EthConfig() {
     if cfg.LLLPath != ""{
 	    monkutil.PathToLLL = cfg.LLLPath
     }
-    monkchain.ContractPath = cfg.ContractPath
+    monkdoug.ContractPath = cfg.ContractPath
     if cfg.GenesisConfig != ""{
-        monkchain.GenesisConfig = cfg.GenesisConfig
-        fmt.Println("monkchain gen:", monkchain.GenesisConfig)
+        monkdoug.GenesisConfig = cfg.GenesisConfig
+        fmt.Println("monkchain gen:", monkdoug.GenesisConfig)
     }
     monkchain.DougDifficulty = monkutil.BigPow(2, cfg.DougDifficulty)
 

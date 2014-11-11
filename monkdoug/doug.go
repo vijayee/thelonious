@@ -1,4 +1,4 @@
-package monkchain
+package monkdoug
 
 import (
     "fmt"
@@ -9,6 +9,7 @@ import (
     "github.com/eris-ltd/thelonious/monkutil"    
     "github.com/eris-ltd/thelonious/monkstate"    
     "github.com/eris-ltd/thelonious/monktrie"    
+    "github.com/eris-ltd/thelonious/monkchain"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 // called by setLastBlock when a new blockchain is created
 // ie. Load a genesis.json and deploy
 // if GENDOUG is nil, simply bankroll the accounts (no doug)
-func GenesisPointer(block *Block){
+func GenesisPointer(block *monkchain.Block){
     g := LoadGenesis()
 
     fmt.Println("PRE DEPLOY")
@@ -93,7 +94,7 @@ func DougValue(key, namespace string, state *monkstate.State) []byte{
 
 // create a new tx from a script, with dummy keypair
 // creates tx but does not sign!
-func NewGenesisContract(scriptFile string) *Transaction{
+func NewGenesisContract(scriptFile string) *monkchain.Transaction{
     // if mutan, load the script. else, pass file name
     var s string
     if scriptFile[len(scriptFile)-3:] == ".mu"{
@@ -114,16 +115,16 @@ func NewGenesisContract(scriptFile string) *Transaction{
     //fmt.Println("script: ", script)
 
     // create tx
-    tx := NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
+    tx := monkchain.NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
     //tx.Sign(keys.PrivateKey)
 
     return tx
 }
 
 // apply tx to genesis block
-func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
+func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Transaction) *monkchain.Receipt{
     state := block.State()
-    st := NewStateTransition(monkstate.NewStateObject(block.Coinbase), tx, state, block)
+    st := monkchain.NewStateTransition(monkstate.NewStateObject(block.Coinbase), tx, state, block)
     st.AddGas(monkutil.Big("10000000000000000000000000000000000000000000000000000000000000000000000000000000000")) // gas is silly, but the vm needs it
 
     var script []byte
@@ -166,7 +167,7 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
         root = []byte(r)
     }
 
-    receipt := &Receipt{tx, monkutil.CopyBytes(root), new(big.Int)}
+    receipt := &monkchain.Receipt{tx, monkutil.CopyBytes(root), new(big.Int)}
     // remove stateobject used to deploy gen doug
     state.DeleteStateObject(sender)    
     return receipt

@@ -1,4 +1,4 @@
-package monkchain
+package monkdoug
 
 import (
     "fmt"
@@ -9,6 +9,7 @@ import (
     "encoding/json"
     "github.com/eris-ltd/thelonious/monkutil"    
     "github.com/eris-ltd/thelonious/monkcrypto"    
+    "github.com/eris-ltd/thelonious/monkchain"
 )
 
 /*
@@ -104,7 +105,7 @@ func LoadGenesis() *GenesisJSON{
 
 // deploy the genesis block
 // converts the genesisJSON info into a populated and functional doug contract in the genesis block
-func (g *GenesisJSON) Deploy(block *Block){
+func (g *GenesisJSON) Deploy(block *monkchain.Block){
     fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
 
     // dummy keys for signing
@@ -123,7 +124,7 @@ func (g *GenesisJSON) Deploy(block *Block){
     Model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
     Model.SetValue(genAddr, []string{"setvar", "blocktime", "0x"+strconv.Itoa(g.BlockTime)}, keys, block)
 
-    chainlogger.Debugln("done genesis. setting perms...")
+    fmt.Println("done genesis. setting perms...")
 
     // set balances and permissions
     for _, account := range g.Accounts{
@@ -141,7 +142,7 @@ func (g *GenesisJSON) Deploy(block *Block){
 }
 
 // set balance of an account (does not commit)
-func AddAccount(addr []byte, balance string, block *Block){
+func AddAccount(addr []byte, balance string, block *monkchain.Block){
     account := block.State().GetAccount(addr)
     account.Balance = monkutil.Big(balance) //monkutil.BigPow(2, 200)
     block.State().UpdateStateObject(account)
@@ -149,19 +150,20 @@ func AddAccount(addr []byte, balance string, block *Block){
 
 // make and apply an administrative tx (simplified vm processing)
 // addr is typically gendoug
-func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
-    var tx *Transaction
+func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
+    var tx *monkchain.Transaction
     if codePath != ""{
         tx = NewGenesisContract(codePath)        
     } else{
-        tx = NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
+        tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
     }
 
     tx.Sign(keys.PrivateKey)
     //fmt.Println(tx.String())
     receipt := SimpleTransitionState(addr, block, tx)
-    block.receipts = append(block.receipts, receipt)
-    block.transactions = append(block.transactions, tx)
+    txs := append(block.Transactions(), tx)
+    receipts := append(block.Receipts(), receipt)
+    block.SetReceipts(receipts, txs)
     
     return tx, receipt
 }

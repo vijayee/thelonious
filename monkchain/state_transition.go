@@ -142,7 +142,7 @@ func (self *StateTransition) preCheck() (err error) {
    
     // state transition only has the genesis block if 
     // created by Eris 
-    if self.genesis != nil && !DougValidate(sender.Address(), self.genesis.State(), "transact"){
+    if self.genesis != nil && !GenDoug.ValidatePerm(sender.Address(), "transact", self.block.State()){
         return InvalidPermError(monkutil.Bytes2Hex(sender.Address()), "transact")
     }
 
@@ -151,14 +151,9 @@ func (self *StateTransition) preCheck() (err error) {
 		return NonceError(tx.Nonce, sender.Nonce)
 	}
 
-    if Model != nil{
-        // Tx should not exceed max gas per tx
-        gas := self.tx.GasValue()
-        max := DougValue("maxgas", "global", self.block.State())
-        maxBig := monkutil.BigD(max)
-        if gas.Cmp(maxBig) > 0 && max != nil{
-            return GasLimitTxError(gas, maxBig)
-        }
+    if !GenDoug.ValidateValue("maxgas", self.tx.GasValue(), self.block.State()){
+            return fmt.Errorf("max gas err")
+            //TODO: return GasLimitTxError(gas, maxBig)
     }
 
 	// Pre-pay gas / Buy gas of the coinbase account

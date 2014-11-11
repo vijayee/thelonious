@@ -1,4 +1,4 @@
-package monkchain
+package monkdoug
 
 import (
     "math/big"
@@ -9,6 +9,7 @@ import (
     "github.com/eris-ltd/thelonious/monkutil"
     "github.com/eris-ltd/thelonious/monkcrypto"
     "github.com/eris-ltd/eris-std-lib/go-tests"
+    "github.com/eris-ltd/thelonious/monkchain"
 )
 
 
@@ -42,9 +43,9 @@ type PermModel interface{
     // Determine if a user has permission to do something
     HasPermission(addr []byte, perm string, state *monkstate.State) bool 
     // Set some permissions for a given address. requires valid keypair
-    SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt)
+    SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt)
 
-    SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt)
+    SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt)
     // doug has a key-value store that is space partitioned for collision avoidance
     // resolve those values
     GetValue(key, namespace string, state *monkstate.State) []byte
@@ -108,12 +109,12 @@ func (m *FakeModel) HasPermission(addr []byte, perm string, state *monkstate.Sta
     return !val.IsNil()
 }
 
-func (m *FakeModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt){
+func (m *FakeModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
     return nil, nil
 }
 
 
-func (m *FakeModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
+func (m *FakeModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
 }
 
@@ -183,10 +184,10 @@ func (m *GenDougModel) HasPermission(addr []byte, perm string, state *monkstate.
 
 // set some permissions on an addr
 // requires keys with sufficient privileges
-func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt){
+func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
 
-    txs := Transactions{}
-    receipts := []*Receipt{}
+    txs := monkchain.Transactions{}
+    receipts := []*monkchain.Receipt{}
 
     for perm, val := range permissions{
         data := monkutil.PackTxDataArgs("setperm", perm, "0x"+monkutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
@@ -200,7 +201,7 @@ func (m *GenDougModel) SetPermissions(addr []byte, permissions map[string]int, b
     return txs, receipts
 }
 
-func (m *GenDougModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
+func (m *GenDougModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
 }
 
@@ -309,10 +310,10 @@ func (m *StdLibModel) HasPermission(addr []byte, perm string, state *monkstate.S
     return permBig.Int64() > 0
 }
 
-func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt){
+func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
 
-    txs := Transactions{}
-    receipts := []*Receipt{}
+    txs := monkchain.Transactions{}
+    receipts := []*monkchain.Receipt{}
 
     for perm, val := range permissions{
         data := monkutil.PackTxDataArgs2("setperm", perm, "0x"+monkutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
@@ -326,7 +327,7 @@ func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, bl
     return txs, receipts
 }
 
-func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt){
+func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     data := monkutil.PackTxDataArgs2(args...)
     tx, rec := MakeApplyTx("", addr, data, keys, block)
     return tx, rec

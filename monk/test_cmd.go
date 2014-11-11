@@ -3,6 +3,7 @@ package monk
 import (
     "github.com/eris-ltd/thelonious/monkutil"
     "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkdoug"
     "os"
     "path"
     "fmt"
@@ -91,6 +92,7 @@ func (t *Test) TestBig(){
 }
 
 // doesn't start up a node, just loads from db and traverses to genesis
+/*
 func (t *Test) TestMaxGas(){
     t.tester("max gas", func(mod *MonkModule){
         //mod.Start()
@@ -98,7 +100,7 @@ func (t *Test) TestMaxGas(){
         fmt.Println(v)
         os.Exit(0)
     }, 0)
-}
+}*/
 
 // this one will be in flux for a bit
 // test the validation..
@@ -109,12 +111,12 @@ func (t *Test) TestValidate(){
         a1 := monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
         a2 := monkutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
         a3 := monkutil.Hex2Bytes("cced0756041f7aed3ce278c56ee638bade96d001")
-        fmt.Println(monkchain.DougValidate(a1, gen.State(), "tx"))
-        fmt.Println(monkchain.DougValidate(a2, gen.State(), "tx"))
-        fmt.Println(monkchain.DougValidate(a3, gen.State(), "tx"))
-        fmt.Println(monkchain.DougValidate(a1, gen.State(), "miner"))
-        fmt.Println(monkchain.DougValidate(a2, gen.State(), "miner"))
-        fmt.Println(monkchain.DougValidate(a3, gen.State(), "miner"))
+        fmt.Println(monkchain.GenDoug.ValidatePerm(a1, "tx", gen.State()))
+        fmt.Println(monkchain.GenDoug.ValidatePerm(a2, "tx", gen.State()))
+        fmt.Println(monkchain.GenDoug.ValidatePerm(a3, "tx", gen.State()))
+        fmt.Println(monkchain.GenDoug.ValidatePerm(a1, "miner", gen.State()))
+        fmt.Println(monkchain.GenDoug.ValidatePerm(a2, "miner", gen.State()))
+        fmt.Println(monkchain.GenDoug.ValidatePerm(a3, "miner", gen.State()))
     }, 0)
 }
 
@@ -144,7 +146,7 @@ func (t *Test) TestBlockNum(){
 func (t *Test) TestCallStack(){
     t.tester("callstack", func(mod *MonkModule){
         mod.Start()
-        mod.Script(path.Join(monkchain.ContractPath, "lll/callstack.lll"), "lll")
+        mod.Script(path.Join(monkdoug.ContractPath, "lll/callstack.lll"), "lll")
         t.callback("op: callstack", mod, func(){
             PrettyPrintChainAccounts(mod)
         })
@@ -162,7 +164,7 @@ func (t *Test) TestCompression(){
         monkutil.COMPRESS = compress
         fmt.Println("compress:", monkutil.COMPRESS)
         t.tester(name, func(mod *MonkModule){
-            contract_addr, err := mod.Script(path.Join(monkchain.ContractPath, "tests/lots-of-stuff.lll"), "lll")
+            contract_addr, err := mod.Script(path.Join(monkdoug.ContractPath, "tests/lots-of-stuff.lll"), "lll")
             if err != nil{
                 log.Fatal(err)
             }

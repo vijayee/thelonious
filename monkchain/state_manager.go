@@ -50,6 +50,29 @@ type EthManager interface {
 	Db() monkutil.Database
 }
 
+type GenDougModel interface{
+    GenesisPointer(block *Block)
+    ValidatePerm(addr []byte, role string, state *monkstate.State) bool
+    ValidateValue(name string, value interface{}, state *monkstate.State) bool
+}
+
+type NoGenDoug struct{
+}
+
+func (d *NoGenDoug) GenesisPointer(block *Block){
+}
+
+func (d *NoGenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
+    return true
+}
+
+func (d *NoGenDoug) ValidateValue(name string, value interface{}, state *monkstate.State) bool{
+    return true
+}
+
+// this should be overwritten with a model from monkdoug
+var GenDoug GenDougModel = new(NoGenDoug)
+
 type StateManager struct {
 	// Mutex for locking the block processor. Blocks can only be handled one at a time
 	mutex sync.Mutex
@@ -323,7 +346,10 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
 
-    if !bytes.Equal(block.Signer(), block.Coinbase) && !DougValidate(block.Coinbase, sm.bc.Genesis().State(), "mine"){
+    // TODO: should be || not && but blocks aren't being signed properly yet
+    if !bytes.Equal(block.Signer(), block.Coinbase) && !GenDoug.ValidatePerm(block.Coinbase, "mine", sm.bc.Genesis().State()){
+        fmt.Println(block.Signer())
+        fmt.Println(block.Coinbase)
         return InvalidPermError(monkutil.Bytes2Hex(block.Coinbase), "mine")
     }
 
