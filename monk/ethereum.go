@@ -426,8 +426,8 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 	// fire up a goroutine and broadcast module specific chan on our main chan
 	go func() {
 		for {
-			eve, isUp := <-eth_ch
-            if !isUp{
+			eve, more := <-eth_ch
+            if !more{
                 break
             }
             returnEvent := events.Event{
@@ -438,14 +438,16 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 			}
             // cast resource to appropriate type
             resource := eve.Resource
-            if block, ok := resource.(monkchain.Block); ok{
-                returnEvent.Resource = convertBlock(&block)
+            if block, ok := resource.(*monkchain.Block); ok{
+                returnEvent.Resource = convertBlock(block)
             } else if tx, ok := resource.(monkchain.Transaction); ok{
                 returnEvent.Resource = convertTx(&tx)
             } else if txFail, ok := resource.(monkchain.TxFail); ok{
                 tx := convertTx(txFail.Tx)
                 tx.Error = txFail.Err.Error()
                 returnEvent.Resource = tx
+            } else{
+                logger.Errorln("Invalid event resource type", resource)
             }
             ch <- returnEvent
 		}
@@ -454,11 +456,12 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 }
 
 func (monk *Monk) UnSubscribe(name string){
-    close(monk.chans[name])
     close(monk.ethchans[name])
+    close(monk.chans[name])
     delete(monk.chans, name)
     delete(monk.ethchans, name)
 }
+
 
 // Mine a block
 func (m *Monk) Commit() {

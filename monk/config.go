@@ -55,7 +55,7 @@ var DefaultConfig = &ChainConfig{
         ContractPath: path.Join(ErisLtd, "eris-std-lib"),
         ClientIdentifier: "Ethereum(deCerver)",
         Version: "0.5.17",
-        Identifier: "",
+        Identifier: "chainId",
         KeyStore: "file",
         KeyCursor: 0,
         KeyFile: path.Join(ErisLtd, "thelonious", "monk", "keys.txt"),
