@@ -107,8 +107,6 @@ func tester(name string, testing func(mod *MonkModule), end int){
     g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
     mod.SetGenesis(g)
     */
-    mod.Init()
-
     testing(mod)
     
     if end > 0{

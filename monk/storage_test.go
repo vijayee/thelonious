@@ -1,8 +1,6 @@
 package monk
 
 import (
-    "github.com/eris-ltd/thelonious/monkutil"
-    "github.com/eris-ltd/thelonious/monkchain"
     "fmt"
     "math/big"
     "path"
@@ -10,6 +8,7 @@ import (
     "os"
     "time"
     "testing"
+    "github.com/eris-ltd/thelonious/monkutil"
 )
 
 /*
@@ -23,6 +22,7 @@ import (
 // contract that stores a single value during init
 func TestSimpleStorage(t *testing.T){
     tester("simple storage", func(mod *MonkModule){
+        mod.Init()
         // set up test parameters and code
         key := "0x5"
         value := "0x400"
@@ -60,7 +60,8 @@ func TestSimpleStorage(t *testing.T){
 // test a simple key-value store contract
 func TestMsgStorage(t *testing.T){
     tester("msg storage", func(mod *MonkModule){
-        contract_addr, err := mod.Script(path.Join(monkchain.ContractPath, "tests/keyval.lll"), "lll")
+        mod.Init()
+        contract_addr, err := mod.Script(path.Join(mod.Config.ContractPath, "tests/keyval.lll"), "lll")
         if err != nil{
             t.Fatal(err)
         }
@@ -88,6 +89,7 @@ func TestMsgStorage(t *testing.T){
 // test simple tx
 func TestTx(t *testing.T){
     tester("basic tx", func(mod *MonkModule){
+        mod.Init()
         addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
         addr_bytes := monkutil.Hex2Bytes(addr)
         amount := "567890"
@@ -117,6 +119,7 @@ func TestTx(t *testing.T){
 
 func TestManyTx(t *testing.T){
     tester("many tx", func(mod *MonkModule){
+        mod.Init()
         addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
         addr_bytes := monkutil.Hex2Bytes(addr)
         amount := "567890"
