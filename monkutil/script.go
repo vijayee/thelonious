@@ -71,25 +71,23 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 
 // compile LLL file into evm bytecode 
 func CompileLLL(filename string, literal bool) ([]byte, error){
-    //fmt.Println("filename", filename, PathToLLL)
     // if we don't have the lllc locally, use the server
     if PathToLLL == "NETCALL"{
-            //url := "http://ps.erisindustries.com/compile"
-            lllcserver.URL = "http://lllc.erisindustries.com/compile"
-            resp, err := lllcserver.CompileLLLClient([]string{filename}, literal)
-            // check for internal error
-            if err != nil{
-                return nil, err    
-            }
-            // check for compilation error
-            if len(resp.Error) > 0 && resp.Error[0] != ""{
-                return nil, errors.New(resp.Error[0]) 
-            }
-            return resp.Bytecode[0], nil
+        lllcserver.URL = "http://lllc.erisindustries.com/compile"
+    } else{
+        lllcserver.URL = ""
     }
-    lllcserver.PathToLLL = PathToLLL
-    // TODO: compile literals if running locally
-    return lllcserver.CompileLLLWrapper(filename)
+
+    resp, err := lllcserver.CompileLLLClient([]string{filename}, literal)
+    // check for internal error
+    if err != nil{
+        return nil, err    
+    }
+    // check for compilation error
+    if len(resp.Error) > 0 && resp.Error[0] != ""{
+        return nil, errors.New(resp.Error[0]) 
+    }
+    return resp.Bytecode[0], nil
 }
 
 // strings and hex only
