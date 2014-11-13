@@ -1,7 +1,7 @@
 {
     "address":"0000000000THISISDOUG",
     "doug":"Genesis DOUG/gendoug-v2.lll",
-    "model":"no",
+    "model":"std",
     "consensus":"seq",
     "public:mine":0,
     "public:create":0,

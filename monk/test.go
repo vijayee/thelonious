@@ -7,7 +7,6 @@ import (
     "github.com/eris-ltd/thelonious/monkreact"
     "github.com/eris-ltd/thelonious/monkutil"
     "github.com/eris-ltd/thelonious/monkstate"
-    "github.com/eris-ltd/thelonious/monkdoug"
 )   
 
 // environment object for running custom tests (ie. not used in `go test`)
@@ -75,11 +74,14 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
     mod.ReadConfig("eth-config.json")
     mod.Config.Mining = true
     mod.Config.DbName = "tests/"+name
+    /*
+    // more trouble than it's worth for now
     g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
     g.DougPath = t.genesis // overwrite whatever loads from genesis.json
     g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
     mod.SetGenesis(g)
     t.gendougaddr = g.HexAddr
+    */
     mod.Init()
 
     t.reactor = mod.monk.ethereum.Reactor()
@@ -99,10 +101,12 @@ func tester(name string, testing func(mod *MonkModule), end int){
     mod.ReadConfig("eth-config.json")
     mod.monk.config.Mining = true
     mod.monk.config.DbName = "tests/"+name
+    /*
     g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
     //g.DougPath = t.genesis // overwrite whatever loads from genesis.json
     g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
     mod.SetGenesis(g)
+    */
     mod.Init()
 
     testing(mod)

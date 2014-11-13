@@ -99,7 +99,9 @@ func (mod *MonkModule) Init() error {
 	if m.config == nil {
 		m.config = DefaultConfig
 	}
-    mod.GenesisConfig = monkdoug.LoadGenesis(m.config.GenesisConfig)
+    if mod.GenesisConfig == nil{
+        mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
+    }
     m.genConfig = mod.GenesisConfig
 	// if no ethereum instance
 	if m.ethereum == nil {
