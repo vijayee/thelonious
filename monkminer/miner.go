@@ -197,6 +197,10 @@ func (self *Miner) mineNewBlock() {
 	// Find a valid nonce
 	self.block.Nonce = self.pow.Search(self.block, self.powQuitChan)
 	if self.block.Nonce != nil {
+        // sign the block
+        keypair := self.ethereum.KeyManager().KeyPair()
+        self.block.Sign(keypair.PrivateKey)
+        // process the completed block
 		err := self.ethereum.StateManager().Process(self.block, false)
 		if err != nil {
 			logger.Infoln(err)

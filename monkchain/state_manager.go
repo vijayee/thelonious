@@ -342,10 +342,9 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
 
-    // TODO: should be || not && but blocks aren't being signed properly yet
-    if !bytes.Equal(block.Signer(), block.Coinbase) && !genDoug.ValidatePerm(block.Coinbase, "mine", sm.CurrentState()){
-        fmt.Println(block.Signer())
-        fmt.Println(block.Coinbase)
+    // If the sig does not match the coinbase, or the coinbase does not have permission to mine, that's a technical foul
+    // TODO: should the error distinguish between failed sig and failed permission?
+    if !bytes.Equal(block.Signer(), block.Coinbase) || !genDoug.ValidatePerm(block.Coinbase, "mine", sm.CurrentState()){
         return InvalidPermError(monkutil.Bytes2Hex(block.Coinbase), "mine")
     }
 
