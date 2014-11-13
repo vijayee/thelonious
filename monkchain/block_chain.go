@@ -172,10 +172,6 @@ func (bc *BlockChain) Fuck(thing string){
 }
 
 func (bc *BlockChain) setLastBlock() {
-    // Prepare the genesis block
-    // TODO: don't run this if we have the last block already
-    //  but so far that causes state_object panics!
-    bc.Ethereum.GenesisPointer(bc.genesisBlock)
 
     // check for last block. if none exists, fire up a genesis
 	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))
@@ -186,8 +182,13 @@ func (bc *BlockChain) setLastBlock() {
 		bc.LastBlockNumber = block.Number.Uint64()
 
 	} else {
-		bc.genesisBlock.state.Trie.Sync()
-            //AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
+        // Prepare the genesis block!
+        bc.Ethereum.GenesisPointer(bc.genesisBlock)
+        /*
+            The less enlightened might do something naiive like:
+            -> AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
+            But this is DougLand baby!
+        */
 		bc.Add(bc.genesisBlock)
 		fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 		bc.Ethereum.Db().Put(fk, make([]byte, 255))

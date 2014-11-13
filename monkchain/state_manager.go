@@ -343,7 +343,7 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 func (sm *StateManager) ValidateBlock(block *Block) error {
 
     // TODO: should be || not && but blocks aren't being signed properly yet
-    if !bytes.Equal(block.Signer(), block.Coinbase) && !genDoug.ValidatePerm(block.Coinbase, "mine", sm.bc.Genesis().State()){
+    if !bytes.Equal(block.Signer(), block.Coinbase) && !genDoug.ValidatePerm(block.Coinbase, "mine", sm.CurrentState()){
         fmt.Println(block.Signer())
         fmt.Println(block.Coinbase)
         return InvalidPermError(monkutil.Bytes2Hex(block.Coinbase), "mine")
