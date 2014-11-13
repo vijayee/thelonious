@@ -4,7 +4,7 @@ import (
     "fmt"
     "testing"
     "time"
-    "github.com/eris-ltd/deCerver-interfaces/modules"
+    "github.com/eris-ltd/decerver-interfaces/modules"
 )
 
 func receiveModule(m modules.Module){

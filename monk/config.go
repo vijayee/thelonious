@@ -53,7 +53,7 @@ var DefaultConfig = &ChainConfig{
         //LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
         LLLPath: "NETCALL",
         ContractPath: path.Join(ErisLtd, "eris-std-lib"),
-        ClientIdentifier: "Ethereum(deCerver)",
+        ClientIdentifier: "Ethereum(decerver)",
         Version: "0.5.17",
         Identifier: "chainId",
         KeyStore: "file",

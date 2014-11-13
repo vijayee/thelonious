@@ -11,10 +11,10 @@ import (
 	"time"
 	"encoding/hex"
 
-	"github.com/eris-ltd/deCerver-interfaces/api"
-	"github.com/eris-ltd/deCerver-interfaces/core"
-	"github.com/eris-ltd/deCerver-interfaces/events"
-	"github.com/eris-ltd/deCerver-interfaces/modules"
+	"github.com/eris-ltd/decerver-interfaces/api"
+	"github.com/eris-ltd/decerver-interfaces/core"
+	"github.com/eris-ltd/decerver-interfaces/events"
+	"github.com/eris-ltd/decerver-interfaces/modules"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -31,7 +31,7 @@ var (
 )
 
 //Logging
-var logger *monklog.Logger = monklog.NewLogger("EthChain(deCerver)")
+var logger *monklog.Logger = monklog.NewLogger("EthChain(decerver)")
 
 // implements decerver-interfaces Module
 type MonkModule struct {

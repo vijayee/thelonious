@@ -1,7 +1,7 @@
 package monk
 
 import (
-    //"github.com/eris-ltd/deCerver/chain"
+    //"github.com/eris-ltd/decerver/chain"
     "github.com/eris-ltd/thelonious/monkutil"
     //"github.com/project-douglas/eth-go/monkchain"
     //"github.com/eris-ltd/thelonious/monktrie"
