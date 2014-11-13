@@ -22,6 +22,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkwire"
+	"github.com/eris-ltd/thelonious/monkdoug"
 )
 
 const (
@@ -64,25 +65,20 @@ type Ethereum struct {
 	peers *list.List
 	// Nonce
 	Nonce uint64
-
+    // Listening addr
 	Addr net.Addr
 	Port string
-
+	nat NAT
+	listening bool
+    listener net.Listener
+    // 
 	peerMut sync.Mutex
-
 	// Capabilities for outgoing peers
 	serverCaps Caps
-
-	nat NAT
-
 	// Specifies the desired amount of maximum peers
 	MaxPeers int
 
 	Mining bool
-
-	listening bool
-
-    listener net.Listener
 
 	reactor *monkreact.ReactorEngine
 
@@ -95,9 +91,14 @@ type Ethereum struct {
 	isUpToDate bool
 
 	filters map[int]*monkchain.Filter
+
+    // json based config object
+    genConfig *monkdoug.GenesisConfig
+    // model interface for validating actions
+    genModel monkchain.GenDougModel
 }
 
-func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool) (*Ethereum, error) {
+func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Ethereum, error) {
 	var err error
 	var nat NAT
 
@@ -127,6 +128,9 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		isUpToDate:     true,
 		filters:        make(map[int]*monkchain.Filter),
 	}
+
+    ethereum.setGenesis(genConfig)
+
 	ethereum.reactor = monkreact.New()
 
 	ethereum.blockPool = NewBlockPool(ethereum)
@@ -138,6 +142,32 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 	ethereum.txPool.Start()
 
 	return ethereum, nil
+}
+
+// Deploy the genesis block from a preconfigured GenesisJSON object
+// if genConfig is nil, this function has no effect, and the genesis block is empty
+// TODO: make sure to set the model!
+func (s *Ethereum) GenesisPointer(block *monkchain.Block){
+    if s.genConfig != nil{
+        s.genConfig.Deploy(block)
+    } else{
+        fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
+    }
+}
+
+func (s *Ethereum) GenesisModel() monkchain.GenDougModel{
+   return s.genModel 
+}
+
+// Loaded from genesis.json, possibly modified
+// Sets the config object and the access model
+func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) error{
+    if s.genConfig != nil{
+        return fmt.Errorf("GenesisConfig already set")    
+    }
+    s.genConfig = genConfig
+    s.genModel = genConfig.Model
+    return nil
 }
 
 func (s *Ethereum) Reactor() *monkreact.ReactorEngine {

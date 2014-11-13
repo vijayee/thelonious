@@ -10,7 +10,7 @@ import (
     "io/ioutil"
     "encoding/json"
     "github.com/eris-ltd/thelonious/monkutil"
-    "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkchain" // for difficulty
 )
 
 var ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
@@ -125,17 +125,22 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error{
     return nil
 }
 
-// configure an ethereum node
-func (monk *Monk) EthConfig() {
+// Set the package global variables, create the root data dir,
+//  copy keys if they are available, and setup logging
+func (monk *Monk) ethConfig() {
     cfg := monk.config
+    // set lll path
     if cfg.LLLPath != ""{
 	    monkutil.PathToLLL = cfg.LLLPath
     }
-    monkchain.ContractPath = cfg.ContractPath
+    /*
+    // set path to contracts (defs, genesisdoug, etc)
+    monkdoug.ContractPath = cfg.ContractPath
+    // set genesis config file
     if cfg.GenesisConfig != ""{
-        monkchain.GenesisConfig = cfg.GenesisConfig
-        fmt.Println("monkchain gen:", monkchain.GenesisConfig)
-    }
+        monkdoug.GenesisConfig = cfg.GenesisConfig
+    }*/
+    // fixed difficulty for all blocks
     monkchain.DougDifficulty = monkutil.BigPow(2, cfg.DougDifficulty)
 
     // check on data dir

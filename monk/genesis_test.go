@@ -18,6 +18,7 @@ import (
 // doesn't start up a node, just loads from db and traverses to genesis
 func TestTraverseGenesis(t *testing.T){
     tester("traverse to genesis", func(mod *MonkModule){
+        mod.Init()
         mod.Start()
         callback("traverse_to_genesis", mod, func(){
             curchain := mod.monk.ethereum.BlockChain()
@@ -34,25 +35,24 @@ func TestTraverseGenesis(t *testing.T){
 
 // test sending a message to the genesis doug
 func TestGenesisMsg(t *testing.T){
-    //t.genesis = "lll/fake-doug-msg.lll"
-    dp := monkchain.DougPath
-    monkchain.DougPath = "tests/fake-doug-msg.lll"
     tester("genesis msg", func(mod *MonkModule){
-        md := monkchain.Model
-        monkchain.Model = nil // disable permissions model so we can transact
+        g := mod.LoadGenesis(mod.Config.GenesisConfig)
+        g.DougPath = "tests/fake-doug-msg.lll"
+        g.ModelName = "yes"
+        mod.SetGenesis(g)
+        fmt.Println(mod.GenesisConfig.DougPath)
+        mod.Init()
         mod.Start()
             key := "0x21"
             value := "0x400"
-            gendoug := monkutil.Bytes2Hex(monkchain.GENDOUG)
+            gendoug := monkutil.Bytes2Hex(g.ByteAddr)
             mod.Msg(gendoug, []string{key, value})
             callback("genesis msg", mod, func(){
                 recovered := "0x"+ mod.StorageAt(gendoug, key)
                 if !check_recovered(value, recovered){
-                    fmt.Println("got:", recovered, "expected:", value)
+                    t.Error("got:", recovered, "expected:", value)
                 }
             })
-            monkchain.Model = md
-            monkchain.DougPath = dp
     }, 0)
 }
 

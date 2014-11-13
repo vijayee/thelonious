@@ -1,4 +1,4 @@
-package monkchain
+package monkdoug
 
 import (
     "fmt"
@@ -9,65 +9,62 @@ import (
     "github.com/eris-ltd/thelonious/monkutil"    
     "github.com/eris-ltd/thelonious/monkstate"    
     "github.com/eris-ltd/thelonious/monktrie"    
+    "github.com/eris-ltd/thelonious/monkchain"
 )
 
 var (
-
     GoPath = os.Getenv("GOPATH")
-
-    DougPath = "" // lets us set the doug contract post config load. Convenient for testing
-
-    // overwritten by monk/config.go
-    DougDifficulty = monkutil.BigPow(2, 17)  // for mining speed
-    ContractPath = path.Join(GoPath, "src", "github.com", "eris-ltd", "eris-std-lib")
-    GenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "genesis.json")
-    // if GenesisConfig is invalid ...
-    defaultGenesisConfig = path.Join(GoPath, "src", "github.com", "eris-ltd", "thelonious", "monk", "genesis.json")
+    ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
 )
 
-// called by setLastBlock when a new blockchain is created
-// ie. Load a genesis.json and deploy
-// if GENDOUG is nil, simply bankroll the accounts (no doug)
-func GenesisPointer(block *Block){
-    g := LoadGenesis()
-
-    fmt.Println("PRE DEPLOY")
-    fmt.Println("GENDOUG", GENDOUG)
-    if GENDOUG != nil{
-        g.Deploy(block)
-    } else{
-        // no genesis doug, deploy simple
-        for _, account := range g.Accounts{
-            // direct state modification to create accounts and balances
-            AddAccount(account.ByteAddr, account.Balance, block)
-        }
-        // update and commit state
-        block.State().Update()  
-        block.State().Sync()  
+// Load a genesis.json and deploy
+// Called from monkchain by setLastBlock when a new blockchain is created
+// If it can't find the file, fail
+//TODO: deprecate
+func GenesisPointer(jsonFile string, block *monkchain.Block){
+    _, err := os.Stat(jsonFile)
+    if err != nil{
+        fmt.Printf("Genesis.json file %s could not be found")
+        os.Exit(0)
     }
+    gson := LoadGenesis(jsonFile)
+    gson.Deploy(block)
 }
 
 
 /*
-    Model is a global variable set at eth startup
+   Model is a global variable set at eth startup
     DougValidate and DougValue are our windows into the model
 */
-func SetDougModel(model string){
-    switch(model){
+func NewPermModel(modelName string, dougAddr []byte) (model monkchain.GenDougModel){
+    switch(modelName){
         case "fake":
-            Model = NewFakeModel()
+            model = NewFakeModel(dougAddr)
         case "dennis":
-            Model = NewGenDougModel()
+            model = NewGenDougModel(dougAddr)
         case "std":
-            Model = NewStdLibModel()
+            model = NewStdLibModel(dougAddr)
+        case "yes":
+            model = NewYesModel()
+        case "no":
+            model = NewNoModel()
         default:
-            Model = nil 
+            fmt.Println("shitty default")
+            model = NewYesModel()
     }
+    return 
+}
+
+
+/*
+    TODO: deprecate
+type GenDoug struct{
+
 }
 
 // use gendoug and permissions model to validate addr's role
-func DougValidate(addr []byte, state *monkstate.State, role string) bool{
-    if GENDOUG == nil || Model == nil{
+func (g *GenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
+    if GenDougByteAddr == nil || Model == nil{
         return true
     }
 
@@ -78,13 +75,14 @@ func DougValidate(addr []byte, state *monkstate.State, role string) bool{
 }
 
 // look up a special doug param
-func DougValue(key, namespace string, state *monkstate.State) []byte{
+func (g *GenDoug) ValidateValue(name string, value interface{}, state *monkstate.State) bool { //[]byte{
+    return true
     if GENDOUG == nil{
         return nil 
     }
     return Model.GetValue(key, namespace, state)
 }
-
+*/
 
 /*
     Functions for setting for loading the genesis contract
@@ -93,7 +91,7 @@ func DougValue(key, namespace string, state *monkstate.State) []byte{
 
 // create a new tx from a script, with dummy keypair
 // creates tx but does not sign!
-func NewGenesisContract(scriptFile string) *Transaction{
+func NewGenesisContract(scriptFile string) *monkchain.Transaction{
     // if mutan, load the script. else, pass file name
     var s string
     if scriptFile[len(scriptFile)-3:] == ".mu"{
@@ -114,16 +112,16 @@ func NewGenesisContract(scriptFile string) *Transaction{
     //fmt.Println("script: ", script)
 
     // create tx
-    tx := NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
+    tx := monkchain.NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
     //tx.Sign(keys.PrivateKey)
 
     return tx
 }
 
 // apply tx to genesis block
-func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
+func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Transaction) *monkchain.Receipt{
     state := block.State()
-    st := NewStateTransition(monkstate.NewStateObject(block.Coinbase), tx, state, block)
+    st := monkchain.NewStateTransition(monkstate.NewStateObject(block.Coinbase), tx, state, block)
     st.AddGas(monkutil.Big("10000000000000000000000000000000000000000000000000000000000000000000000000000000000")) // gas is silly, but the vm needs it
 
     var script []byte
@@ -166,7 +164,7 @@ func SimpleTransitionState(addr []byte, block *Block, tx *Transaction) *Receipt{
         root = []byte(r)
     }
 
-    receipt := &Receipt{tx, monkutil.CopyBytes(root), new(big.Int)}
+    receipt := &monkchain.Receipt{tx, monkutil.CopyBytes(root), new(big.Int)}
     // remove stateobject used to deploy gen doug
     state.DeleteStateObject(sender)    
     return receipt

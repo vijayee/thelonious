@@ -48,6 +48,25 @@ type EthManager interface {
 	KeyManager() *monkcrypto.KeyManager
 	ClientIdentity() monkwire.ClientIdentity
 	Db() monkutil.Database
+    GenesisPointer(block *Block)
+    GenesisModel() GenDougModel
+}
+
+// The interface to validating activities on the chain
+type GenDougModel interface{
+    ValidatePerm(addr []byte, role string, state *monkstate.State) bool
+    ValidateValue(name string, value interface{}, state *monkstate.State) bool
+    SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt)
+    SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt)
+}
+
+// Private global genDoug variable for checking permissions on arbitrary
+// chain related actions. Set by setLastBlock when we boot up the blockchain
+var genDoug GenDougModel
+
+// Public function so we can validate permissions using the genDoug from outside this package
+func ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
+    return genDoug.ValidatePerm(addr, role, state)
 }
 
 type StateManager struct {
@@ -323,7 +342,10 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
 
-    if !bytes.Equal(block.Signer(), block.Coinbase) && !DougValidate(block.Coinbase, sm.bc.Genesis().State(), "mine"){
+    // TODO: should be || not && but blocks aren't being signed properly yet
+    if !bytes.Equal(block.Signer(), block.Coinbase) && !genDoug.ValidatePerm(block.Coinbase, "mine", sm.bc.Genesis().State()){
+        fmt.Println(block.Signer())
+        fmt.Println(block.Coinbase)
         return InvalidPermError(monkutil.Bytes2Hex(block.Coinbase), "mine")
     }
 

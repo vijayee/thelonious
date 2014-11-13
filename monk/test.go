@@ -53,8 +53,8 @@ func (t *Test) Run(){
             t.TestRestart()
         case "callstack":
             t.TestCallStack()
-        case "maxgas":
-            t.TestMaxGas()
+        //case "maxgas":
+            //t.TestMaxGas()
         case "state":
             t.TestState()
         case "compress":
@@ -72,11 +72,16 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
         t.mod = mod
     } 
     mod.ReadConfig("eth-config.json")
-    mod.monk.config.Mining = true
-    mod.monk.config.DbName = "tests/"+name
-    monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    monkchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
-    t.gendougaddr = monkutil.Bytes2Hex(monkchain.GENDOUG)
+    mod.Config.Mining = true
+    mod.Config.DbName = "tests/"+name
+    /*
+    // more trouble than it's worth for now
+    g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
+    g.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
+    mod.SetGenesis(g)
+    t.gendougaddr = g.HexAddr
+    */
     mod.Init()
 
     t.reactor = mod.monk.ethereum.Reactor()
@@ -96,11 +101,12 @@ func tester(name string, testing func(mod *MonkModule), end int){
     mod.ReadConfig("eth-config.json")
     mod.monk.config.Mining = true
     mod.monk.config.DbName = "tests/"+name
-    //TODO: genesis
-    //monkchain.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    monkchain.GENDOUG = []byte("0000000000THISISDOUG") // similarly
-    mod.Init()
-
+    /*
+    g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
+    //g.DougPath = t.genesis // overwrite whatever loads from genesis.json
+    g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
+    mod.SetGenesis(g)
+    */
     testing(mod)
     
     if end > 0{

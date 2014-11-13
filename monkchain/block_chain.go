@@ -11,6 +11,8 @@ import (
 
 var chainlogger = monklog.NewLogger("CHAIN")
 
+var DougDifficulty = monkutil.BigPow(2, 17)  // for mining speed
+
 type BlockChain struct {
 	Ethereum EthManager
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
@@ -170,10 +172,12 @@ func (bc *BlockChain) Fuck(thing string){
 }
 
 func (bc *BlockChain) setLastBlock() {
-	// Prep genesis
-    GenesisPointer(bc.genesisBlock)
-	//AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
+    // Prepare the genesis block
+    // TODO: don't run this if we have the last block already
+    //  but so far that causes state_object panics!
+    bc.Ethereum.GenesisPointer(bc.genesisBlock)
 
+    // check for last block. if none exists, fire up a genesis
 	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))
 	if len(data) != 0 {
 		block := NewBlockFromBytes(data)
@@ -183,12 +187,14 @@ func (bc *BlockChain) setLastBlock() {
 
 	} else {
 		bc.genesisBlock.state.Trie.Sync()
-		// Prepare the genesis block
+            //AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
 		bc.Add(bc.genesisBlock)
 		fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 		bc.Ethereum.Db().Put(fk, make([]byte, 255))
 		bc.CurrentBlock = bc.genesisBlock
 	}
+    // set the genDoug model for determining chain permissions
+    genDoug = bc.Ethereum.GenesisModel()
 
 	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())

@@ -23,6 +23,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkreact"
 	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkdoug"
 )
 
 var (
@@ -37,6 +38,7 @@ var logger *monklog.Logger = monklog.NewLogger("EthChain(decerver)")
 type MonkModule struct {
 	monk *Monk
     Config *ChainConfig
+    GenesisConfig *monkdoug.GenesisConfig
 
 	wsAPIServiceFactory api.WsAPIServiceFactory
 	httpAPIService      interface{}
@@ -48,6 +50,7 @@ type MonkModule struct {
 // as such, it does not have "administrative" methods
 type Monk struct {
 	config     *ChainConfig
+    genConfig  *monkdoug.GenesisConfig
 	ethereum   *eth.Ethereum
 	pipe       *monkpipe.Pipe
 	keyManager *monkcrypto.KeyManager
@@ -76,6 +79,7 @@ func NewMonk(ethereum *eth.Ethereum) *MonkModule {
 	if ethereum != nil {
 		m.ethereum = ethereum
 	}
+
 	m.started = false
 	mm.monk = m
 	return mm
@@ -91,14 +95,18 @@ func (mod *MonkModule) Register(fileIO core.FileIO, registry api.ApiRegistry, ru
 // basically gives you a pipe, local keyMang, and reactor
 func (mod *MonkModule) Init() error {
 	m := mod.monk
-	// if didn't call NewEth
+	// if didn't call NewMonk
 	if m.config == nil {
 		m.config = DefaultConfig
 	}
+    if mod.GenesisConfig == nil{
+        mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
+    }
+    m.genConfig = mod.GenesisConfig
 	// if no ethereum instance
 	if m.ethereum == nil {
-		m.EthConfig()
-		m.NewEthereum()
+		m.ethConfig()
+		m.newEthereum()
 	}
 
 	// public interface
@@ -241,6 +249,23 @@ func (mod *MonkModule) NewAddress(set bool) string {
 
 func (mod *MonkModule) AddressCount() int {
 	return mod.monk.AddressCount()
+}
+
+/*
+   Non-interface functions that otherwise prove useful 
+    in standalone applications, testing, and debuging
+*/
+
+// Load genesis json file (so calling pkg need not import monkdoug)
+func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
+    return monkdoug.LoadGenesis(file)
+}
+
+// Set the genesis json object. This can only be done once
+func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
+    // reset the permission model struct (since config may have changed)
+    genJson.Model = monkdoug.NewPermModel(genJson.ModelName, genJson.ByteAddr)
+    mod.GenesisConfig = genJson
 }
 
 /*
@@ -561,9 +586,9 @@ func (monk *Monk) AddressCount() int {
 */
 
 // create a new ethereum instance
-// expects EthConfig to already have been called!
+// expects ethConfig to already have been called!
 // init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
-func (m *Monk) NewEthereum() {
+func (m *Monk) newEthereum() {
 	db := NewDatabase(m.config.DbName)
 
 	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
@@ -576,7 +601,7 @@ func (m *Monk) NewEthereum() {
 	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
 
 	// create the ethereum obj
-	ethereum, err := eth.New(db, clientIdentity, m.keyManager, eth.CapDefault, false)
+	ethereum, err := eth.New(db, clientIdentity, m.keyManager, eth.CapDefault, false, m.genConfig)
 
 	if err != nil {
 		log.Fatal("Could not start node: %s\n", err)
@@ -589,9 +614,10 @@ func (m *Monk) NewEthereum() {
 }
 
 // returns hex addr of gendoug
+/*
 func (monk *Monk) GenDoug() string {
-	return monkutil.Bytes2Hex(monkchain.GENDOUG)
-}
+	return monkutil.Bytes2Hex(monkdoug.GenDougByteAddr)
+}*/
 
 func (monk *Monk) StartMining() bool {
 	return StartMining(monk.ethereum)
@@ -608,6 +634,7 @@ func (monk *Monk) StartListening() {
 func (monk *Monk) StopListening() {
 	monk.ethereum.StopListening()
 }
+
 
 /*
    some key management stuff

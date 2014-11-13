@@ -29,4 +29,4 @@ func (self *VMEnv) Difficulty() *big.Int   { return self.block.Difficulty }
 func (self *VMEnv) BlockHash() []byte      { return self.block.Hash() }
 func (self *VMEnv) Value() *big.Int        { return self.tx.Value }
 func (self *VMEnv) State() *monkstate.State { return self.state }
-func (self *VMEnv) DougValidate(addr []byte, state *monkstate.State, role string) bool{ return DougValidate(addr, state, role)}
+func (self *VMEnv) DougValidate(addr []byte, role string, state *monkstate.State) bool{ return genDoug.ValidatePerm(addr, role, state)}

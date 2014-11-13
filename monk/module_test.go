@@ -25,6 +25,7 @@ func TestModule(t *testing.T){
 
 func TestSubscribe(t *testing.T){
     tester("subscribe/unsuscribe", func(mod *MonkModule){
+        mod.Init()
         name := "testNewBlock"
         ch := mod.Subscribe(name, "newBlock", "")
         go func(){
