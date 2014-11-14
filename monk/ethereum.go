@@ -18,6 +18,7 @@ import (
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
+	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkpipe"
@@ -266,6 +267,10 @@ func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
     // reset the permission model struct (since config may have changed)
     genJson.Model = monkdoug.NewPermModel(genJson.ModelName, genJson.ByteAddr)
     mod.GenesisConfig = genJson
+}
+
+func (mod *MonkModule) MonkState() *monkstate.State{
+   return mod.monk.pipe.World().State() 
 }
 
 /*
