@@ -140,22 +140,27 @@ func AddAccount(addr []byte, balance string, block *monkchain.Block){
     block.State().UpdateStateObject(account)
 }
 
-// make and apply an administrative tx (simplified vm processing)
-// addr is typically gendoug
-func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
-    var tx *monkchain.Transaction
-    if codePath != ""{
-        tx = NewGenesisContract(codePath)        
-    } else{
-        tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
+// return a new permissions model
+func NewPermModel(modelName string, dougAddr []byte) (model monkchain.GenDougModel){
+    switch(modelName){
+        case "fake":
+            // simplified genesis permission structure
+            model = NewFakeModel(dougAddr)
+        case "dennis":
+            // gendoug-v1
+            model = NewGenDougModel(dougAddr)
+        case "std":
+            // gendoug-v2
+            model = NewStdLibModel(dougAddr)
+        case "yes":
+            // everyone allowed
+            model = NewYesModel()
+        case "no":
+            // noone allowed
+            model = NewNoModel()
+        default:
+            model = NewYesModel()
     }
-
-    tx.Sign(keys.PrivateKey)
-    //fmt.Println(tx.String())
-    receipt := SimpleTransitionState(addr, block, tx)
-    txs := append(block.Transactions(), tx)
-    receipts := append(block.Receipts(), receipt)
-    block.SetReceipts(receipts, txs)
-    
-    return tx, receipt
+    return 
 }
+

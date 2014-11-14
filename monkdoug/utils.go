@@ -18,36 +18,14 @@ var (
 )
 
 /*
-   Model is a global variable set at eth startup
-    DougValidate and DougValue are our windows into the model
-*/
-func NewPermModel(modelName string, dougAddr []byte) (model monkchain.GenDougModel){
-    switch(modelName){
-        case "fake":
-            model = NewFakeModel(dougAddr)
-        case "dennis":
-            model = NewGenDougModel(dougAddr)
-        case "std":
-            model = NewStdLibModel(dougAddr)
-        case "yes":
-            model = NewYesModel()
-        case "no":
-            model = NewNoModel()
-        default:
-            fmt.Println("shitty default")
-            model = NewYesModel()
-    }
-    return 
-}
-
-/*
-    Functions for setting for loading the genesis contract
-    and processing the state changes
+    Functions for updating state without all the weight
+    of the standard protocol.
+    Mostly used for setting up the genesis block
 */
 
 // create a new tx from a script, with dummy keypair
 // creates tx but does not sign!
-func NewGenesisContract(scriptFile string) *monkchain.Transaction{
+func NewContract(scriptFile string) *monkchain.Transaction{
     // if mutan, load the script. else, pass file name
     var s string
     if scriptFile[len(scriptFile)-3:] == ".mu"{
@@ -65,11 +43,9 @@ func NewGenesisContract(scriptFile string) *monkchain.Transaction{
         fmt.Println("failed compile", err)
         os.Exit(0)
     }
-    //fmt.Println("script: ", script)
 
     // create tx
     tx := monkchain.NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
-    //tx.Sign(keys.PrivateKey)
 
     return tx
 }
@@ -124,4 +100,24 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
     // remove stateobject used to deploy gen doug
     state.DeleteStateObject(sender)    
     return receipt
+}
+
+// make and apply an administrative tx (simplified vm processing)
+// addr is typically gendoug
+func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
+    var tx *monkchain.Transaction
+    if codePath != ""{
+        tx = NewContract(codePath)        
+    } else{
+        tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
+    }
+
+    tx.Sign(keys.PrivateKey)
+    //fmt.Println(tx.String())
+    receipt := SimpleTransitionState(addr, block, tx)
+    txs := append(block.Transactions(), tx)
+    receipts := append(block.Receipts(), receipt)
+    block.SetReceipts(receipts, txs)
+    
+    return tx, receipt
 }
