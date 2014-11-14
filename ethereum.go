@@ -146,7 +146,6 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 
 // Deploy the genesis block from a preconfigured GenesisJSON object
 // if genConfig is nil, this function has no effect, and the genesis block is empty
-// TODO: make sure to set the model!
 func (s *Ethereum) GenesisPointer(block *monkchain.Block){
     if s.genConfig != nil{
         s.genConfig.Deploy(block)

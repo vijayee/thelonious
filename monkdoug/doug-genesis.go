@@ -76,31 +76,6 @@ func LoadGenesis(file string) *GenesisConfig{
     g.HexAddr = monkutil.Bytes2Hex(g.ByteAddr)
     g.ContractPath = path.Join(ErisLtd, "eris-std-lib")
 
-    /* TODO: deprecate
-    // if the global DougPath is set, overwrite the config file
-    if GenesisConfig.DougPath != ""{
-        g.DougPath = DougPath
-    }
-    // if the global GenDougByteAddr is set, overwrite the config file
-    if GenDougByteAddr != nil{
-        g.Address = string(GenDougByteAddr)
-    }
-    
-    if NoGenDoug{
-        GenDougByteAddr = nil
-        Model = nil
-    } else{
-        // check doug address validity (addr length is at least 20)
-        if len(g.Address) >= 20 {
-            if g.Address[:2] == "0x"{
-                GenDougByteAddr = monkutil.Hex2Bytes(g.Address[2:])
-            } else{
-                GenDougByteAddr = []byte(g.Address)
-            }
-            GenDougByteAddr = GenDougByteAddr[:20]
-        }
-    }*/
-
     // set doug model
     g.Model = NewPermModel(g.ModelName, g.ByteAddr)
 
@@ -184,7 +159,3 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, b
     
     return tx, receipt
 }
-
-
-
-
