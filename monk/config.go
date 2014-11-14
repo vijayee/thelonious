@@ -21,9 +21,7 @@ type ChainConfig struct{
     MaxPeers int    `json:"max_peers"`
     ConfigFile string `json:"config_file"`
     RootDir string  `json:"root_dir"`
-    Name string     `json:"name"`
     LogFile string  `json:"log_file"`
-    DataDir string `json:"data_dir"`
     DbName string `json:"db_name"`
     LLLPath string `json:"lll_path"`
     ContractPath string `json:"contract_path"`
@@ -48,7 +46,6 @@ var DefaultConfig = &ChainConfig{
         RootDir : path.Join(usr.HomeDir, ".monkchain2"),
         DbName : "database",
         KeySession: "generous",
-        Name : "decerver-monkchain",
         LogFile: "",
         //LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
         LLLPath: "NETCALL",
@@ -92,7 +89,7 @@ func (mod *MonkModule) ReadConfig(config_file string){
         //mod.monk.config = DefaultConfig
         return
     }
-    mod.monk.config = &config
+    *(mod.Config) = config
 }
 
 func (mod *MonkModule) SetConfig(field string, value interface{}) error{
