@@ -129,8 +129,10 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
             g.Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
             
             g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, "0x"+account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
+            fmt.Println("setting perms for", account.Address)
         }
     }
+    block.Sign(keys.PrivateKey)
 }
 
 // set balance of an account (does not commit)

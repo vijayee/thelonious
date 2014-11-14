@@ -178,7 +178,7 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
     }
     // check that signature of block matches miners coinbase
     if !bytes.Equal(block.Signer(), block.Coinbase){
-        //return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
+        return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
     // check that its the miners turn in the round robin
     if !bytes.Equal(prevBlock.PrevHash, monkchain.ZeroHash256){
