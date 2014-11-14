@@ -48,7 +48,7 @@ type GenesisConfig struct{
     // Accounts (permissions and stake)
     Accounts []*Account `json:"accounts"`
 
-    Model monkchain.GenDougModel
+    Model PermModel
 }
 
 // Load the genesis block info from genesis.json
@@ -77,7 +77,7 @@ func LoadGenesis(file string) *GenesisConfig{
     g.ContractPath = path.Join(ErisLtd, "eris-std-lib")
 
     // set doug model
-    g.Model = NewPermModel(g.ModelName, g.ByteAddr)
+    g.Model = NewPermModel(g)
 
     return g
 }
@@ -141,17 +141,18 @@ func AddAccount(addr []byte, balance string, block *monkchain.Block){
 }
 
 // return a new permissions model
-func NewPermModel(modelName string, dougAddr []byte) (model monkchain.GenDougModel){
+func NewPermModel(g *GenesisConfig) (model PermModel){
+    modelName := g.ModelName
     switch(modelName){
         case "fake":
             // simplified genesis permission structure
-            model = NewFakeModel(dougAddr)
+            //model = NewFakeModel(dougAddr)
         case "dennis":
             // gendoug-v1
-            model = NewGenDougModel(dougAddr)
+            //model = NewGenDougModel(dougAddr)
         case "std":
             // gendoug-v2
-            model = NewStdLibModel(dougAddr)
+            model = NewStdLibModel(g)
         case "yes":
             // everyone allowed
             model = NewYesModel()

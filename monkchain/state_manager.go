@@ -48,16 +48,23 @@ type EthManager interface {
 	KeyManager() *monkcrypto.KeyManager
 	ClientIdentity() monkwire.ClientIdentity
 	Db() monkutil.Database
-    GenesisPointer(block *Block)
-    GenesisModel() GenDougModel
+    GenesisPointer(block *Block) // deploy the genesis block
+    GenesisModel() GenDougModel // return the genesis model
 }
 
 // The interface to validating activities on the chain
+/*
 type GenDougModel interface{
     ValidatePerm(addr []byte, role string, state *monkstate.State) bool
     ValidateValue(name string, value interface{}, state *monkstate.State) bool
     SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt)
     SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt)
+}*/
+
+type GenDougModel interface{
+    ValidatePerm(addr []byte, role string, state *monkstate.State) error
+    ValidateBlock(block *Block) error
+    ValidateTx(tx *Transaction, block *Block) error
 }
 
 // Private global genDoug variable for checking permissions on arbitrary
@@ -65,9 +72,22 @@ type GenDougModel interface{
 var genDoug GenDougModel
 
 // Public function so we can validate permissions using the genDoug from outside this package
-func ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
+func DougValidateBlock(block *Block) error{
+    return genDoug.ValidateBlock(block)
+}
+
+func DougValidateTx(tx *Transaction, block *Block) error{
+    return genDoug.ValidateTx(tx, block)
+}
+
+func DougValidatePerm(addr []byte, role string, state *monkstate.State) error{
     return genDoug.ValidatePerm(addr, role, state)
 }
+
+/*
+func ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
+    return genDoug.ValidatePerm(addr, role, state)
+}*/
 
 type StateManager struct {
 	// Mutex for locking the block processor. Blocks can only be handled one at a time
@@ -342,11 +362,11 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
 
-    // If the sig does not match the coinbase, or the coinbase does not have permission to mine, that's a technical foul
-    // TODO: should the error distinguish between failed sig and failed permission?
-    if !bytes.Equal(block.Signer(), block.Coinbase) || !genDoug.ValidatePerm(block.Coinbase, "mine", sm.CurrentState()){
-        return InvalidPermError(monkutil.Bytes2Hex(block.Coinbase), "mine")
+    if err := genDoug.ValidateBlock(block); err != nil{
+        return err
     }
+
+    // TODO: move all of this into genDoug.ValidateBlock
 
 
 	// TODO

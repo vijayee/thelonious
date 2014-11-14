@@ -138,15 +138,3 @@ type TxFail struct {
     Err error
 }
 
-type InvalidPermErr struct{
-    Message string
-    Addr string
-}
-
-func InvalidPermError(addr, role string) *InvalidPermErr{
-    return &InvalidPermErr{Message: fmt.Sprintf("Invalid permissions err on role %s for adddress %s", role, addr), Addr:addr}
-}
-
-func (self *InvalidPermErr) Error() string{
-    return self.Message
-}

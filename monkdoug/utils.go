@@ -10,6 +10,7 @@ import (
     "github.com/eris-ltd/thelonious/monkstate"    
     "github.com/eris-ltd/thelonious/monktrie"    
     "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkcrypto"
 )
 
 var (
@@ -121,3 +122,26 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, b
     
     return tx, receipt
 }
+
+
+func String2Big(s string) *big.Int{
+    // right pad the string, convert to big num
+    return monkutil.BigD(monkutil.PackTxDataArgs(s))
+}
+
+// pretty print chain queries and storage
+func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject){
+    for k, v := range m{
+        if vv, ok := v.(*monkutil.Value); ok{
+            fmt.Println(k, monkutil.Bytes2Hex(vv.Bytes()))
+        } else if vv, ok := v.(*big.Int); ok{
+            fmt.Println(k, monkutil.Bytes2Hex(vv.Bytes()))
+        } else if vv, ok := v.([]byte); ok{
+            fmt.Println(k, monkutil.Bytes2Hex(vv))
+        }
+    }
+    obj.EachStorage(func(k string, v *monkutil.Value){
+        fmt.Println(monkutil.Bytes2Hex([]byte(k)), monkutil.Bytes2Hex(v.Bytes()))
+    })
+}
+

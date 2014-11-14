@@ -265,7 +265,7 @@ func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
 // Set the genesis json object. This can only be done once
 func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
     // reset the permission model struct (since config may have changed)
-    genJson.Model = monkdoug.NewPermModel(genJson.ModelName, genJson.ByteAddr)
+    genJson.Model = monkdoug.NewPermModel(genJson)
     mod.GenesisConfig = genJson
 }
 

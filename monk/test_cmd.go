@@ -110,12 +110,12 @@ func (t *Test) TestValidate(){
         a1 := monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
         a2 := monkutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
         a3 := monkutil.Hex2Bytes("cced0756041f7aed3ce278c56ee638bade96d001")
-        fmt.Println(monkchain.ValidatePerm(a1, "tx", gen.State()))
-        fmt.Println(monkchain.ValidatePerm(a2, "tx", gen.State()))
-        fmt.Println(monkchain.ValidatePerm(a3, "tx", gen.State()))
-        fmt.Println(monkchain.ValidatePerm(a1, "miner", gen.State()))
-        fmt.Println(monkchain.ValidatePerm(a2, "miner", gen.State()))
-        fmt.Println(monkchain.ValidatePerm(a3, "miner", gen.State()))
+        fmt.Println(monkchain.DougValidatePerm(a1, "tx", gen.State()))
+        fmt.Println(monkchain.DougValidatePerm(a2, "tx", gen.State()))
+        fmt.Println(monkchain.DougValidatePerm(a3, "tx", gen.State()))
+        fmt.Println(monkchain.DougValidatePerm(a1, "miner", gen.State()))
+        fmt.Println(monkchain.DougValidatePerm(a2, "miner", gen.State()))
+        fmt.Println(monkchain.DougValidatePerm(a3, "miner", gen.State()))
     }, 0)
 }
 

@@ -140,21 +140,16 @@ func (self *StateTransition) preCheck() (err error) {
         else, default to base ethereum permissions model
     */
    
-    // state transition only has the genesis block if 
-    // created by Eris 
-    if self.genesis != nil && !genDoug.ValidatePerm(sender.Address(), "transact", self.block.State()){
-        return InvalidPermError(monkutil.Bytes2Hex(sender.Address()), "transact")
+    if err = genDoug.ValidateTx(tx, self.block); err != nil{
+        return err
     }
+
+    // TODO: move everything to genDoug.ValidateTx
 
 	// Make sure this transaction's nonce is correct
 	if sender.Nonce != tx.Nonce {
 		return NonceError(tx.Nonce, sender.Nonce)
 	}
-
-    if !genDoug.ValidateValue("maxgas", self.tx.GasValue(), self.block.State()){
-            return fmt.Errorf("max gas err")
-            //TODO: return GasLimitTxError(gas, maxBig)
-    }
 
 	// Pre-pay gas / Buy gas of the coinbase account
 	if err = self.BuyGas(); err != nil {
