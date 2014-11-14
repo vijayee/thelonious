@@ -33,6 +33,30 @@
                         "create":1
                     },
                 "stake":3
+            },
+            {
+                "address":"d0245d113138843f4630e4a22e6b5e66d4bf8baf",
+                "name":"Jim'sDick",
+                "balance":"12345678909876543212345678",
+                "permissions":
+                    {
+                        "transact":1,
+                        "mine":1,
+                        "create":1
+                    },
+                "stake":3
+            },
+            {
+                "address":"11e472fee3abaa498429f099d283f387da8a1534",
+                "name":"HolyMoly",
+                "balance":"12345678909876543212345678",
+                "permissions":
+                    {
+                        "transact":1,
+                        "mine":1,
+                        "create":1
+                    },
+                "stake":3
             }
         ]
 }
