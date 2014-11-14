@@ -86,58 +86,63 @@ func (miner *Miner) listener() {
 			status <- nil
 			return
 		case chanMessage := <-miner.reactChan:
-
 			if block, ok := chanMessage.Resource.(*monkchain.Block); ok {
-				//logger.Infoln("Got new block via Reactor")
-				if bytes.Compare(miner.ethereum.BlockChain().CurrentBlock.Hash(), block.Hash()) == 0 {
-					// TODO: Perhaps continue mining to get some uncle rewards
-					//logger.Infoln("New top block found resetting state")
-
-					// Filter out which Transactions we have that were not in this block
-					var newtxs []*monkchain.Transaction
-					for _, tx := range miner.txs {
-						found := false
-						for _, othertx := range block.Transactions() {
-							if bytes.Compare(tx.Hash(), othertx.Hash()) == 0 {
-								found = true
-							}
-						}
-						if found == false {
-							newtxs = append(newtxs, tx)
-						}
-					}
-					miner.txs = newtxs
-
-					// Setup a fresh state to mine on
-					//miner.block = miner.ethereum.BlockChain().NewBlock(miner.coinbase, miner.txs)
-
-				} else {
-					if bytes.Compare(block.PrevHash, miner.ethereum.BlockChain().CurrentBlock.PrevHash) == 0 {
-						logger.Infoln("Adding uncle block")
-						miner.uncles = append(miner.uncles, block)
-					}
-				}
+                miner.receiveBlock(block)
 			}
-
 			if tx, ok := chanMessage.Resource.(*monkchain.Transaction); ok {
-				found := false
-				for _, ctx := range miner.txs {
-					if found = bytes.Compare(ctx.Hash(), tx.Hash()) == 0; found {
-						break
-					}
-
-				}
-				if found == false {
-					// Undo all previous commits
-					miner.block.Undo()
-					// Apply new transactions
-					miner.txs = append(miner.txs, tx)
-				}
+                miner.receiveTx(tx)
 			}
 		default:
 			miner.mineNewBlock()
 		}
 	}
+}
+
+func (miner *Miner) receiveTx(tx *monkchain.Transaction){
+    found := false
+    for _, ctx := range miner.txs {
+        if found = bytes.Compare(ctx.Hash(), tx.Hash()) == 0; found {
+            break
+        }
+    }
+    if found == false {
+        // Undo all previous commits
+        miner.block.Undo()
+        // Apply new transactions
+        miner.txs = append(miner.txs, tx)
+    }
+}
+
+func (miner *Miner) receiveBlock(block *monkchain.Block){
+    //logger.Infoln("Got new block via Reactor")
+    if bytes.Compare(miner.ethereum.BlockChain().CurrentBlock.Hash(), block.Hash()) == 0 {
+        // TODO: Perhaps continue mining to get some uncle rewards
+        //logger.Infoln("New top block found resetting state")
+
+        // Filter out which Transactions we have that were not in this block
+        var newtxs []*monkchain.Transaction
+        for _, tx := range miner.txs {
+            found := false
+            for _, othertx := range block.Transactions() {
+                if bytes.Compare(tx.Hash(), othertx.Hash()) == 0 {
+                    found = true
+                }
+            }
+            if found == false {
+                newtxs = append(newtxs, tx)
+            }
+        }
+        miner.txs = newtxs
+
+        // Setup a fresh state to mine on
+        //miner.block = miner.ethereum.BlockChain().NewBlock(miner.coinbase, miner.txs)
+
+    } else {
+        if bytes.Compare(block.PrevHash, miner.ethereum.BlockChain().CurrentBlock.PrevHash) == 0 {
+            logger.Infoln("Adding uncle block")
+            miner.uncles = append(miner.uncles, block)
+        }
+    }
 }
 
 func (miner *Miner) Stop() {
@@ -159,6 +164,8 @@ func (miner *Miner) Stop() {
 }
 
 func (self *Miner) mineNewBlock() {
+    // TODO: check if we are a currently valid miner
+    // if not, return
 
 	stateManager := self.ethereum.StateManager()
 
