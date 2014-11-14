@@ -2,7 +2,6 @@ package monkdoug
 
 import (
     "math/big"
-    //"errors"
     "bytes"
     "fmt"
     "strconv"
@@ -13,12 +12,6 @@ import (
     "github.com/eris-ltd/thelonious/monkchain"
 )
 
-
-
-var (
-    Model PermModel = nil // permissions model
-)
-
 // location struct (where is a permission?)
 // the model must specify how to extract the permission from the location
 type Location struct{
@@ -27,35 +20,26 @@ type Location struct{
     pos *big.Int // nibble/bit/byte indicator
 }
 
-
-// doug validation requires a reference model to understand 
-//  where the permissions are with respect to doug, the target addr, and the permission name
-//  the model name should be specified in genesis.json
-// now, the permissions model interface:
+/*
+    Permission models are used for setting up the genesis block
+    and for validating blocks and transactions.
+    They allow for arbitrary extensions of consensus
+*/
 type PermModel interface{
-    // return the current doug state
-    Doug(state *monkstate.State) *monkstate.StateObject
-    // return the location of a permission string for an address
-//    PermLocator(addr []byte, perm string, state *monkstate.State) (*Location, error)
-    // Get a permission string
-//    GetPermission(addr []byte, perm string, state *monkstate.State) *monkutil.Value
-    // Determine if a user has permission to do something
-//    HasPermission(addr []byte, perm string, state *monkstate.State) bool 
-    ValidatePerm(addr []byte, perm string, state *monkstate.State) error
     // Set some permissions for a given address. requires valid keypair
     SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt)
-
     SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt)
-    // doug has a key-value store that is space partitioned for collision avoidance
-    // resolve those values
-//    GetValue(key, namespace string, state *monkstate.State) []byte
 
     // generic validation functions for arbitrary consensus models
-    // hot shit yo!
+    // satisfies monkchain.GenDougModel
+    ValidatePerm(addr []byte, perm string, state *monkstate.State) error
     ValidateBlock(block *monkchain.Block) error
     ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) error
 }
 
+/*
+    The yes model grants all permissions 
+*/
 type YesModel struct{
 }
 
@@ -63,24 +47,16 @@ func NewYesModel() PermModel{
     return &YesModel{}
 }
 
-func (m *YesModel) Doug(state *monkstate.State) *monkstate.StateObject{
-    return nil    
-}
-
-func (m *YesModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
-    return nil
-}
-
-func (m *YesModel) ValidateValue(name string, value interface{}, state *monkstate.State) bool{
-    return true
+func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
+    return nil, nil
 }
 
 func (m *YesModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
 }
 
-func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
-    return nil, nil
+func (m *YesModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
+    return nil
 }
 
 func (m *YesModel) ValidateBlock(block *monkchain.Block) error{
@@ -91,6 +67,9 @@ func (m *YesModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block)
     return nil
 }
 
+/*
+    The no model grants no permissions
+*/
 type NoModel struct{
 }
 
@@ -98,24 +77,16 @@ func NewNoModel() PermModel{
     return &NoModel{}
 }
 
-func (m *NoModel) Doug(state *monkstate.State) *monkstate.StateObject{
-    return nil    
-}
-
-func (m *NoModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
-    return fmt.Errorf("No!")
-}
-
-func (m *NoModel) ValidateValue(name string, value interface{}, state *monkstate.State) error{
-    return fmt.Errorf("No!")
+func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
+    return nil, nil
 }
 
 func (m *NoModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
 }
 
-func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
-    return nil, nil
+func (m *NoModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
+    return fmt.Errorf("No!")
 }
 
 func (m *NoModel) ValidateBlock(block *monkchain.Block) error{
@@ -126,8 +97,10 @@ func (m *NoModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) 
     return fmt.Errorf("No!")
 }
 
-
-// the LLL eris-std-lib model with types :)
+/*
+    The stdlib model grants permissions based on the state of the gendoug
+    It depends on the eris-std-lib for its storage model
+*/
 type StdLibModel struct{
     doug []byte
 }
@@ -188,36 +161,21 @@ func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyP
     return tx, rec
 }
 
-func (m *StdLibModel) GetValue(key, namespace string, state *monkstate.State) []byte{
-    switch(namespace){
-        case "global":
-           return vars.GetSingle(m.doug, key, state)
-        default:
-            return nil
-    }
-    return nil
-}
-    
 func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
     if m.HasPermission(addr, role, state){
         return nil
     }
-    return InvalidPermError(addr, role)
-}
-
-// TODO: fix..
-func (m *StdLibModel) ValidateValue(name string, value interface{}, state *monkstate.State) error{
-    return nil
+    return monkchain.InvalidPermError(addr, role)
 }
 
 func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
     // check that miner has permission to mine
     if !m.HasPermission(block.Coinbase, "mine", block.State()){
-        return InvalidPermError(block.Coinbase, "mine")
+        return monkchain.InvalidPermError(block.Coinbase, "mine")
     }
     // check that signature of block matches miners coinbase
     if !bytes.Equal(block.Signer(), block.Coinbase){
-        return InvalidSigError(block.Signer(), block.Coinbase)
+        return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
     // check that its the miners turn in the round robin
     // TODO:
@@ -226,13 +184,27 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
 }
 
 func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) error{
-    // check that sender has permission to transact or TODO: create
-    if !m.HasPermission(tx.Sender(), "transact", block.State()){
-        return InvalidPermError(tx.Sender(), "transact")
+    // check that sender has permission to transact or create
+    var perm string
+    if tx.IsContract(){
+        perm = "create"
+    } else{
+        perm = "transact"
     }
-    // check that max gas has not been exceeded
-    //if !genDoug.ValidateValue("maxgas", self.tx.GasValue(), self.block.State()){
-     //       return GasLimitTxError(gas, maxBig)
+    if !m.HasPermission(tx.Sender(), perm, block.State()){
+        return monkchain.InvalidPermError(tx.Sender(), perm)
+    }
+    // check that tx uses less than maxgas
+    gas := tx.GasValue()
+    max := vars.GetSingle(m.doug, "maxgas", block.State()) 
+    maxBig := monkutil.BigD(max)
+    if max != nil && gas.Cmp(maxBig) > 0 {
+        return monkchain.GasLimitTxError(gas, maxBig)
+    }
     
     return nil
 }
+
+
+
+
