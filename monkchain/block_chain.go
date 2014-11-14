@@ -242,13 +242,16 @@ func (self *BlockChain) CalcTotalDiff(block *Block) (*big.Int, error) {
 	return td, nil
 }
 
-func (bc *BlockChain) GetBlock(hash []byte) *Block {
+func GetBlock(hash []byte) *Block{
 	data, _ := monkutil.Config.Db.Get(hash)
 	if len(data) == 0 {
 		return nil
 	}
-
 	return NewBlockFromBytes(data)
+}
+
+func (bc *BlockChain) GetBlock(hash []byte) *Block {
+    return GetBlock(hash)
 }
 
 func (self *BlockChain) GetBlockByNumber(num uint64) *Block {

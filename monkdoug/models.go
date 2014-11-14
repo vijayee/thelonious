@@ -8,8 +8,8 @@ import (
     "github.com/eris-ltd/thelonious/monkstate"
     "github.com/eris-ltd/thelonious/monkutil"
     "github.com/eris-ltd/thelonious/monkcrypto"
-    "github.com/eris-ltd/eris-std-lib/go-tests"
     "github.com/eris-ltd/thelonious/monkchain"
+    vars "github.com/eris-ltd/eris-std-lib/go-tests"
 )
 
 // location struct (where is a permission?)
@@ -169,16 +169,33 @@ func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.St
 }
 
 func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
+    // we have to verify using the state of the previous block!
+    prevBlock := monkchain.GetBlock(block.PrevHash)
+
     // check that miner has permission to mine
-    if !m.HasPermission(block.Coinbase, "mine", block.State()){
+    if !m.HasPermission(block.Coinbase, "mine", prevBlock.State()){
         return monkchain.InvalidPermError(block.Coinbase, "mine")
     }
     // check that signature of block matches miners coinbase
     if !bytes.Equal(block.Signer(), block.Coinbase){
-        return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
+        //return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
     // check that its the miners turn in the round robin
-    // TODO:
+    if !bytes.Equal(prevBlock.PrevHash, monkchain.ZeroHash256){
+        // if its not the genesis block, get coinbase of last block
+        // find next entry in linked list
+        prevCoinbase := prevBlock.Coinbase
+        nextCoinbase, _ := vars.GetNextLinkedListElement(m.doug, "seq:name", string(prevCoinbase), prevBlock.State())
+        if !bytes.Equal(nextCoinbase, block.Coinbase){
+            return monkchain.InvalidTurnError(block.Coinbase, nextCoinbase)        
+        }
+    } else{
+        // is it is genesis block, find first entry in linked list
+        nextCoinbase, _ := vars.GetLinkedListHead(m.doug, "seq:name", prevBlock.State())
+        if !bytes.Equal(nextCoinbase, block.Coinbase){
+            return monkchain.InvalidTurnError(block.Coinbase, nextCoinbase)        
+        }
+    }
 
     return nil
 }
@@ -204,7 +221,3 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Blo
     
     return nil
 }
-
-
-
-

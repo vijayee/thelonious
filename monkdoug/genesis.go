@@ -127,8 +127,8 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
         if g.Model != nil{
             // issue txs to set perms according to the model
             g.Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
-
-            g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
+            
+            g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, "0x"+account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
         }
     }
 }

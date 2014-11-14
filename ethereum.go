@@ -28,7 +28,8 @@ import (
 const (
 	seedTextFileUri string = "http://www.ethereum.org/servers.poc3.txt"
 	//seedNodeAddress        = "162.218.65.211:30303"
-    seedNodeAddress        = "92.243.15.73:30303"
+    //seedNodeAddress        = "92.243.15.73:30303"
+    seedNodeAddress        = "localhost:30303"
 )
 
 var monklogger = monklog.NewLogger("SERV")

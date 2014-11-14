@@ -161,4 +161,14 @@ func (self *InvalidSigErr) Error() string{
     return string(*self)
 }
 
+type InvalidTurnErr string
+
+func InvalidTurnError(observed, expected []byte) *InvalidTurnErr{
+    s := InvalidTurnErr(fmt.Sprintf("Invalid miner in sequence. Got %s, expected %s", monkutil.Bytes2Hex(observed), monkutil.Bytes2Hex(expected)))
+    return &s
+}
+
+func (self *InvalidTurnErr) Error() string{
+    return string(*self)
+}
 
