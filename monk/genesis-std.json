@@ -3,6 +3,7 @@
     "doug":"Genesis DOUG/gendoug-v2.lll",
     "model":"std",
     "consensus":"seq",
+    "difficulty":20,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,

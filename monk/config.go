@@ -10,7 +10,6 @@ import (
     "io/ioutil"
     "encoding/json"
     "github.com/eris-ltd/thelonious/monkutil"
-    "github.com/eris-ltd/thelonious/monkchain" // for difficulty
 )
 
 var ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
@@ -33,7 +32,6 @@ type ChainConfig struct{
     KeyCursor int `json:"key_cursor"`
     KeyFile string  `json:"key_file"`
     GenesisConfig string `json:"genesis_config"`
-    DougDifficulty int `json:"difficulty"`
     LogLevel int    `json:"log_level"`
 }
 
@@ -57,7 +55,6 @@ var DefaultConfig = &ChainConfig{
         KeyCursor: 0,
         KeyFile: path.Join(ErisLtd, "thelonious", "monk", "keys.txt"),
         GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis-std.json"),
-        DougDifficulty: 7,
         LogLevel: 5,
 }
 
@@ -130,15 +127,6 @@ func (monk *Monk) ethConfig() {
     if cfg.LLLPath != ""{
 	    monkutil.PathToLLL = cfg.LLLPath
     }
-    /*
-    // set path to contracts (defs, genesisdoug, etc)
-    monkdoug.ContractPath = cfg.ContractPath
-    // set genesis config file
-    if cfg.GenesisConfig != ""{
-        monkdoug.GenesisConfig = cfg.GenesisConfig
-    }*/
-    // fixed difficulty for all blocks
-    monkchain.DougDifficulty = monkutil.BigPow(2, cfg.DougDifficulty)
 
     // check on data dir
     // create keys

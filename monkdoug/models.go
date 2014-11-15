@@ -14,6 +14,7 @@ import (
 
 // location struct (where is a permission?)
 // the model must specify how to extract the permission from the location
+// TODO: deprecate
 type Location struct{
     addr []byte // contract addr
     row *big.Int // storage location
@@ -103,18 +104,20 @@ func (m *NoModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) 
 */
 type StdLibModel struct{
     doug []byte
+    g *GenesisConfig
+    pow monkchain.PoW
 }
 
 func NewStdLibModel(g *GenesisConfig) PermModel{
-    return &StdLibModel{g.ByteAddr}
-}
-
-func (m *StdLibModel) Doug(state *monkstate.State) *monkstate.StateObject{
-    return state.GetOrNewStateObject(m.doug)
+    return &StdLibModel{
+        doug:   g.ByteAddr, 
+        g:      g,
+        pow:    &monkchain.EasyPow{},
+    }
 }
 
 func (m *StdLibModel) PermLocator(addr []byte, perm string, state *monkstate.State) (*Location, error){
-    // where can we find the perm w.r.t the address?
+    // locator for perm w.r.t the address
     locator := vars.GetLinkedListElement(m.doug, "permnames", perm, state)
     locatorBig := monkutil.BigD(locator)
 
@@ -145,13 +148,10 @@ func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, bl
 
     for perm, val := range permissions{
         data := monkutil.PackTxDataArgs2("setperm", perm, "0x"+monkutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
-        //fmt.Println("data for ", perm, monkutil.Bytes2Hex(data))
         tx, rec := MakeApplyTx("", m.doug, data, keys, block)
         txs = append(txs, tx)
         receipts = append(receipts, rec)
     }
-    //fmt.Println(permissions)
-    //os.Exit(0)
     return txs, receipts
 }
 
@@ -180,22 +180,31 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
     if !bytes.Equal(block.Signer(), block.Coinbase){
         return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
-    // check that its the miners turn in the round robin
-    if !bytes.Equal(prevBlock.PrevHash, monkchain.ZeroHash256){
-        // if its not the genesis block, get coinbase of last block
-        // find next entry in linked list
-        prevCoinbase := prevBlock.Coinbase
-        nextCoinbase, _ := vars.GetNextLinkedListElement(m.doug, "seq:name", string(prevCoinbase), prevBlock.State())
-        if !bytes.Equal(nextCoinbase, block.Coinbase){
-            return monkchain.InvalidTurnError(block.Coinbase, nextCoinbase)        
-        }
-    } else{
-        // is it is genesis block, find first entry in linked list
-        nextCoinbase, _ := vars.GetLinkedListHead(m.doug, "seq:name", prevBlock.State())
-        if !bytes.Equal(nextCoinbase, block.Coinbase){
-            return monkchain.InvalidTurnError(block.Coinbase, nextCoinbase)        
+    
+	// TODO: check if the difficulty is correct
+
+    // check mechanism specific attributes
+    consensus := vars.GetSingle(m.doug, "consensus", prevBlock.State())
+    if bytes.Equal(consensus, []byte("seq")){
+        // check that it's miner's turn in the round robin
+        if err := m.CheckRoundRobin(prevBlock, block); err != nil{
+            return err
         }
     }
+
+
+    // check block times
+    if err:= m.CheckBlockTimes(prevBlock, block); err != nil{
+        return err
+    }
+
+	// Verify the nonce of the block. Return an error if it's not valid
+    // TODO: for now we leave pow on everything
+    // soon we will want to generalize/relieve
+    // also, variable hashing algos
+	if !m.pow.Verify(block.HashNoNonce(), block.Difficulty, block.Nonce) {
+		return monkchain.ValidationError("Block's nonce is invalid (= %v)", monkutil.Bytes2Hex(block.Nonce))
+	}
 
     return nil
 }

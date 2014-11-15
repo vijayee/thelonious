@@ -52,15 +52,6 @@ type EthManager interface {
     GenesisModel() GenDougModel // return the genesis model
 }
 
-// The interface to validating activities on the chain
-/*
-type GenDougModel interface{
-    ValidatePerm(addr []byte, role string, state *monkstate.State) bool
-    ValidateValue(name string, value interface{}, state *monkstate.State) bool
-    SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *Block) (*Transaction, *Receipt)
-    SetPermissions(addr []byte, permissions map[string]int, block *Block, keys *monkcrypto.KeyPair) (Transactions, []*Receipt)
-}*/
-
 type GenDougModel interface{
     ValidatePerm(addr []byte, role string, state *monkstate.State) error
     ValidateBlock(block *Block) error
@@ -361,46 +352,7 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // an uncle or anything that isn't on the current block chain.
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
-
-    if err := genDoug.ValidateBlock(block); err != nil{
-        return err
-    }
-
-    // TODO: move all of this into genDoug.ValidateBlock
-
-
-	// TODO
-	// 2. Check if the difficulty is correct
-
-	// Check each uncle's previous hash. In order for it to be valid
-	// is if it has the same block hash as the current
-	parent := sm.bc.GetBlock(block.PrevHash)
-	/*
-		for _, uncle := range block.Uncles {
-			if bytes.Compare(uncle.PrevHash,parent.PrevHash) != 0 {
-				return ValidationError("Mismatch uncle's previous hash. Expected %x, got %x",parent.PrevHash, uncle.PrevHash)
-			}
-		}
-	*/
-
-	diff := block.Time - parent.Time
-	if diff < 0 {
-		return ValidationError("Block timestamp less then prev block %v (%v - %v)", diff, block.Time, sm.bc.CurrentBlock.Time)
-	}
-
-	/* XXX
-	// New blocks must be within the 15 minute range of the last block.
-	if diff > int64(15*time.Minute) {
-		return ValidationError("Block is too far in the future of last block (> 15 minutes)")
-	}
-	*/
-
-	// Verify the nonce of the block. Return an error if it's not valid
-	if !sm.Pow.Verify(block.HashNoNonce(), block.Difficulty, block.Nonce) {
-		return ValidationError("Block's nonce is invalid (= %v)", monkutil.Bytes2Hex(block.Nonce))
-	}
-
-	return nil
+    return genDoug.ValidateBlock(block)
 }
 
 func (sm *StateManager) AccumelateRewards(state *monkstate.State, block, parent *Block) error {

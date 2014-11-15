@@ -259,7 +259,11 @@ func (mod *MonkModule) AddressCount() int {
 
 // Load genesis json file (so calling pkg need not import monkdoug)
 func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
-    return monkdoug.LoadGenesis(file)
+    g := monkdoug.LoadGenesis(file)
+    // fixed difficulty for all blocks
+    // last shitty monkchain global variable. ::sigh::
+    monkchain.DougDifficulty = monkutil.BigPow(2, g.Difficulty)
+    return g
 }
 
 // Set the genesis json object. This can only be done once

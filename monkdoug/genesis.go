@@ -39,6 +39,7 @@ type GenesisConfig struct{
 
     // Global GenDoug Singles
     Consensus string `json:"consensus"`
+    Difficulty int `json:"difficulty"`
     PublicMine int `json:"public:mine"`
     PublicCreate int `json:"public:create"`
     PublicTx int `json:"public:tx"`
@@ -112,6 +113,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
 
     // set the global vars
     g.Model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "difficulty", "0x"+strconv.Itoa(g.Difficulty)}, keys, block)
     g.Model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
     g.Model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
     g.Model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
