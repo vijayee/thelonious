@@ -86,7 +86,7 @@ func LoadGenesis(file string) *GenesisConfig{
 
 // Deploy the genesis block
 // Converts the GenesisConfiginfo into a populated and functional doug contract in the genesis block
-// if GenDougByteAddr is nil, simply bankroll the accounts (no doug)
+// if NoGenDoug, simply bankroll the accounts
 func (g *GenesisConfig) Deploy(block *monkchain.Block){
     defer func(){
         block.State().Update()  
@@ -149,6 +149,9 @@ func AddAccount(addr []byte, balance string, block *monkchain.Block){
 // TODO: cleaner differentiation between consensus and storage access models
 func NewPermModel(g *GenesisConfig) (model PermModel){
     modelName := g.ModelName
+    if g.NoGenDoug{
+        modelName = "default"
+    }
     switch(modelName){
         case "fake":
             // simplified genesis permission structure
@@ -165,8 +168,10 @@ func NewPermModel(g *GenesisConfig) (model PermModel){
         case "no":
             // noone allowed
             model = NewNoModel(g)
+        case "eth":
+            model = NewEthModel(g)
         default:
-            model = NewYesModel(g)
+            model = NewEthModel(g)
     }
     return 
 }

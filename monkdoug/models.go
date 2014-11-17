@@ -250,3 +250,62 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.Sta
 	}
     return nil
 }
+
+type EthModel struct{
+    pow monkchain.PoW
+}
+
+func NewEthModel(g *GenesisConfig) PermModel{
+    return &EthModel{&monkchain.EasyPow{}}
+}
+
+func (m *EthModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
+    return nil, nil
+}
+
+func (m *EthModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
+    return nil, nil
+}
+
+func (m *EthModel) Difficulty(coinbase []byte, state *monkstate.State) *big.Int{
+    // TODO: calc diff
+    return monkutil.BigPow(2, 10)
+}
+
+func (m *EthModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
+    return nil
+}
+
+func (m *EthModel) ValidateBlock(block *monkchain.Block) error{
+    // we have to verify using the state of the previous block!
+    prevBlock := monkchain.GetBlock(block.PrevHash)
+
+    // check that signature of block matches miners coinbase
+    // XXX: not strictly necessary for eth...
+    if !bytes.Equal(block.Signer(), block.Coinbase){
+        return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
+    }
+    
+	// TODO: check if the difficulty is correct
+
+    // check block times
+    if err:= m.CheckBlockTimes(prevBlock, block); err != nil{
+        return err
+    }
+
+	// Verify the nonce of the block. Return an error if it's not valid
+	if !m.pow.Verify(block.HashNoNonce(), block.Difficulty, block.Nonce) {
+		return monkchain.ValidationError("Block's nonce is invalid (= %v)", monkutil.Bytes2Hex(block.Nonce))
+	}
+
+    return nil
+}
+
+func (m *EthModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
+	// Make sure this transaction's nonce is correct
+    sender := state.GetOrNewStateObject(tx.Sender())
+	if sender.Nonce != tx.Nonce {
+		return monkchain.NonceError(tx.Nonce, sender.Nonce)
+	}
+    return nil
+}

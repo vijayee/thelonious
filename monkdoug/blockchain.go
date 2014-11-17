@@ -55,3 +55,18 @@ func (m *StdLibModel) CheckBlockTimes(prevBlock, block *monkchain.Block) error{
 	*/
     return nil
 }
+
+func (m *EthModel) CheckBlockTimes(prevBlock, block *monkchain.Block) error{
+	diff := block.Time - prevBlock.Time
+	if diff < 0 {
+		return monkchain.ValidationError("Block timestamp less then prev block %v (%v - %v)", diff, block.Time, prevBlock.Time)
+	}
+
+	/* XXX
+	// New blocks must be within the 15 minute range of the last block.
+	if diff > int64(15*time.Minute) {
+		return ValidationError("Block is too far in the future of last block (> 15 minutes)")
+	}
+	*/
+    return nil
+}
