@@ -52,10 +52,11 @@ type EthManager interface {
     GenesisModel() GenDougModel // return the genesis model
 }
 
+// Model defining the protocol
 type GenDougModel interface{
     ValidatePerm(addr []byte, role string, state *monkstate.State) error
     ValidateBlock(block *Block) error
-    ValidateTx(tx *Transaction, block *Block) error
+    ValidateTx(tx *Transaction, state *monkstate.State) error
 }
 
 // Private global genDoug variable for checking permissions on arbitrary
@@ -63,22 +64,9 @@ type GenDougModel interface{
 var genDoug GenDougModel
 
 // Public function so we can validate permissions using the genDoug from outside this package
-func DougValidateBlock(block *Block) error{
-    return genDoug.ValidateBlock(block)
-}
-
-func DougValidateTx(tx *Transaction, block *Block) error{
-    return genDoug.ValidateTx(tx, block)
-}
-
 func DougValidatePerm(addr []byte, role string, state *monkstate.State) error{
     return genDoug.ValidatePerm(addr, role, state)
 }
-
-/*
-func ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
-    return genDoug.ValidatePerm(addr, role, state)
-}*/
 
 type StateManager struct {
 	// Mutex for locking the block processor. Blocks can only be handled one at a time
@@ -154,6 +142,7 @@ done:
 		txGas := new(big.Int).Set(tx.Gas)
 
 		cb := state.GetStateObject(coinbase.Address())
+        // TODO: deal with this
 		st := NewStateTransitionEris(cb, tx, state, block, self.bc.Genesis()) // ERIS
 		err = st.TransitionState()
 		if err != nil {
@@ -352,6 +341,7 @@ func (sm *StateManager) CalculateTD(block *Block) bool {
 // an uncle or anything that isn't on the current block chain.
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
+    // all validation is done through the genDoug
     return genDoug.ValidateBlock(block)
 }
 

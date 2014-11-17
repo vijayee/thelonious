@@ -35,7 +35,7 @@ type PermModel interface{
     // satisfies monkchain.GenDougModel
     ValidatePerm(addr []byte, perm string, state *monkstate.State) error
     ValidateBlock(block *monkchain.Block) error
-    ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) error
+    ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error
 }
 
 /*
@@ -64,7 +64,7 @@ func (m *YesModel) ValidateBlock(block *monkchain.Block) error{
     return nil
 }
 
-func (m *YesModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) error{
+func (m *YesModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
     return nil
 }
 
@@ -94,7 +94,7 @@ func (m *NoModel) ValidateBlock(block *monkchain.Block) error{
     return fmt.Errorf("No!")
 }
 
-func (m *NoModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) error{
+func (m *NoModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
     return fmt.Errorf("No!")
 }
 
@@ -209,7 +209,7 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
     return nil
 }
 
-func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Block) error{
+func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
     // check that sender has permission to transact or create
     var perm string
     if tx.IsContract(){
@@ -217,16 +217,20 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, block *monkchain.Blo
     } else{
         perm = "transact"
     }
-    if !m.HasPermission(tx.Sender(), perm, block.State()){
+    if !m.HasPermission(tx.Sender(), perm, state){
         return monkchain.InvalidPermError(tx.Sender(), perm)
     }
     // check that tx uses less than maxgas
     gas := tx.GasValue()
-    max := vars.GetSingle(m.doug, "maxgas", block.State()) 
+    max := vars.GetSingle(m.doug, "maxgas", state) 
     maxBig := monkutil.BigD(max)
     if max != nil && gas.Cmp(maxBig) > 0 {
         return monkchain.GasLimitTxError(gas, maxBig)
     }
-    
+	// Make sure this transaction's nonce is correct
+    sender := state.GetOrNewStateObject(tx.Sender())
+	if sender.Nonce != tx.Nonce {
+		return monkchain.NonceError(tx.Nonce, sender.Nonce)
+	}
     return nil
 }
