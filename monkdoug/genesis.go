@@ -3,6 +3,7 @@ package monkdoug
 import (
     "fmt"
     "path"
+    "math/big"
     "os"
     "strconv"
     "io/ioutil"
@@ -113,7 +114,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
 
     // set the global vars
     g.Model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "difficulty", "0x"+strconv.Itoa(g.Difficulty)}, keys, block)
+    g.Model.SetValue(genAddr, []string{"setvar", "difficulty", "0x"+monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
     g.Model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
     g.Model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
     g.Model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
@@ -145,6 +146,7 @@ func AddAccount(addr []byte, balance string, block *monkchain.Block){
 }
 
 // return a new permissions model
+// TODO: cleaner differentiation between consensus and storage access models
 func NewPermModel(g *GenesisConfig) (model PermModel){
     modelName := g.ModelName
     switch(modelName){
@@ -159,12 +161,12 @@ func NewPermModel(g *GenesisConfig) (model PermModel){
             model = NewStdLibModel(g)
         case "yes":
             // everyone allowed
-            model = NewYesModel()
+            model = NewYesModel(g)
         case "no":
             // noone allowed
-            model = NewNoModel()
+            model = NewNoModel(g)
         default:
-            model = NewYesModel()
+            model = NewYesModel(g)
     }
     return 
 }

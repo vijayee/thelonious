@@ -168,8 +168,10 @@ func (block *Block) Transactions() []*Transaction {
 	return block.transactions
 }
 
+// TODO: GenDoug?
 func (block *Block) CalcGasLimit(parent *Block) *big.Int {
     return monkutil.Big("100000000000000000000000")
+
 	if block.Number.Cmp(big.NewInt(0)) == 0 {
 		return monkutil.BigPow(10, 6)
 	}

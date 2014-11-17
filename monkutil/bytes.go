@@ -35,7 +35,6 @@ func NumberToBytes(num interface{}, bits int) []byte {
 	if err != nil {
 		fmt.Println("NumberToBytes failed:", err)
 	}
-    fmt.Println("btyes!", buf.Bytes())
 	return buf.Bytes()[buf.Len()-(bits/8):]
 }
 

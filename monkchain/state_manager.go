@@ -54,6 +54,7 @@ type EthManager interface {
 
 // Model defining the protocol
 type GenDougModel interface{
+    Difficulty(coinbase []byte, state *monkstate.State) *big.Int
     ValidatePerm(addr []byte, role string, state *monkstate.State) error
     ValidateBlock(block *Block) error
     ValidateTx(tx *Transaction, state *monkstate.State) error

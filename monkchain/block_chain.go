@@ -11,8 +11,6 @@ import (
 
 var chainlogger = monklog.NewLogger("CHAIN")
 
-var DougDifficulty = monkutil.BigPow(2, 17)  // for mining speed
-
 type BlockChain struct {
 	Ethereum EthManager
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
@@ -40,6 +38,7 @@ func (bc *BlockChain) Genesis() *Block {
 	return bc.genesisBlock
 }
 
+// Only called by the miner
 func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 	var root interface{}
 	var lastBlockTime int64
@@ -55,7 +54,6 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		root,
 		hash,
 		coinbase,
-//		monkutil.BigPow(2, 32),
 		monkutil.BigPow(2, 12),
 		nil,
 		"")
@@ -72,7 +70,9 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		} else {
 			diff.Add(parent.Difficulty, adjust)
 		}
-		block.Difficulty = DougDifficulty //monkutil.BigPow(2, 12) //diff
+        // This may be a subjective difficulty specific to this coinbase
+        // Regardless it is read from gendoug
+        block.Difficulty = genDoug.Difficulty(coinbase, block.state)//monkutil.BigPow(2, 12) //dif
 		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, monkutil.Big1)
 		block.GasLimit = monkutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 

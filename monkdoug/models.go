@@ -33,6 +33,7 @@ type PermModel interface{
 
     // generic validation functions for arbitrary consensus models
     // satisfies monkchain.GenDougModel
+    Difficulty(coinbase []byte, state *monkstate.State) *big.Int
     ValidatePerm(addr []byte, perm string, state *monkstate.State) error
     ValidateBlock(block *monkchain.Block) error
     ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error
@@ -42,10 +43,11 @@ type PermModel interface{
     The yes model grants all permissions 
 */
 type YesModel struct{
+    g *GenesisConfig
 }
 
-func NewYesModel() PermModel{
-    return &YesModel{}
+func NewYesModel(g *GenesisConfig) PermModel{
+    return &YesModel{g}
 }
 
 func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
@@ -54,6 +56,10 @@ func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block
 
 func (m *YesModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
+}
+
+func (m *YesModel) Difficulty(coinbase []byte, state *monkstate.State) *big.Int{
+    return monkutil.BigPow(10, m.g.Difficulty)
 }
 
 func (m *YesModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
@@ -72,10 +78,11 @@ func (m *YesModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State)
     The no model grants no permissions
 */
 type NoModel struct{
+    g *GenesisConfig
 }
 
-func NewNoModel() PermModel{
-    return &NoModel{}
+func NewNoModel(g *GenesisConfig) PermModel{
+    return &NoModel{g}
 }
 
 func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
@@ -84,6 +91,10 @@ func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block 
 
 func (m *NoModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
+}
+
+func (m *NoModel) Difficulty(coinbase []byte, state *monkstate.State) *big.Int{
+    return monkutil.BigPow(10, m.g.Difficulty)
 }
 
 func (m *NoModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
@@ -161,6 +172,11 @@ func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyP
     return tx, rec
 }
 
+func (m *StdLibModel) Difficulty(coinbase []byte, state *monkstate.State) *big.Int{
+    max := vars.GetSingle(m.doug, "difficulty", state) 
+    return monkutil.BigPow(2, int(monkutil.ReadVarInt(max)))
+}
+
 func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
     if m.HasPermission(addr, role, state){
         return nil
@@ -222,7 +238,7 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.Sta
     }
     // check that tx uses less than maxgas
     gas := tx.GasValue()
-    max := vars.GetSingle(m.doug, "maxgas", state) 
+    max := vars.GetSingle(m.doug, "maxgastx", state) 
     maxBig := monkutil.BigD(max)
     if max != nil && gas.Cmp(maxBig) > 0 {
         return monkchain.GasLimitTxError(gas, maxBig)
