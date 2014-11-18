@@ -172,3 +172,14 @@ func (self *InvalidTurnErr) Error() string{
     return string(*self)
 }
 
+
+type InvalidDifficultyErr string
+
+func InvalidDifficultyError(observed, expected *big.Int, coinbase []byte) *InvalidDifficultyErr{
+    s := InvalidDifficultyErr(fmt.Sprintf("Invalid difficulty for coinbase %s. Got %s, expected %s", monkutil.Bytes2Hex(coinbase), observed.String(), expected.String()))
+    return &s
+}
+
+func (self *InvalidDifficultyErr) Error() string{
+    return string(*self)
+}

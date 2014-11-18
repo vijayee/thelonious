@@ -72,7 +72,7 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		}
         // This may be a subjective difficulty specific to this coinbase
         // Regardless it is read from gendoug
-        block.Difficulty = genDoug.Difficulty(coinbase, block.state)//monkutil.BigPow(2, 12) //dif
+        block.Difficulty = genDoug.Difficulty(coinbase, block)//monkutil.BigPow(2, 12) //dif
 		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, monkutil.Big1)
 		block.GasLimit = monkutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 

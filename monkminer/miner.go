@@ -171,6 +171,8 @@ func (self *Miner) mineNewBlock() {
 
 	self.block = self.ethereum.BlockChain().NewBlock(self.coinbase)
 
+	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
+
 	// Apply uncles
 	if len(self.uncles) > 0 {
 		self.block.SetUncles(self.uncles)
@@ -181,7 +183,6 @@ func (self *Miner) mineNewBlock() {
 
 	// Accumulate all valid transactions and apply them to the new state
 	// Error may be ignored. It's not important during mining
-	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
 	coinbase := self.block.State().GetOrNewStateObject(self.block.Coinbase)
 	coinbase.SetGasPool(self.block.CalcGasLimit(parent))
 	receipts, txs, unhandledTxs, err := stateManager.ProcessTransactions(coinbase, self.block.State(), self.block, self.block, self.txs)

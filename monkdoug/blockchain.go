@@ -2,27 +2,51 @@ package monkdoug
 
 import (
     "bytes"
+    "math/big"
     "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkstate"
+    "github.com/eris-ltd/thelonious/monkutil"
     vars "github.com/eris-ltd/eris-std-lib/go-tests"
 )
 
-// TODO: miner failover through self-adjusting difficulty
-func (m *StdLibModel) CheckRoundRobin(prevBlock, block *monkchain.Block) error{
-    // check that its the miners turn in the round robin
-    if !bytes.Equal(prevBlock.PrevHash, monkchain.ZeroHash256){
-        // if its not the genesis block, get coinbase of last block
-        // find next entry in linked list
-        prevCoinbase := prevBlock.Coinbase
-        nextCoinbase, _ := vars.GetNextLinkedListElement(m.doug, "seq:name", string(prevCoinbase), prevBlock.State())
-        if !bytes.Equal(nextCoinbase, block.Coinbase){
-            return monkchain.InvalidTurnError(block.Coinbase, nextCoinbase)        
+// Who should the next block be mined by?
+// TODO: Accomodate for a dynamic number of miners!
+func (m *StdLibModel) nextCoinbase(prevblock *monkchain.Block) []byte{
+    var nextcoinbase []byte
+    // if its not the genesis block, get coinbase of last block
+    // if it is genesis block, find first entry in linked list
+    if !bytes.Equal(prevblock.PrevHash, monkchain.ZeroHash256){
+        // i = blockN % nMiners
+        nblocks := prevblock.Number
+        nMiners := vars.GetLinkedListLength(m.doug, "seq:name", prevblock.State())
+        nB := m.base.Mod(nblocks, big.NewInt(int64(nMiners)))
+        n := int(nB.Int64())
+        next, _ := vars.GetLinkedListHead(m.doug, "seq:name", prevblock.State())
+        for i:=0; i<n; i++{
+            next, _ = vars.GetNextLinkedListElement(m.doug, "seq:name", string(next), prevblock.State())
         }
+        nextcoinbase = next
     } else{
-        // is it is genesis block, find first entry in linked list
-        nextCoinbase, _ := vars.GetLinkedListHead(m.doug, "seq:name", prevBlock.State())
-        if !bytes.Equal(nextCoinbase, block.Coinbase){
-            return monkchain.InvalidTurnError(block.Coinbase, nextCoinbase)        
-        }
+        nextcoinbase, _ = vars.GetLinkedListHead(m.doug, "seq:name", prevblock.State())
+    }
+    return nextcoinbase
+}
+
+// Base difficulty of the chain is 2^($difficulty), with $difficulty 
+// stored in GenDoug
+func (m *StdLibModel) baseDifficulty(state *monkstate.State) *big.Int{
+    difv := vars.GetSingle(m.doug, "difficulty", state) 
+    return monkutil.BigPow(2, int(monkutil.ReadVarInt(difv)))
+}
+
+
+func (m *StdLibModel) CheckRoundRobin(prevBlock, block *monkchain.Block) error{
+    // check that the given coinbase satisfies the corresponding 
+    // difficulty for his position in the round robin
+    newdiff := m.Difficulty(block.Coinbase, block)
+    // the block difficulty must be specified exactly
+    if block.Difficulty.Cmp(newdiff) != 0{
+        return monkchain.InvalidDifficultyError(block.Difficulty, newdiff, block.Coinbase)        
     }
     return nil
 }

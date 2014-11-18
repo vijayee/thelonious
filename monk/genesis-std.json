@@ -1,10 +1,10 @@
 {
     "address":"0000000000THISISDOUG",
-    "no-gendoug":true,
+    "no-gendoug":false,
     "doug":"Genesis DOUG/gendoug-v2.lll",
     "model":"std",
-    "consensus":"",
-    "difficulty":100,
+    "consensus":"seq", 
+    "difficulty":12,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,
