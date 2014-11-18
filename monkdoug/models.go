@@ -5,7 +5,6 @@ import (
     "bytes"
     "fmt"
     "strconv"
-    "strings"
     //"log"
     "github.com/eris-ltd/thelonious/monkstate"
     "github.com/eris-ltd/thelonious/monkutil"
@@ -184,17 +183,19 @@ func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyP
 // Difficulty of the current block for a given coinbase
 func (m *StdLibModel) Difficulty(block, parent *monkchain.Block) *big.Int{
     var b *big.Int
-    consensusBytes := vars.GetSingle(m.doug, "consensus", prevBlock.State())
+    consensusBytes := vars.GetSingle(m.doug, "consensus", parent.State())
     consensus := string(consensusBytes)
 
     // compute difficulty according to consensus model
     // TODO: relieve methods from model struct
-    if strings.Equal(consensus, "seq"){
+    if consensus == "seq"{
         b = m.RoundRobinDifficulty(block, parent)
-    } else if strings.Equal(consensus, "stake-weight"){
+    } else if consensus == "stake-weight"{
         b = m.StakeDifficulty(block, parent)
     } else {
-        b = EthDifficulty(block, parent)
+        blockTimeBytes := vars.GetSingle(m.doug, "blocktime", parent.State())
+        blockTime := monkutil.BigD(blockTimeBytes).Int64()
+        b = EthDifficulty(blockTime, block, parent)
     }
     return b
 }
@@ -291,7 +292,7 @@ func (m *EthModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair
 }
 
 func (m *EthModel) Difficulty(block, parent *monkchain.Block) *big.Int{
-    return EthDifficulty(block, parent)
+    return EthDifficulty(int64(m.g.BlockTime), block, parent)
 }
 
 func (m *EthModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{

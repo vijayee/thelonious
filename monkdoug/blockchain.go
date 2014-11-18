@@ -4,8 +4,6 @@ import (
     "bytes"
     "math/big"
     "github.com/eris-ltd/thelonious/monkchain"
-    "github.com/eris-ltd/thelonious/monkstate"
-    "github.com/eris-ltd/thelonious/monkutil"
     vars "github.com/eris-ltd/eris-std-lib/go-tests"
 )
 
