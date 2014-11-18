@@ -5,6 +5,7 @@ import (
     "bytes"
     "fmt"
     "strconv"
+    "strings"
     //"log"
     "github.com/eris-ltd/thelonious/monkstate"
     "github.com/eris-ltd/thelonious/monkutil"
@@ -28,13 +29,13 @@ type Location struct{
     They allow for arbitrary extensions of consensus
 */
 type PermModel interface{
-    // Set some permissions for a given address. requires valid keypair
+    // Set some permissions and values in gendoug. requires valid keypair
     SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt)
     SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt)
 
     // generic validation functions for arbitrary consensus models
     // satisfies monkchain.GenDougModel
-    Difficulty(coinbase []byte, block *monkchain.Block) *big.Int
+    Difficulty(block, parent *monkchain.Block) *big.Int
     ValidatePerm(addr []byte, perm string, state *monkstate.State) error
     ValidateBlock(block *monkchain.Block) error
     ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error
@@ -59,8 +60,8 @@ func (m *YesModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair
     return nil, nil
 }
 
-func (m *YesModel) Difficulty(coinbase []byte, block *monkchain.Block) *big.Int{
-    return monkutil.BigPow(10, m.g.Difficulty)
+func (m *YesModel) Difficulty(block, parent *monkchain.Block) *big.Int{
+    return monkutil.BigPow(2, m.g.Difficulty)
 }
 
 func (m *YesModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
@@ -94,8 +95,8 @@ func (m *NoModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair,
     return nil, nil
 }
 
-func (m *NoModel) Difficulty(coinbase []byte, block *monkchain.Block) *big.Int{
-    return monkutil.BigPow(10, m.g.Difficulty)
+func (m *NoModel) Difficulty(block, parent *monkchain.Block) *big.Int{
+    return monkutil.BigPow(2, m.g.Difficulty)
 }
 
 func (m *NoModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
@@ -139,9 +140,14 @@ func (m *StdLibModel) PermLocator(addr []byte, perm string, state *monkstate.Sta
 }
 
 func (m *StdLibModel) GetPermission(addr []byte, perm string, state *monkstate.State) *monkutil.Value{
+    public := vars.GetSingle(m.doug, "public:"+perm, state)
+    // A stand-in for a one day more sophisticated system
+    if len(public) > 0{
+        return monkutil.NewValue(1)
+    }
     loc, err := m.PermLocator(addr, perm, state)
     if err != nil{
-        // suck a dick
+        fmt.Println("Sorrry tough guy, perm locator failed", err)
     }
     
     locInt := loc.row.Uint64()
@@ -175,25 +181,22 @@ func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyP
     return tx, rec
 }
 
-// What should the difficulty of the current block be for a given coinbase
-func (m *StdLibModel) Difficulty(coinbase []byte, block *monkchain.Block) *big.Int{
-    prevBlock := monkchain.GetBlock(block.PrevHash)
-    state := prevBlock.State()
-    newdiff := m.baseDifficulty(state)
-    // find relative position of coinbase in the linked list (i)
-    // his difficulty should be (base difficulty)*2^i
-    var i int
-    nMiners := vars.GetLinkedListLength(m.doug, "seq:name", prevBlock.State())
-    // this is the proper next coinbase
-    next := m.nextCoinbase(prevBlock)
-    for i = 0; i<nMiners; i++ {
-        if bytes.Equal(next, block.Coinbase){
-            break
-        }
-        next, _ = vars.GetNextLinkedListElement(m.doug, "seq:name", string(next), prevBlock.State())
+// Difficulty of the current block for a given coinbase
+func (m *StdLibModel) Difficulty(block, parent *monkchain.Block) *big.Int{
+    var b *big.Int
+    consensusBytes := vars.GetSingle(m.doug, "consensus", prevBlock.State())
+    consensus := string(consensusBytes)
+
+    // compute difficulty according to consensus model
+    // TODO: relieve methods from model struct
+    if strings.Equal(consensus, "seq"){
+        b = m.RoundRobinDifficulty(block, parent)
+    } else if strings.Equal(consensus, "stake-weight"){
+        b = m.StakeDifficulty(block, parent)
+    } else {
+        b = EthDifficulty(block, parent)
     }
-    newdiff = big.NewInt(0).Mul(monkutil.BigPow(2, i), newdiff)
-    return newdiff
+    return b
 }
 
 func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
@@ -216,19 +219,20 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
         return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
     
-	// TODO: check if the difficulty is correct
-
-    // check mechanism specific attributes
-    consensus := vars.GetSingle(m.doug, "consensus", prevBlock.State())
-    if bytes.Equal(consensus, []byte("seq")){
-        // check that it's miner's turn in the round robin
-        if err := m.CheckRoundRobin(prevBlock, block); err != nil{
-            return err
-        }
+    // check if the block difficulty is correct 
+    // it must be specified exactly
+    newdiff := m.Difficulty(block, prevBlock)
+    if block.Difficulty.Cmp(newdiff) != 0{
+        return monkchain.InvalidDifficultyError(block.Difficulty, newdiff, block.Coinbase)        
     }
 
+    // TODO: is there a time when some consensus element is 
+    // not specified in difficulty and must appear here?
+    // Do we even budget for lists of signers/forgers and all
+    // that nutty PoS stuff?
+
     // check block times
-    if err:= m.CheckBlockTimes(prevBlock, block); err != nil{
+    if err:= CheckBlockTimes(prevBlock, block); err != nil{
         return err
     }
 
@@ -271,10 +275,11 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.Sta
 
 type EthModel struct{
     pow monkchain.PoW
+    g *GenesisConfig
 }
 
 func NewEthModel(g *GenesisConfig) PermModel{
-    return &EthModel{&monkchain.EasyPow{}}
+    return &EthModel{&monkchain.EasyPow{}, g}
 }
 
 func (m *EthModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
@@ -285,9 +290,8 @@ func (m *EthModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair
     return nil, nil
 }
 
-func (m *EthModel) Difficulty(coinbase []byte, block *monkchain.Block) *big.Int{
-    // TODO: calc diff
-    return monkutil.BigPow(2, 10)
+func (m *EthModel) Difficulty(block, parent *monkchain.Block) *big.Int{
+    return EthDifficulty(block, parent)
 }
 
 func (m *EthModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
@@ -304,10 +308,14 @@ func (m *EthModel) ValidateBlock(block *monkchain.Block) error{
         return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
     
-	// TODO: check if the difficulty is correct
-
+	// check if the difficulty is correct
+    newdiff := m.Difficulty(block, prevBlock)
+    if block.Difficulty.Cmp(newdiff) != 0{
+        return monkchain.InvalidDifficultyError(block.Difficulty, newdiff, block.Coinbase)        
+    }
+    
     // check block times
-    if err:= m.CheckBlockTimes(prevBlock, block); err != nil{
+    if err:= CheckBlockTimes(prevBlock, block); err != nil{
         return err
     }
 

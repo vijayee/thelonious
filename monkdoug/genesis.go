@@ -92,6 +92,8 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
         block.State().Update()  
         block.State().Sync()  
     }()
+
+    block.Difficulty = monkutil.BigPow(2, g.Difficulty)
     
     if g.NoGenDoug {
         // no genesis doug, deploy simple
@@ -130,8 +132,9 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
         if g.Model != nil{
             // issue txs to set perms according to the model
             g.Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
-            
-            g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, "0x"+account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
+            if account.Permissions["mine"] != 0{
+                g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, "0x"+account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
+            }
             fmt.Println("setting perms for", account.Address)
         }
     }

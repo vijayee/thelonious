@@ -32,25 +32,6 @@ func (m *StdLibModel) nextCoinbase(prevblock *monkchain.Block) []byte{
     return nextcoinbase
 }
 
-// Base difficulty of the chain is 2^($difficulty), with $difficulty 
-// stored in GenDoug
-func (m *StdLibModel) baseDifficulty(state *monkstate.State) *big.Int{
-    difv := vars.GetSingle(m.doug, "difficulty", state) 
-    return monkutil.BigPow(2, int(monkutil.ReadVarInt(difv)))
-}
-
-
-func (m *StdLibModel) CheckRoundRobin(prevBlock, block *monkchain.Block) error{
-    // check that the given coinbase satisfies the corresponding 
-    // difficulty for his position in the round robin
-    newdiff := m.Difficulty(block.Coinbase, block)
-    // the block difficulty must be specified exactly
-    if block.Difficulty.Cmp(newdiff) != 0{
-        return monkchain.InvalidDifficultyError(block.Difficulty, newdiff, block.Coinbase)        
-    }
-    return nil
-}
-
 // TODO !
 func (m *StdLibModel) CheckUncles(prevBlock, block *monkchain.Block) error{
 	// Check each uncle's previous hash. In order for it to be valid
@@ -65,22 +46,7 @@ func (m *StdLibModel) CheckUncles(prevBlock, block *monkchain.Block) error{
     return nil
 }
 
-func (m *StdLibModel) CheckBlockTimes(prevBlock, block *monkchain.Block) error{
-	diff := block.Time - prevBlock.Time
-	if diff < 0 {
-		return monkchain.ValidationError("Block timestamp less then prev block %v (%v - %v)", diff, block.Time, prevBlock.Time)
-	}
-
-	/* XXX
-	// New blocks must be within the 15 minute range of the last block.
-	if diff > int64(15*time.Minute) {
-		return ValidationError("Block is too far in the future of last block (> 15 minutes)")
-	}
-	*/
-    return nil
-}
-
-func (m *EthModel) CheckBlockTimes(prevBlock, block *monkchain.Block) error{
+func CheckBlockTimes(prevBlock, block *monkchain.Block) error{
 	diff := block.Time - prevBlock.Time
 	if diff < 0 {
 		return monkchain.ValidationError("Block timestamp less then prev block %v (%v - %v)", diff, block.Time, prevBlock.Time)

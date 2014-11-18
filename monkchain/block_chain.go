@@ -41,13 +41,11 @@ func (bc *BlockChain) Genesis() *Block {
 // Only called by the miner
 func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 	var root interface{}
-	var lastBlockTime int64
 	hash := ZeroHash256
 
 	if bc.CurrentBlock != nil {
 		root = bc.CurrentBlock.state.Trie.Root
 		hash = bc.LastBlockHash
-		lastBlockTime = bc.CurrentBlock.Time
 	}
 
 	block := CreateBlock(
@@ -58,21 +56,12 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 		nil,
 		"")
 
+    // TODO: How do we feel about this
 	block.MinGasPrice = big.NewInt(10000000000000)
 
 	parent := bc.CurrentBlock
 	if parent != nil {
-		diff := new(big.Int)
-
-		adjust := new(big.Int).Rsh(parent.Difficulty, 10)
-		if block.Time >= lastBlockTime+5 {
-			diff.Sub(parent.Difficulty, adjust)
-		} else {
-			diff.Add(parent.Difficulty, adjust)
-		}
-        // This may be a subjective difficulty specific to this coinbase
-        // Regardless it is read from gendoug
-        block.Difficulty = genDoug.Difficulty(coinbase, block)//monkutil.BigPow(2, 12) //dif
+        block.Difficulty = genDoug.Difficulty(block, parent)
 		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, monkutil.Big1)
 		block.GasLimit = monkutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 
