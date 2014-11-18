@@ -164,14 +164,17 @@ func (miner *Miner) Stop() {
 }
 
 func (self *Miner) mineNewBlock() {
-    // TODO: check if we are a currently valid miner
-    // if not, return
-
 	stateManager := self.ethereum.StateManager()
 
 	self.block = self.ethereum.BlockChain().NewBlock(self.coinbase)
 
 	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
+
+    // check if we should even bother mining
+    if !self.ethereum.GenesisModel().StartMining(self.coinbase, parent){
+        return
+    }
+
 
 	// Apply uncles
 	if len(self.uncles) > 0 {

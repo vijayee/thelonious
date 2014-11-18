@@ -4,8 +4,22 @@ import (
     "bytes"
     "math/big"
     "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkstate"
+    "github.com/eris-ltd/thelonious/monkutil"
     vars "github.com/eris-ltd/eris-std-lib/go-tests"
 )
+
+func (m *StdLibModel) consensus(state *monkstate.State) string{
+    consensusBytes := vars.GetSingle(m.doug, "consensus", state)
+    consensus := string(consensusBytes)
+    return consensus
+}
+
+func (m *StdLibModel) blocktime(state *monkstate.State) int64{
+    blockTimeBytes := vars.GetSingle(m.doug, "blocktime", state)
+    blockTime := monkutil.BigD(blockTimeBytes).Int64()
+    return blockTime
+}
 
 // Who should the next block be mined by?
 // TODO: Accomodate for a dynamic number of miners!

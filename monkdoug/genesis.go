@@ -30,18 +30,18 @@ type Account struct{
 type GenesisConfig struct{
     // MetaGenDoug
     Address string  `json:"address"` // bytes
-    DougPath string `json:"doug"`
-    ModelName string `json:"model"`
-    NoGenDoug bool `json:"no-gendoug"`
+    DougPath string `json:"doug"` // path to doug contract
+    ModelName string `json:"model"` // name of the gendoug access model
+    NoGenDoug bool `json:"no-gendoug"` // turn off gendoug 
     
     HexAddr string 
     ByteAddr []byte
     ContractPath string 
 
     // Global GenDoug Singles
-    Consensus string `json:"consensus"`
+    Consensus string `json:"consensus"` // stake, robin, eth
     Difficulty int `json:"difficulty"`
-    PublicMine int `json:"public:mine"`
+    PublicMine int `json:"public:mine"` 
     PublicCreate int `json:"public:create"`
     PublicTx int `json:"public:tx"`
     MaxGasTx string `json:"maxgastx"`

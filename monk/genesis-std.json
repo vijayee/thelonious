@@ -3,13 +3,13 @@
     "no-gendoug":false,
     "doug":"Genesis DOUG/gendoug-v2.lll",
     "model":"std",
-    "consensus":"seq", 
+    "consensus":"robin", 
     "difficulty":12,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,
     "maxgastx":"0xfffffffffffffffffffffffff",
-    "blocktime":10,
+    "blocktime":5,
     "accounts":
         [
             {

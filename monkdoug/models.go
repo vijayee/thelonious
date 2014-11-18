@@ -5,6 +5,7 @@ import (
     "bytes"
     "fmt"
     "strconv"
+    "time"
     //"log"
     "github.com/eris-ltd/thelonious/monkstate"
     "github.com/eris-ltd/thelonious/monkutil"
@@ -32,6 +33,9 @@ type PermModel interface{
     SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt)
     SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt)
 
+    // Client behaviour functions
+    StartMining(coinbase []byte, parent *monkchain.Block) bool
+
     // generic validation functions for arbitrary consensus models
     // satisfies monkchain.GenDougModel
     Difficulty(block, parent *monkchain.Block) *big.Int
@@ -57,6 +61,10 @@ func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block
 
 func (m *YesModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
+}
+
+func (m *YesModel) StartMining(coinbase []byte, parent *monkchain.Block) bool{
+    return true
 }
 
 func (m *YesModel) Difficulty(block, parent *monkchain.Block) *big.Int{
@@ -92,6 +100,12 @@ func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block 
 
 func (m *NoModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
+}
+
+func (m *NoModel) StartMining(coinbase []byte, parent *monkchain.Block) bool{
+    // we tell it to start mining even though we know it will fail
+    // because this model is mostly just used for testing...
+    return true
 }
 
 func (m *NoModel) Difficulty(block, parent *monkchain.Block) *big.Int{
@@ -180,21 +194,55 @@ func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyP
     return tx, rec
 }
 
+// Save energy in the round robin by not mining until close to your turn 
+// or too much time has gone by
+func (m *StdLibModel) StartMining(coinbase []byte, parent *monkchain.Block) bool{
+    consensus := m.consensus(parent.State())
+    // if we're not in a round robin, always mine
+    if consensus != "robin"{
+        return true
+    }
+    // find out our distance from the current next miner
+    next := m.nextCoinbase(parent)
+    nMiners := vars.GetLinkedListLength(m.doug, "seq:name", parent.State())
+    var i int
+    for i=0; i<nMiners; i++{
+        next, _ = vars.GetNextLinkedListElement(m.doug, "seq:name", string(next), parent.State())
+        if bytes.Equal(next, coinbase){
+            break
+        }
+    }
+    // if we're less than halfway from the current miner, we should mine
+    if i<=int(nMiners/2){
+        return true
+    }
+    // if we're more than halfway, but enough time has gone by, we should mine 
+    mDiff := i-int(nMiners/2)
+    t := parent.Time
+    cur := time.Now().Unix()
+    blocktime := m.blocktime(parent.State())
+    tDiff := (cur-t)/blocktime
+    if tDiff > int64(mDiff){
+        return true
+    }
+    // otherwise, we should not mine
+    return false
+}
+
 // Difficulty of the current block for a given coinbase
 func (m *StdLibModel) Difficulty(block, parent *monkchain.Block) *big.Int{
     var b *big.Int
-    consensusBytes := vars.GetSingle(m.doug, "consensus", parent.State())
-    consensus := string(consensusBytes)
+
+    consensus := m.consensus(parent.State())
 
     // compute difficulty according to consensus model
-    // TODO: relieve methods from model struct
-    if consensus == "seq"{
+    switch(consensus){
+    case "robin":
         b = m.RoundRobinDifficulty(block, parent)
-    } else if consensus == "stake-weight"{
+    case "stake-weight":
         b = m.StakeDifficulty(block, parent)
-    } else {
-        blockTimeBytes := vars.GetSingle(m.doug, "blocktime", parent.State())
-        blockTime := monkutil.BigD(blockTimeBytes).Int64()
+    default:
+        blockTime := m.blocktime(parent.State())
         b = EthDifficulty(blockTime, block, parent)
     }
     return b
@@ -215,11 +263,12 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
     if !m.HasPermission(block.Coinbase, "mine", prevBlock.State()){
         return monkchain.InvalidPermError(block.Coinbase, "mine")
     }
+
     // check that signature of block matches miners coinbase
     if !bytes.Equal(block.Signer(), block.Coinbase){
         return monkchain.InvalidSigError(block.Signer(), block.Coinbase)
     }
-    
+
     // check if the block difficulty is correct 
     // it must be specified exactly
     newdiff := m.Difficulty(block, prevBlock)
@@ -289,6 +338,10 @@ func (m *EthModel) SetPermissions(addr []byte, permissions map[string]int, block
 
 func (m *EthModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
     return nil, nil
+}
+
+func (m *EthModel) StartMining(coinbase []byte, parent *monkchain.Block) bool{
+    return true
 }
 
 func (m *EthModel) Difficulty(block, parent *monkchain.Block) *big.Int{
