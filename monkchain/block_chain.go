@@ -29,6 +29,9 @@ func NewBlockChain(ethereum EthManager) *BlockChain {
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
 	bc.Ethereum = ethereum
 
+    // Prepare the genesis block!
+    bc.Ethereum.GenesisPointer(bc.genesisBlock)
+
 	bc.setLastBlock()
 
 	return bc
@@ -145,21 +148,6 @@ func AddTestNetFunds(block *Block) {
 }
 */
 
-func (bc *BlockChain) Fuck(thing string){
-    fmt.Println(thing)
-    addr := monkcrypto.Sha3Bin([]byte("the genesis doug"))
-    block := bc.CurrentBlock
-    st := block.state
-    c := st.GetAccount(addr)
-    fmt.Println("bal:", c.Balance)
-    store := c.State.Trie
-    it := store.NewIterator()
-    it.Each(func(key string, value *monkutil.Value) {
-        fmt.Println(monkutil.Bytes2Hex([]byte(key)), value)
-    })
-
-}
-
 func (bc *BlockChain) setLastBlock() {
 
     // check for last block. if none exists, fire up a genesis
@@ -171,13 +159,7 @@ func (bc *BlockChain) setLastBlock() {
 		bc.LastBlockNumber = block.Number.Uint64()
 
 	} else {
-        // Prepare the genesis block!
-        bc.Ethereum.GenesisPointer(bc.genesisBlock)
-        /*
-            The less enlightened might do something naiive like:
-            -> AddTestNetFunds(bc.genesisBlock, bc.Ethereum)
-            But this is DougLand baby!
-        */
+        // genesis block must be prepared ahead of time
 		bc.Add(bc.genesisBlock)
 		fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 		bc.Ethereum.Db().Put(fk, make([]byte, 255))
