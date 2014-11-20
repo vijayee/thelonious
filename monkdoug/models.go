@@ -14,6 +14,8 @@ import (
     vars "github.com/eris-ltd/eris-std-lib/go-tests"
 )
 
+var Adversary = 0
+
 // location struct (where is a permission?)
 // the model must specify how to extract the permission from the location
 // TODO: deprecate
@@ -138,7 +140,7 @@ type StdLibModel struct{
 func NewStdLibModel(g *GenesisConfig) PermModel{
     return &StdLibModel{
         base:   new(big.Int),
-        doug:   g.ByteAddr, 
+        doug:   g.byteAddr, 
         g:      g,
         pow:    &monkchain.EasyPow{},
     }
@@ -197,6 +199,10 @@ func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyP
 // Save energy in the round robin by not mining until close to your turn 
 // or too much time has gone by
 func (m *StdLibModel) StartMining(coinbase []byte, parent *monkchain.Block) bool{
+    if Adversary!=0{
+        return true
+    }
+
     consensus := m.consensus(parent.State())
     // if we're not in a round robin, always mine
     if consensus != "robin"{
@@ -249,6 +255,10 @@ func (m *StdLibModel) Difficulty(block, parent *monkchain.Block) *big.Int{
 }
 
 func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
+    if Adversary!=0{
+        return nil
+    }
+
     if m.HasPermission(addr, role, state){
         return nil
     }
@@ -256,6 +266,10 @@ func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.St
 }
 
 func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
+    if Adversary!=0{
+        return nil
+    }
+
     // we have to verify using the state of the previous block!
     prevBlock := monkchain.GetBlock(block.PrevHash)
 
@@ -298,6 +312,10 @@ func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
 }
 
 func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
+    if Adversary!=0{
+        return nil
+    }
+
     // check that sender has permission to transact or create
     var perm string
     if tx.IsContract(){

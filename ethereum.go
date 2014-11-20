@@ -166,7 +166,7 @@ func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) error{
         return fmt.Errorf("GenesisConfig already set")    
     }
     s.genConfig = genConfig
-    s.genModel = genConfig.Model
+    s.genModel = genConfig.Model()
     return nil
 }
 

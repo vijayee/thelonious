@@ -3,6 +3,7 @@ package monkminer
 import (
 	"bytes"
 	"sort"
+//    "fmt"
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -170,11 +171,15 @@ func (self *Miner) mineNewBlock() {
 
 	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
 
-    // check if we should even bother mining
+    // if parent is not built yet, return
+    if parent == nil{
+        return 
+    }
+
+    // check if we should even bother mining (potential energy savings)
     if !self.ethereum.GenesisModel().StartMining(self.coinbase, parent){
         return
     }
-
 
 	// Apply uncles
 	if len(self.uncles) > 0 {
@@ -203,7 +208,7 @@ func (self *Miner) mineNewBlock() {
 
 	self.block.State().Update()
 
-	logger.Infof("Mining on block. Includes %v transactions", len(self.txs))
+	logger.Infof("Mining on block %d. Includes %v transactions", self.block.Number, len(self.txs))
 
 	// Find a valid nonce
 	self.block.Nonce = self.pow.Search(self.block, self.powQuitChan)

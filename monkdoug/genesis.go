@@ -7,6 +7,7 @@ import (
     "os"
     "strconv"
     "io/ioutil"
+    "log"
     "encoding/json"
     "github.com/eris-ltd/thelonious/monkutil"    
     "github.com/eris-ltd/thelonious/monkcrypto"    
@@ -20,7 +21,7 @@ import (
 
 type Account struct{
     Address string `json:"address"`
-    ByteAddr []byte  //convenience, but not from json
+    byteAddr []byte  //convenience, but not from json
     Name string `json:"name"`
     Balance string  `json:"balance"`
     Permissions map[string]int `json:"permissions"`
@@ -34,9 +35,9 @@ type GenesisConfig struct{
     ModelName string `json:"model"` // name of the gendoug access model
     NoGenDoug bool `json:"no-gendoug"` // turn off gendoug 
     
-    HexAddr string 
-    ByteAddr []byte
-    ContractPath string 
+    hexAddr string 
+    byteAddr []byte
+    contractPath string 
 
     // Global GenDoug Singles
     Consensus string `json:"consensus"` // stake, robin, eth
@@ -50,7 +51,15 @@ type GenesisConfig struct{
     // Accounts (permissions and stake)
     Accounts []*Account `json:"accounts"`
 
-    Model PermModel
+    model PermModel
+}
+
+func (g * GenesisConfig) Model() PermModel{
+    return g.model
+}
+
+func (g *GenesisConfig) SetModel(m PermModel){
+    g.model = m
 }
 
 // Load the genesis block info from genesis.json
@@ -71,15 +80,15 @@ func LoadGenesis(file string) *GenesisConfig{
 
     // move address into accounts, in bytes
     for _, acc := range g.Accounts{
-        acc.ByteAddr = monkutil.UserHex2Bytes(acc.Address)
+        acc.byteAddr = monkutil.UserHex2Bytes(acc.Address)
     }
 
-    g.ByteAddr = []byte(g.Address)
-    g.HexAddr = monkutil.Bytes2Hex(g.ByteAddr)
-    g.ContractPath = path.Join(ErisLtd, "eris-std-lib")
+    g.byteAddr = []byte(g.Address)
+    g.hexAddr = monkutil.Bytes2Hex(g.byteAddr)
+    g.contractPath = path.Join(ErisLtd, "eris-std-lib")
 
     // set doug model
-    g.Model = NewPermModel(g)
+    g.model = NewPermModel(g)
 
     return g
 }
@@ -99,7 +108,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
         // no genesis doug, deploy simple
         for _, account := range g.Accounts{
             // direct state modification to create accounts and balances
-            AddAccount(account.ByteAddr, account.Balance, block)
+            AddAccount(account.byteAddr, account.Balance, block)
         }
         return
     }
@@ -107,33 +116,40 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
     fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
 
     // dummy keys for signing
-    keys := monkcrypto.GenerateNewKeyPair() 
+    //keys := monkcrypto.GenerateNewKeyPair() 
+    keys, err := monkcrypto.NewKeyPairFromSec([]byte("11111111112222222222333333333322"))
+    if err != nil{
+        log.Fatal("da fuq?", err)
+    }
+    fmt.Println(keys.PrivateKey)
+    fmt.Println(keys.PublicKey)
+    fmt.Println(keys.Address())
 
     // create the genesis doug
-    codePath := path.Join(g.ContractPath, g.DougPath)
+    codePath := path.Join(g.contractPath, g.DougPath)
     genAddr := []byte(g.Address)
     MakeApplyTx(codePath, genAddr, nil, keys, block)
 
     // set the global vars
-    g.Model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "difficulty", "0x"+monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
-    g.Model.SetValue(genAddr, []string{"setvar", "blocktime", "0x"+strconv.Itoa(g.BlockTime)}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "difficulty", "0x"+monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "public:mine", "0x"+strconv.Itoa(g.PublicMine)}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "public:create", "0x"+strconv.Itoa(g.PublicCreate)}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "public:tx", "0x"+strconv.Itoa(g.PublicTx)}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
+    g.model.SetValue(genAddr, []string{"setvar", "blocktime", "0x"+strconv.Itoa(g.BlockTime)}, keys, block)
 
     fmt.Println("done genesis. setting perms...")
 
     // set balances and permissions
     for _, account := range g.Accounts{
         // direct state modification to create accounts and balances
-        AddAccount(account.ByteAddr, account.Balance, block)
-        if g.Model != nil{
+        AddAccount(account.byteAddr, account.Balance, block)
+        if g.model != nil{
             // issue txs to set perms according to the model
-            g.Model.SetPermissions(account.ByteAddr, account.Permissions, block, keys)
+            g.model.SetPermissions(account.byteAddr, account.Permissions, block, keys)
             if account.Permissions["mine"] != 0{
-                g.Model.SetValue(g.ByteAddr, []string{"addminer", account.Name, "0x"+account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
+                g.model.SetValue(g.byteAddr, []string{"addminer", account.Name, "0x"+account.Address, "0x"+strconv.Itoa(account.Stake)}, keys, block)
             }
             fmt.Println("setting perms for", account.Address)
         }

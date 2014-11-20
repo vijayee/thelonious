@@ -33,6 +33,7 @@ type ChainConfig struct{
     KeyFile string  `json:"key_file"`
     GenesisConfig string `json:"genesis_config"`
     LogLevel int    `json:"log_level"`
+    Adversary int     `json:"adversary"`
 }
 
 // set default config object
@@ -56,6 +57,7 @@ var DefaultConfig = &ChainConfig{
         KeyFile: path.Join(ErisLtd, "thelonious", "monk", "keys.txt"),
         GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis-std.json"),
         LogLevel: 5,
+        Adversary: 0,
 }
 
 

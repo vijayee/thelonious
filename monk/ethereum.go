@@ -104,6 +104,9 @@ func (mod *MonkModule) Init() error {
         mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
     }
     m.genConfig = mod.GenesisConfig
+
+    monkdoug.Adversary = mod.Config.Adversary
+
 	// if no ethereum instance
 	if m.ethereum == nil {
 		m.ethConfig()
@@ -266,7 +269,7 @@ func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
 // Set the genesis json object. This can only be done once
 func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
     // reset the permission model struct (since config may have changed)
-    genJson.Model = monkdoug.NewPermModel(genJson)
+    genJson.SetModel(monkdoug.NewPermModel(genJson))
     mod.GenesisConfig = genJson
 }
 
@@ -736,6 +739,9 @@ func PackTxDataArgs(args ...string) string {
 
 // convert ethereum block to modules block
 func convertBlock(block *monkchain.Block) *modules.Block{
+    if block == nil{
+        return nil
+    }
 	b := &modules.Block{}
 	b.Coinbase = hex.EncodeToString(block.Coinbase)
 	b.Difficulty = block.Difficulty.String()
