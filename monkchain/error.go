@@ -183,3 +183,15 @@ func InvalidDifficultyError(observed, expected *big.Int, coinbase []byte) *Inval
 func (self *InvalidDifficultyErr) Error() string{
     return string(*self)
 }
+
+type TDError struct {
+	a, b *big.Int
+}
+
+func (self *TDError) Error() string {
+	return fmt.Sprintf("incoming chain has a lower or equal TD (%v <= %v)", self.a, self.b)
+}
+func IsTDError(e error) bool {
+	_, ok := e.(*TDError)
+	return ok
+}

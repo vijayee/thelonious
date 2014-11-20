@@ -18,7 +18,7 @@ type TestManager struct {
 	reactor      *monkreact.ReactorEngine
 
 	txPool     *TxPool
-	blockChain *BlockChain
+	blockChain *ChainManager
 	Blocks     []*Block
 }
 
@@ -38,7 +38,7 @@ func (s *TestManager) Peers() *list.List {
 	return list.New()
 }
 
-func (s *TestManager) BlockChain() *BlockChain {
+func (s *TestManager) BlockChain() *ChainManager {
 	return s.blockChain
 }
 
@@ -80,7 +80,7 @@ func NewTestManager() *TestManager {
 	testManager.reactor = monkreact.New()
 
 	testManager.txPool = NewTxPool(testManager)
-	testManager.blockChain = NewBlockChain(testManager)
+	testManager.blockChain = NewChainManager(testManager)
 	testManager.stateManager = NewStateManager(testManager)
 
 	// Start the tx pool

@@ -57,7 +57,7 @@ func TestGenesisMsg(t *testing.T){
 }
 
 // follow the prevhashes back to genesis
-func traverse_to_genesis(curchain *monkchain.BlockChain, curblock *monkchain.Block) *monkchain.Block{
+func traverse_to_genesis(curchain *monkchain.ChainManager, curblock *monkchain.Block) *monkchain.Block{
     prevhash := curblock.PrevHash
     prevblock := curchain.GetBlock(prevhash)
     fmt.Println("prevblock", prevblock)

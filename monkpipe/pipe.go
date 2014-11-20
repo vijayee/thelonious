@@ -21,7 +21,7 @@ type VmVars struct {
 type Pipe struct {
 	obj          monkchain.EthManager
 	stateManager *monkchain.StateManager
-	blockChain   *monkchain.BlockChain
+	blockChain   *monkchain.ChainManager
 	world        *World
 
 	Vm VmVars

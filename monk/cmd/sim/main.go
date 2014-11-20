@@ -69,7 +69,7 @@ func runClient(){
     if *index >= 0{
         mm.Config.Adversary = 1
     }
-    mm.Config.LogLevel = 5
+    mm.Config.LogLevel = 3
     mm.Config.KeySession = "keys"
     //mm.Config.Adversary = 1
 

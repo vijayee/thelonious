@@ -201,6 +201,22 @@ func (pool *TxPool) RemoveInvalid(state *monkstate.State) {
 	}
 }
 
+func (self *TxPool) RemoveSet(txs Transactions) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
+	for _, tx := range txs {
+		EachTx(self.pool, func(t *Transaction, element *list.Element) bool {
+			if t == tx {
+				self.pool.Remove(element)
+				return true // To stop the loop
+			}
+			return false
+		})
+	}
+}
+
+
 func (pool *TxPool) Flush() []*Transaction {
 	txList := pool.CurrentTransactions()
 
@@ -221,4 +237,12 @@ func (pool *TxPool) Stop() {
 	pool.Flush()
 
 	txplogger.Infoln("Stopped")
+}
+
+func EachTx(pool *list.List, it func(*Transaction, *list.Element) bool) {
+	for e := pool.Front(); e != nil; e = e.Next() {
+		if it(e.Value.(*Transaction), e) {
+			break
+		}
+	}
 }

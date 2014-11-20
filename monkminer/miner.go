@@ -3,7 +3,7 @@ package monkminer
 import (
 	"bytes"
 	"sort"
-//    "fmt"
+    "fmt"
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -166,8 +166,9 @@ func (miner *Miner) Stop() {
 
 func (self *Miner) mineNewBlock() {
 	stateManager := self.ethereum.StateManager()
+    chainMan := self.ethereum.BlockChain()
+    self.block = chainMan.NewBlock(self.coinbase)
 
-	self.block = self.ethereum.BlockChain().NewBlock(self.coinbase)
 
 	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
 
@@ -217,6 +218,22 @@ func (self *Miner) mineNewBlock() {
         keypair := self.ethereum.KeyManager().KeyPair()
         self.block.Sign(keypair.PrivateKey)
         // process the completed block
+		lchain := monkchain.NewChain(monkchain.Blocks{self.block})
+		_, err := chainMan.TestChain(lchain)
+        fmt.Println("done run test chain:", err)
+		if err != nil {
+			logger.Infoln(err)
+		} else {
+			chainMan.InsertChain(lchain)
+			//self.eth.EventMux().Post(chain.NewBlockEvent{block})
+			self.ethereum.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
+
+			logger.Infof("🔨  Mined block %x\n", self.block.Hash())
+			logger.Infoln(self.block)
+		}
+
+		go self.mineNewBlock()
+        /*
 		err := self.ethereum.StateManager().Process(self.block, false)
 		if err != nil {
 			logger.Infoln(err)
@@ -226,6 +243,6 @@ func (self *Miner) mineNewBlock() {
 			logger.Infoln(self.block)
 			// Gather the new batch of transactions currently in the tx pool
 			self.txs = self.ethereum.TxPool().CurrentTransactions()
-		}
+		}*/
 	}
 }

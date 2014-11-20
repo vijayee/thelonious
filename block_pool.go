@@ -4,13 +4,15 @@ import (
 	"container/list"
 	"math"
 	"math/big"
+    "bytes"
 	"sync"
 	"time"
+    "fmt"
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkwire"
+	//"github.com/eris-ltd/thelonious/monkwire"
 )
 
 var poollogger = monklog.NewLogger("BPOOL")
@@ -38,6 +40,8 @@ type BlockPool struct {
 	downloadStartedAt time.Time
 
 	ChainLength, BlocksProcessed int
+
+    peer *Peer
 }
 
 func NewBlockPool(eth *Ethereum) *BlockPool {
@@ -51,6 +55,11 @@ func NewBlockPool(eth *Ethereum) *BlockPool {
 
 func (self *BlockPool) Len() int {
 	return len(self.hashPool)
+}
+
+func (self *BlockPool) Reset() {
+	self.pool = make(map[string]*block)
+	self.hashPool = nil
 }
 
 func (self *BlockPool) HasLatestHash() bool {
@@ -120,6 +129,13 @@ func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmo
 	blocks := self.Blocks()
 
 	monkchain.BlockBy(monkchain.Number).Sort(blocks)
+    fmt.Println("Len block pool in process canonical: ", len(blocks))
+    if len(blocks) > 0{
+        fmt.Println("first blocks num:", blocks[0].Number)
+        fmt.Println("last blocks num:", blocks[len(blocks) -1 ].Number)
+    } else{
+        fmt.Println("no blocks in pool!")
+    }
 	for _, block := range blocks {
 		if self.eth.BlockChain().HasBlock(block.PrevHash) {
 			procAmount++
@@ -127,7 +143,9 @@ func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmo
 			f(block)
 
 			self.Remove(block.Hash())
-		}
+		} else {
+            fmt.Println("not processed as we don't have prevhash")
+        }
 
 	}
 
@@ -234,23 +252,84 @@ out:
 		case <-self.quit:
 			break out
 		case <-procTimer.C:
-			// XXX We can optimize this lifting this on to a new goroutine.
 			// We'd need to make sure that the pools are properly protected by a mutex
-			// XXX This should moved in The Great Refactor(TM)
-			amount := self.ProcessCanonical(func(block *monkchain.Block) {
+			blocks := self.Blocks()
+			monkchain.BlockBy(monkchain.Number).Sort(blocks)
+
+			// Find common block
+			for i, block := range blocks {
+				if self.eth.BlockChain().HasBlock(block.PrevHash) {
+					blocks = blocks[i:]
+					break
+				}
+			}
+
+			if len(blocks) > 0 {
+                // Find chain of blocks
+				if self.eth.BlockChain().HasBlock(blocks[0].PrevHash) {
+					for i, block := range blocks[1:] {
+						// NOTE: The Ith element in this loop refers to the previous block in
+						// outer "blocks"
+						if bytes.Compare(block.PrevHash, blocks[i].Hash()) != 0 {
+							blocks = blocks[:i]
+
+							break
+						}
+					}
+				} else {
+					blocks = nil
+				}
+			}
+
+			// TODO figure out whether we were catching up
+			// If caught up and just a new block has been propagated:
+			// sm.eth.EventMux().Post(NewBlockEvent{block})
+			// otherwise process and don't emit anything
+			if len(blocks) > 0 {
+				chainManager := self.eth.BlockChain()
+				// Test and import
+				bchain := monkchain.NewChain(blocks)
+				td, err := chainManager.TestChain(bchain)
+                fmt.Println("test chain:", td, err)
+				if err != nil && !monkchain.IsTDError(err) {
+                    fmt.Println("not td error:", err)
+					poollogger.Debugln(err)
+
+					self.Reset()
+
+					if self.peer != nil && self.peer.conn != nil {
+						poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
+
+					// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
+					//self.eth.BlacklistPeer(self.peer)
+					//self.peer.StopWithReason(DiscBadPeer)
+                        self.peer.Stop()
+                        self.td = monkutil.Big0
+                        self.peer = nil
+					}
+				} else {
+                    fmt.Println("ok, inserting chain")
+					chainManager.InsertChain(bchain)
+					for _, block := range blocks {
+						self.Remove(block.Hash())
+					}
+				}
+            }
+			/*amount := self.ProcessCanonical(func(block *monkchain.Block) {
 				err := self.eth.StateManager().Process(block, false)
 				if err != nil {
+                    fmt.Println("block failed...")
 					poollogger.Infoln(err)
 					poollogger.Debugf("Block #%v failed (%x...)\n", block.Number, block.Hash()[0:4])
 					poollogger.Debugln(block)
 				}
-			})
+			})*/
 
-			// Do not propagate to the network on catchups
+			/* Do not propagate to the network on catchups
 			if amount == 1 {
 				block := self.eth.BlockChain().CurrentBlock
 				self.eth.Broadcast(monkwire.MsgBlockTy, []interface{}{block.Value().Val})
-			}
+			}*/
 		}
 	}
 }

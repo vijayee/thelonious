@@ -37,7 +37,7 @@ type Peer interface {
 
 type EthManager interface {
 	StateManager() *StateManager
-	BlockChain() *BlockChain
+	BlockChain() *ChainManager
 	TxPool() *TxPool
 	Broadcast(msgType monkwire.MsgType, data []interface{})
 	Reactor() *monkreact.ReactorEngine
@@ -74,7 +74,7 @@ type StateManager struct {
 	// Mutex for locking the block processor. Blocks can only be handled one at a time
 	mutex sync.Mutex
 	// Canonical block chain
-	bc *BlockChain
+	bc *ChainManager
 	// non-persistent key/value memory storage
 	mem map[string]*big.Int
 	// Proof of work used for validating
@@ -127,7 +127,7 @@ func (sm *StateManager) NewMiningState() *monkstate.State {
 	return sm.miningState
 }
 
-func (sm *StateManager) BlockChain() *BlockChain {
+func (sm *StateManager) BlockChain() *ChainManager{
 	return sm.bc
 }
 
@@ -214,24 +214,29 @@ done:
 	return receipts, handled, unhandled, err
 }
 
-func (sm *StateManager) Process(block *Block, dontReact bool) (err error) {
+func (sm *StateManager) Process(block *Block, dontReact bool) (td *big.Int, err error) {
 	// Processing a blocks may never happen simultaneously
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
 
 	if sm.bc.HasBlock(block.Hash()) {
-		return nil
+		return nil, nil
 	}
 
 	if !sm.bc.HasBlock(block.PrevHash) {
-		return ParentError(block.PrevHash)
+		return nil, ParentError(block.PrevHash)
 	}
+	parent := sm.bc.GetBlock(block.PrevHash)
 
+	return sm.ProcessWithParent(block, parent)
+} 
+
+func (sm *StateManager) ProcessWithParent(block, parent *Block) (td *big.Int, err error){
 	sm.lastAttemptedBlock = block
 
 	var (
-		parent = sm.bc.GetBlock(block.PrevHash)
-		state  = parent.State()
+		//parent = sm.bc.GetBlock(block.PrevHash)
+		state  = parent.State().Copy()
 	)
 
 	// Defer the Undo on the Trie. If the block processing happened
@@ -246,23 +251,23 @@ func (sm *StateManager) Process(block *Block, dontReact bool) (err error) {
 
 	receipts, err := sm.ApplyDiff(state, parent, block)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	txSha := CreateTxSha(receipts)
 	if bytes.Compare(txSha, block.TxSha) != 0 {
-		return fmt.Errorf("Error validating tx sha. Received %x, got %x", block.TxSha, txSha)
+		return nil, fmt.Errorf("Error validating tx sha. Received %x, got %x", block.TxSha, txSha)
 	}
 
 	// Block validation
 	if err = sm.ValidateBlock(block); err != nil {
 		statelogger.Errorln("Error validating block:", err)
-		return err
+		return nil, err
 	}
 
 	if err = sm.AccumelateRewards(state, block, parent); err != nil {
 		statelogger.Errorln("Error accumulating reward", err)
-		return err
+		return nil, err
 	}
 
 	state.Update()
@@ -272,35 +277,39 @@ func (sm *StateManager) Process(block *Block, dontReact bool) (err error) {
 		return
 	}
 
+    fmt.Println("##### old TD:", sm.bc.TD)
 	// Calculate the new total difficulty and sync back to the db
-	if sm.CalculateTD(block) {
+	if td, ok := sm.CalculateTD(block); ok{
 		// Sync the current block's state to the database and cancelling out the deferred Undo
+        fmt.Println("##### new TD:", sm.bc.TD, td)
 		state.Sync()
 
 		// Add the block to the chain
-		sm.bc.Add(block)
+		// sm.bc.Add(block)
+        
+		//if dontReact == false {
+			sm.Ethereum.Reactor().Post("newBlock", block)
+			state.Manifest().Reset()
+		//}
+
+		statelogger.Infof("Processed block #%d (%x...)\n", block.Number, block.Hash()[0:4])
 
 		sm.transState = state.Copy()
-
+        /*
 		// Create a bloom bin for this block
 		filter := sm.createBloomFilter(state)
 		// Persist the data
 		fk := append([]byte("bloom"), block.Hash()...)
 		sm.Ethereum.Db().Put(fk, filter.Bin())
-
-		statelogger.Infof("Imported block #%d (%x...)\n", block.Number, block.Hash()[0:4])
-		if dontReact == false {
-			sm.Ethereum.Reactor().Post("newBlock", block)
-
-			state.Manifest().Reset()
-		}
-
-		sm.Ethereum.TxPool().RemoveInvalid(state)
+        */
+		//sm.Ethereum.TxPool().RemoveInvalid(state)
+		sm.Ethereum.TxPool().RemoveSet(block.Transactions())
+        return td, nil
 	} else {
-		statelogger.Errorln("total diff failed")
+		return nil, fmt.Errorf("total diff failed")
 	}
 
-	return nil
+	//return nil
 }
 
 func (sm *StateManager) ApplyDiff(state *monkstate.State, parent, block *Block) (receipts Receipts, err error) {
@@ -316,27 +325,41 @@ func (sm *StateManager) ApplyDiff(state *monkstate.State, parent, block *Block) 
 	return receipts, nil
 }
 
-func (sm *StateManager) CalculateTD(block *Block) bool {
+func (sm *StateManager) CalculateTD(block *Block) (*big.Int, bool) {
+    b, e := sm.bc.CalcTotalDiff(block)
+    if e == nil{
+        return b, true
+    } else{
+        fmt.Println("err on calc td :", e)
+        return b, false
+    }
+
+
 	uncleDiff := new(big.Int)
 	for _, uncle := range block.Uncles {
 		uncleDiff = uncleDiff.Add(uncleDiff, uncle.Difficulty)
 	}
+    fmt.Println("uncles:", len(block.Uncles), uncleDiff)
 
 	// TD(genesis_block) = 0 and TD(B) = TD(B.parent) + sum(u.difficulty for u in B.uncles) + B.difficulty
 	td := new(big.Int)
 	td = td.Add(sm.bc.TD, uncleDiff)
 	td = td.Add(td, block.Difficulty)
 
+    fmt.Println("pre total:", sm.bc.TD)
+    fmt.Println("block diff:", block.Difficulty)
+    fmt.Println("new diff:", td)
+
 	// The new TD will only be accepted if the new difficulty is
 	// is greater than the previous.
 	if td.Cmp(sm.bc.TD) > 0 {
 		// Set the new total difficulty back to the block chain
-		sm.bc.SetTotalDifficulty(td)
+		//sm.bc.SetTotalDifficulty(td)
 
-		return true
+		return td, true
 	}
 
-	return false
+	return nil, false
 }
 
 // Validates the current block. Returns an error if the block was invalid,

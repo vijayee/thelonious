@@ -59,7 +59,7 @@ type Ethereum struct {
 	// for later including in the blocks
 	txPool *monkchain.TxPool
 	// The canonical chain
-	blockChain *monkchain.BlockChain
+	blockChain *monkchain.ChainManager
 	// The block pool
 	blockPool *BlockPool
 	// Peers (NYI)
@@ -136,7 +136,7 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 
 	ethereum.blockPool = NewBlockPool(ethereum)
 	ethereum.txPool = monkchain.NewTxPool(ethereum)
-	ethereum.blockChain = monkchain.NewBlockChain(ethereum)
+	ethereum.blockChain = monkchain.NewChainManager(ethereum)
 	ethereum.stateManager = monkchain.NewStateManager(ethereum)
 
 	// Start the tx pool
@@ -182,7 +182,7 @@ func (s *Ethereum) ClientIdentity() monkwire.ClientIdentity {
 	return s.clientIdentity
 }
 
-func (s *Ethereum) BlockChain() *monkchain.BlockChain {
+func (s *Ethereum) BlockChain() *monkchain.ChainManager {
 	return s.blockChain
 }
 

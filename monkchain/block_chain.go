@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+    "container/list"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkcrypto"
+	//"github.com/eris-ltd/thelonious/monkcrypto"
 )
 
 var chainlogger = monklog.NewLogger("CHAIN")
 
-type BlockChain struct {
+type ChainManager struct {
 	Ethereum EthManager
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
 	genesisBlock *Block
@@ -22,10 +23,14 @@ type BlockChain struct {
 
 	CurrentBlock  *Block
 	LastBlockHash []byte
+
+    workingChain *BlockChain
+    blockCache map[[]byte] *Block // cache of competing chains
+    
 }
 
-func NewBlockChain(ethereum EthManager) *BlockChain {
-	bc := &BlockChain{}
+func NewChainManager(ethereum EthManager) *ChainManager{
+	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
 	bc.Ethereum = ethereum
 
@@ -37,12 +42,12 @@ func NewBlockChain(ethereum EthManager) *BlockChain {
 	return bc
 }
 
-func (bc *BlockChain) Genesis() *Block {
+func (bc *ChainManager) Genesis() *Block {
 	return bc.genesisBlock
 }
 
 // Only called by the miner
-func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
+func (bc *ChainManager) NewBlock(coinbase []byte) *Block {
 	var root interface{}
 	hash := ZeroHash256
 
@@ -73,13 +78,13 @@ func (bc *BlockChain) NewBlock(coinbase []byte) *Block {
 	return block
 }
 
-func (bc *BlockChain) HasBlock(hash []byte) bool {
+func (bc *ChainManager) HasBlock(hash []byte) bool {
 	data, _ := monkutil.Config.Db.Get(hash)
 	return len(data) != 0
 }
 
 // TODO: At one point we might want to save a block by prevHash in the db to optimise this...
-func (bc *BlockChain) HasBlockWithPrevHash(hash []byte) bool {
+func (bc *ChainManager) HasBlockWithPrevHash(hash []byte) bool {
 	block := bc.CurrentBlock
 
 	for ; block != nil; block = bc.GetBlock(block.PrevHash) {
@@ -90,22 +95,24 @@ func (bc *BlockChain) HasBlockWithPrevHash(hash []byte) bool {
 	return false
 }
 
-func (bc *BlockChain) CalculateBlockTD(block *Block) *big.Int {
+func (bc *ChainManager) CalculateBlockTD(block *Block) *big.Int {
 	blockDiff := new(big.Int)
 
 	for _, uncle := range block.Uncles {
 		blockDiff = blockDiff.Add(blockDiff, uncle.Difficulty)
 	}
+    fmt.Println("uncles:", len(block.Uncles), blockDiff)
 	blockDiff = blockDiff.Add(blockDiff, block.Difficulty)
+    fmt.Println("total block diff:", blockDiff)
 
 	return blockDiff
 }
 
-func (bc *BlockChain) GenesisBlock() *Block {
+func (bc *ChainManager) GenesisBlock() *Block {
 	return bc.genesisBlock
 }
 
-func (self *BlockChain) GetChainHashesFromHash(hash []byte, max uint64) (chain [][]byte) {
+func (self *ChainManager) GetChainHashesFromHash(hash []byte, max uint64) (chain [][]byte) {
 	block := self.GetBlock(hash)
 	if block == nil {
 		return
@@ -148,7 +155,7 @@ func AddTestNetFunds(block *Block) {
 }
 */
 
-func (bc *BlockChain) setLastBlock() {
+func (bc *ChainManager) setLastBlock() {
 
     // check for last block. if none exists, fire up a genesis
 	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))
@@ -160,7 +167,7 @@ func (bc *BlockChain) setLastBlock() {
 
 	} else {
         // genesis block must be prepared ahead of time
-		bc.Add(bc.genesisBlock)
+		bc.add(bc.genesisBlock)
 		fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 		bc.Ethereum.Db().Put(fk, make([]byte, 255))
 		bc.CurrentBlock = bc.genesisBlock
@@ -175,13 +182,14 @@ func (bc *BlockChain) setLastBlock() {
 
 }
 
-func (bc *BlockChain) SetTotalDifficulty(td *big.Int) {
+func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
+    fmt.Println("running set total diff..", bc.TD, td)
 	monkutil.Config.Db.Put([]byte("LTD"), td.Bytes())
 	bc.TD = td
 }
 
 // Add a block to the chain and record addition information
-func (bc *BlockChain) Add(block *Block) {
+func (bc *ChainManager) add(block *Block) {
 	bc.writeBlockInfo(block)
 	// Prepare the genesis block
 
@@ -193,22 +201,27 @@ func (bc *BlockChain) Add(block *Block) {
 	monkutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
 }
 
-func (self *BlockChain) CalcTotalDiff(block *Block) (*big.Int, error) {
+func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {
+    fmt.Println("calc total diff:", monkutil.Bytes2Hex(block.Hash()))
 	parent := self.GetBlock(block.PrevHash)
 	if parent == nil {
 		return nil, fmt.Errorf("Unable to calculate total diff without known parent %x", block.PrevHash)
 	}
 
 	parentTd := parent.BlockInfo().TD
+    fmt.Println("parent TD:", parentTd)
 
 	uncleDiff := new(big.Int)
 	for _, uncle := range block.Uncles {
 		uncleDiff = uncleDiff.Add(uncleDiff, uncle.Difficulty)
 	}
+    fmt.Println("uncles:", len(block.Uncles), uncleDiff)
 
 	td := new(big.Int)
 	td = td.Add(parentTd, uncleDiff)
 	td = td.Add(td, block.Difficulty)
+    fmt.Println("block diff:", block.Difficulty)
+    fmt.Println("total chain diff:", td)
 
 	return td, nil
 }
@@ -221,11 +234,22 @@ func GetBlock(hash []byte) *Block{
 	return NewBlockFromBytes(data)
 }
 
-func (bc *BlockChain) GetBlock(hash []byte) *Block {
-    return GetBlock(hash)
+func (bc *ChainManager) GetBlock(hash []byte) *Block {
+    b := GetBlock(hash)
+    if b == nil{
+		if bc.workingChain != nil {
+			// Check the temp chain
+			for e := bc.workingChain.Front(); e != nil; e = e.Next() {
+				if bytes.Compare(e.Value.(*link).block.Hash(), hash) == 0 {
+					return e.Value.(*link).block
+				}
+			}
+		}
+    }
+    return b
 }
 
-func (self *BlockChain) GetBlockByNumber(num uint64) *Block {
+func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
 	block := self.CurrentBlock
 	for ; block != nil; block = self.GetBlock(block.PrevHash) {
 		if block.Number.Uint64() == num {
@@ -240,7 +264,7 @@ func (self *BlockChain) GetBlockByNumber(num uint64) *Block {
 	return block
 }
 
-func (self *BlockChain) GetBlockBack(num uint64) *Block {
+func (self *ChainManager) GetBlockBack(num uint64) *Block {
 	block := self.CurrentBlock
 
 	for ; num != 0 && block != nil; num-- {
@@ -250,7 +274,7 @@ func (self *BlockChain) GetBlockBack(num uint64) *Block {
 	return block
 }
 
-func (bc *BlockChain) BlockInfoByHash(hash []byte) BlockInfo {
+func (bc *ChainManager) BlockInfoByHash(hash []byte) BlockInfo {
 	bi := BlockInfo{}
 	data, _ := monkutil.Config.Db.Get(append(hash, []byte("Info")...))
 	bi.RlpDecode(data)
@@ -258,7 +282,7 @@ func (bc *BlockChain) BlockInfoByHash(hash []byte) BlockInfo {
 	return bi
 }
 
-func (bc *BlockChain) BlockInfo(block *Block) BlockInfo {
+func (bc *ChainManager) BlockInfo(block *Block) BlockInfo {
 	bi := BlockInfo{}
 	data, _ := monkutil.Config.Db.Get(append(block.Hash(), []byte("Info")...))
 	bi.RlpDecode(data)
@@ -267,18 +291,105 @@ func (bc *BlockChain) BlockInfo(block *Block) BlockInfo {
 }
 
 // Unexported method for writing extra non-essential block info to the db
-func (bc *BlockChain) writeBlockInfo(block *Block) {
+func (bc *ChainManager) writeBlockInfo(block *Block) {
     if block.Number.Cmp(big.NewInt(0)) != 0{
 	    bc.LastBlockNumber++
     }
 	bi := BlockInfo{Number: bc.LastBlockNumber, Hash: block.Hash(), Parent: block.PrevHash, TD: bc.TD}
+    fmt.Println("writing block info. total diff:", bc.TD)
 
 	// For now we use the block hash with the words "info" appended as key
 	monkutil.Config.Db.Put(append(block.Hash(), []byte("Info")...), bi.RlpEncode())
 }
 
-func (bc *BlockChain) Stop() {
+func (bc *ChainManager) Stop() {
 	if bc.CurrentBlock != nil {
 		chainlogger.Infoln("Stopped")
 	}
+}
+
+type link struct {
+	block    *Block
+	//messages state.Messages
+	td       *big.Int
+}
+
+type BlockChain struct {
+	*list.List
+}
+
+func NewChain(blocks Blocks) *BlockChain {
+	chain := &BlockChain{list.New()}
+
+	for _, block := range blocks {
+        fmt.Println("in new chain:", block.r, block.s)
+		chain.PushBack(&link{block, nil})
+	}
+
+	return chain
+}
+
+// This function assumes you've done your checking. No checking is done at this stage anymore
+func (self *ChainManager) InsertChain(chain *BlockChain) {
+    fmt.Println("running insert chain...")
+	for e := chain.Front(); e != nil; e = e.Next() {
+		link := e.Value.(*link)
+
+		self.SetTotalDifficulty(link.td)
+		self.add(link.block)
+		//self.Ethereum.Reactor().Post(NewBlockEvent{link.block})
+		//self.Ethereum.Reactor().Post(link.messages)
+	}
+
+	b, e := chain.Front(), chain.Back()
+	if b != nil && e != nil {
+		front, back := b.Value.(*link).block, e.Value.(*link).block
+		chainlogger.Infof("Imported %d blocks. #%v (%x) / %#v (%x)", chain.Len(), front.Number, front.Hash()[0:4], back.Number, back.Hash()[0:4])
+	}
+}
+
+func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) {
+	self.workingChain = chain
+	defer func() { self.workingChain = nil }()
+
+	for e := chain.Front(); e != nil; e = e.Next() {
+		var (
+			l      = e.Value.(*link)
+			block  = l.block
+			parent = self.GetBlock(block.PrevHash)
+		)
+
+		if parent == nil {
+			err = fmt.Errorf("incoming chain broken on hash %x\n", block.PrevHash[0:4])
+			return
+		}
+
+        fmt.Println("################")
+        fmt.Println("Current difficulty:", self.TD)
+		//var messages state.Messages
+		td, err = self.Ethereum.StateManager().ProcessWithParent(block, parent)
+		if err != nil {
+			chainlogger.Infoln(err)
+			chainlogger.Debugf("Block #%v failed (%x...)\n", block.Number, block.Hash()[0:4])
+			chainlogger.Debugln(block)
+
+			err = fmt.Errorf("incoming chain failed %v\n", err)
+			return
+		}
+		l.td = td
+		//l.messages = messages
+	}
+    fmt.Println("Incoming difficulty:", td)
+
+	if td.Cmp(self.TD) <= 0 {
+		err = &TDError{td, self.TD}
+		return
+	}
+
+    // hrmph
+    //self.TD = td
+
+	self.workingChain = nil
+
+	return
 }
