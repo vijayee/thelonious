@@ -12,13 +12,18 @@ import (
 
 var chainlogger = monklog.NewLogger("CHAIN")
 
-// sorry. this isn't nice. but it's here so the GetBlock function can act
-// without a ChainManager receiver
-// it means there can only ever be one chain manager
-// that shouldn't be a problem, at least for now
-// maybe we will bring monkdoug back in here to rectify...
-// ::sigh::
-var blockChain *ChainManager
+/*
+    A canonical chain begins right away, with blocks saved in database
+    New blocks placed in working tree
+    If at any time a branch in workingTree gets higher diff
+        blocks than canonical, a re-org is called, the new chain
+        is copied into database, the old canonical is placed in workingTree
+        and the relevant blocks are removed from workingTree if they have 
+        no children
+        XXX: should old canonical be removed from leveldb?
+            how do we even track canonical?
+            can we put it in a trie?
+*/
 
 type ChainManager struct {
 	Ethereum EthManager
@@ -34,6 +39,7 @@ type ChainManager struct {
 
     // Cache of competing chains
     // Every non-canonical block is cached here
+    // When a link gets td > TD, we re-org
     workingTree map[string] *link
 }
 
@@ -46,8 +52,6 @@ func NewChainManager(ethereum EthManager) *ChainManager{
     bc.Ethereum.GenesisPointer(bc.genesisBlock)
 
 	bc.setLastBlock()
-
-    blockChain = bc
 
 	return bc
 }
@@ -228,22 +232,31 @@ func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {
 	return td, nil
 }
 
+// Tries to return the block regardless of if it's canonical
+// or simply workingTree
+func (bc *ChainManager) GetBlock(hash []byte) *Block {
+    b := bc.GetBlockCanonical(hash)
+    if b == nil{
+        b = bc.GetBlockWorking(hash)
+    }
+    return b
+}
 
-// I'm sorry I'm sorry...
-func GetBlock(hash []byte) *Block{
+// Strictly returns workingTree blocks
+func (bc *ChainManager) GetBlockWorking(hash []byte) *Block{
+    if l, ok := bc.workingTree[string(hash)]; ok{
+        return l.block
+    }
+    return nil
+}
+
+// Strictly returns canonical blocks
+func (bc *ChainManager) GetBlockCanonical(hash []byte) *Block{
 	data, _ := monkutil.Config.Db.Get(hash)
 	if len(data) == 0 {
-        // see if this block is in workingTree
-        if l, ok := blockChain.workingTree[string(hash)]; ok{
-            return l.block
-        }
         return nil
 	}
 	return NewBlockFromBytes(data)
-}
-
-func (bc *ChainManager) GetBlock(hash []byte) *Block {
-    return GetBlock(hash)
 }
 
 func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
@@ -306,48 +319,77 @@ func (bc *ChainManager) Stop() {
 
 
 // a link in the working tree
-// from here we can only see older blocks
 type link struct {
 	block    *Block
 	//messages state.Messages
 	td       *big.Int
+
+    parent *link
+    children []*link
     
-    // branchPoint ...
 }
 
-// general blockchain node on the workingTree
-// it is a list of links (so we can traverse forward or backward)
+// Blockchain coming in from the block pool or from miners
 type BlockChain struct {
 	*list.List
 }
 
 func NewChain(blocks Blocks) *BlockChain {
 	chain := &BlockChain{list.New()}
-
 	for _, block := range blocks {
-		chain.PushBack(&link{block, nil})
+		chain.PushBack(&link{block, nil, nil, nil})
 	}
-
 	return chain
 }
 
 // Validate the new chain with respect to its parent
-// Do not add it to anything, simply verify its validity
-// TODO: Note this will sync new states (we may not want that)
+// Adds all blocks to the workingTree if none of them fail
+// TODO: Note this will sync new states (we may not want that, but it shouldn't
+//  get in the way, it's just storage we dont need to keep around. If it's an attack, we can study it later :) )
 func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) {
+    // Is the parent on canonical or in the workingTree?
 
     // We need to add this chain to the workingTree
     // since we use GetBlock all over the place
-    // but if this function returns an error,
-    // we remove them all
+    // but if any ProcessWithParent returns an error,
+    // we remove all the ones we hadn't already seen
     for e := chain.Front(); e != nil; e = e.Next(){
         l := e.Value.(*link)
         block := l.block
-        // add up difficulty
-        //td = new(big.Int).Add(td, block.Difficulty)
-        //l.td = td
-        self.workingTree[string(block.Hash())] = l
+        s := string(block.Hash())
+        // check if we've seen this block
+        if _, ok := self.workingTree[s]; ok{
+            // remove from chain so it won't be processed or removed
+            chain.Remove(e)
+        } else{
+            // add parent
+            if f := e.Prev(); f != nil{
+                l.parent = f.Value.(*link)
+            } else {
+                // the parent is either in workingTree or on canonical
+                if p := self.workingTree[string(block.PrevHash)]; p!=nil{
+                    l.parent = p
+                } else{
+                    // sanity check that parent is on canonical
+                    if b := self.GetBlockCanonical(block.PrevHash); b==nil{
+                        return nil, fmt.Errorf("Chain does not have known parent")
+                    }
+                    // use nil as marker for branch off canonical
+                    l.parent = nil
+                }
+            }
+            // add child
+            l.children = []*link{}
+            if f := e.Next(); f != nil{
+                l.children = append(l.children, f.Value.(*link))
+            }
+            // add to tree
+            self.workingTree[s] = l
+        }
     }
+
+    // if any blocks fail, remove all
+    // otherwise, add front of chain to child of its parent
     defer func(){
         if err != nil{
             for e := chain.Front(); e != nil; e = e.Next(){
@@ -355,11 +397,16 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
                 block := l.block
                 delete(self.workingTree, string(block.Hash()))
             }
+        } else{
+            e := chain.Front()
+            if parent := e.Value.(*link).parent; parent != nil{
+                // TODO: make sure this works (pointers ...)
+                parent.children = append(parent.children, e.Value.(*link))
+            }
         }
     }()
 
     // Process the chain starting from its parent to ensure its valid
-    // If any block is invalid, we discard the whole chain
 	for e := chain.Front(); e != nil; e = e.Next() {
         l      := e.Value.(*link)
         block  := l.block
@@ -377,7 +424,6 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 			chainlogger.Infoln(err)
 			chainlogger.Debugf("Block #%v failed (%x...)\n", block.Number, block.Hash()[0:4])
 			chainlogger.Debugln(block)
-
 			err = fmt.Errorf("incoming chain failed %v\n", err)
 			return
 		}
@@ -390,10 +436,12 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 }
 
 // This function assumes you've done your checking. No validity checking is done at this stage anymore
-// Here we add either to the main chain or to the workingTree
-// and add up the total difficulty along the way
-// if InsertChain results in a new branch of the tree having most difficulty,
-// we call for a re-org!
+// This function can go three ways
+//      1) Add blocks to the canonical chain
+//      2) Sum the difficulties of a chain in the working tree
+//      3) if result of 2 > TD, cause a re-org, 
+//              giving a new canonical chain,
+//              putting the old canonical in the working tree
 func (self *ChainManager) InsertChain(chain *BlockChain) {
     // All blocks passed validation. Ready to add to working tree
     // Determine if we are
@@ -435,8 +483,11 @@ func (self *ChainManager) InsertChain(chain *BlockChain) {
         return
     }
 
+    // This block is part of a fork
+    // Its parent is either on canonical (not in workingTree) 
+    //  or it extends a fork that already exists
+    // Sum the difficulty and check if its time for a re-org
     var td *big.Int
-    // The parent is either on canonical (not in tree) or is a fork (in tree)
     if l, ok := self.workingTree[string(parent.Hash())]; !ok{
         // 2) This is a new fork off the main chain
         chainlogger.Infof("Fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, head.Hash(), head.Number)
@@ -453,28 +504,89 @@ func (self *ChainManager) InsertChain(chain *BlockChain) {
         td = l.td
     }
 
-    // Add all blocks to the workingTree
-    // TODO: this happens already in TestChain, btu not with td...
+    // Sum difficulties along this chain in the workingTree
+    // TODO: Can we do this in TestChain?
+    base := new(big.Int)
     for e := chain.Front(); e != nil; e = e.Next(){
         l := e.Value.(*link)
         block := l.block
         // add up difficulty
-        td = new(big.Int).Add(td, block.Difficulty)
-        l.td = td
-        self.workingTree[string(block.Hash())] = l
+        td = base.Add(td, block.Difficulty)
+        // this block should already be known
+        b := self.workingTree[string(block.Hash())]
+        b.td = td
     }
 
-
+    // if the new chain is crowned most gangsta
     if td.Cmp(self.TD) > 0{
-        //TODO: Reorg!
         chainlogger.Infoln("A fork has overtaken canonical. Time for a reorg!")
+
+        self.reOrg(chain)
     }
     /*
 	if td.Cmp(self.TD) <= 0 {
 		err = &TDError{td, self.TD}
 		return
 	}*/
-
-	//self.workingChain = nil
 }
+
+func (self *ChainManager) reOrg(chain *BlockChain){
+    // Find branch point
+    // Pop them off the top of canonical into a chain
+    //  add the chain to working tree
+    // Pop the new canonical chain out of workingTree and into database
+
+    // Create array of blocks from new head back to branch point
+    // Deletes them from workingTree
+    // Uses memory links. Maybe we should use prev hashes?
+	bchain := &BlockChain{list.New()}
+    for l := chain.Back().Value.(*link); l != nil; l = l.parent{
+        bchain.PushFront(&link{l.block, nil, nil, nil})
+        delete(self.workingTree, string(l.block.Hash()))
+    }
+
+    ancestorHash := bchain.Front().Value.(*link).block.PrevHash
+    ancestor := self.GetBlockCanonical(ancestorHash)
+  
+    oldHeadHash := self.LastBlockHash
+    oldHead := self.GetBlockCanonical(oldHeadHash)
+   
+    // revert the blockchain 
+    chainlogger.Infof("Reverting blockchain to block %x at height %d, a reversion of %d blocks", ancestorHash, ancestor.Number,new(big.Int).Sub(oldHead.Number,ancestor.Number))
+    self.CurrentBlock = ancestor
+    self.LastBlockHash = ancestorHash
+
+    // process the new chain on top
+    // we've already done this
+    // but we're also paranoid
+    _, err := self.TestChain(bchain)
+    if err != nil{
+        chainlogger.Infoln("Reorg failed as new chain failed processing. This shouldn't have happened and may mean trouble")
+        self.CurrentBlock = oldHead
+        self.LastBlockHash = oldHeadHash
+        return
+    }
+    self.InsertChain(bchain)
+
+    // move old canonical into workingTree chain
+	bchain = &BlockChain{list.New()}
+    for b := oldHead; bytes.Compare(b.Hash(), ancestorHash) != 0; b = self.GetBlock(b.PrevHash){
+        bchain.PushFront(&link{b, nil, nil, nil})
+        // TODO: remove from database
+    }
+
+    // again, we have already processed, since its fucking canonical
+    // but this is easy for now, gives an extra check
+    _, err = self.TestChain(bchain)
+    if err != nil{
+        chainlogger.Infoln("Adding the old canonical chain to the workingTree failed. This shouldn't happen, and may imply that Jesus has returned")
+        return
+    }
+    self.InsertChain(bchain)
+    
+}
+
+
+
+
 

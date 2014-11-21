@@ -57,7 +57,7 @@ type GenDougModel interface{
     StartMining(coinbase []byte, parent *Block) bool
     Difficulty(block, parent *Block) *big.Int
     ValidatePerm(addr []byte, role string, state *monkstate.State) error
-    ValidateBlock(block *Block) error
+    ValidateBlock(block *Block, bc *ChainManager) error
     ValidateTx(tx *Transaction, state *monkstate.State) error
 }
 
@@ -361,7 +361,7 @@ func (sm *StateManager) CalculateTD(block *Block) (*big.Int, bool) {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *StateManager) ValidateBlock(block *Block) error {
     // all validation is done through the genDoug
-    return genDoug.ValidateBlock(block)
+    return genDoug.ValidateBlock(block, sm.bc)
 }
 
 func (sm *StateManager) AccumelateRewards(state *monkstate.State, block, parent *Block) error {

@@ -100,6 +100,10 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 
 	hash := string(b.Hash())
 
+    // Note this doesn't check the working tree
+    // Leave it to TestChain to ignore blocks already in forks
+    // Also, we can one day use the information on which/howmany peers
+    //  give us which blocks, in the td calculation. Hold on to your hats!
 	if self.pool[hash] == nil && !self.eth.BlockChain().HasBlock(b.Hash()) {
 		poollogger.Infof("Got unrequested block (%x...)\n", hash[0:4])
 
@@ -244,6 +248,13 @@ out:
 	}
 }
 
+// Sort blocks by number
+// Find first with prevhash in canonical
+// Find first consecutive chain
+// TestChain (add blocks to workingTree, remove if any fail)
+// InsertChain (add to canonical
+//      or      sum difficulties of fork
+//      and     possibly cause re-org
 func (self *BlockPool) chainThread() {
 	procTimer := time.NewTicker(500 * time.Millisecond)
 out:
@@ -256,7 +267,7 @@ out:
 			blocks := self.Blocks()
 			monkchain.BlockBy(monkchain.Number).Sort(blocks)
 
-			// Find common block
+			// Find firs block with prevhash in canonical
 			for i, block := range blocks {
 				if self.eth.BlockChain().HasBlock(block.PrevHash) {
 					blocks = blocks[i:]
@@ -264,6 +275,7 @@ out:
 				}
 			}
 
+            // Find first conescutive chain
 			if len(blocks) > 0 {
                 // Find chain of blocks
 				if self.eth.BlockChain().HasBlock(blocks[0].PrevHash) {
@@ -287,7 +299,7 @@ out:
 			if len(blocks) > 0 {
 				chainManager := self.eth.BlockChain()
 
-                // sling blocks into a chain
+                // sling blocks into a list
 				bchain := monkchain.NewChain(blocks)
                 // validate the chain
 				_, err := chainManager.TestChain(bchain)
@@ -313,8 +325,9 @@ out:
 					}*/
 				} else {
                     // Validation was successful
-                    // Add chain to working tree
-                    // Remove blocks from pool
+                    // Sum-difficulties, insert chain
+                    // Possibly re-org 
+                    // Remove all blocks from pool
 					chainManager.InsertChain(bchain)
 					for _, block := range blocks {
 						self.Remove(block.Hash())

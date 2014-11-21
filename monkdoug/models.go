@@ -42,7 +42,7 @@ type PermModel interface{
     // satisfies monkchain.GenDougModel
     Difficulty(block, parent *monkchain.Block) *big.Int
     ValidatePerm(addr []byte, perm string, state *monkstate.State) error
-    ValidateBlock(block *monkchain.Block) error
+    ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error
     ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error
 }
 
@@ -77,7 +77,7 @@ func (m *YesModel) ValidatePerm(addr []byte, role string, state *monkstate.State
     return nil
 }
 
-func (m *YesModel) ValidateBlock(block *monkchain.Block) error{
+func (m *YesModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error{
     return nil
 }
 
@@ -118,7 +118,7 @@ func (m *NoModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
     return fmt.Errorf("No!")
 }
 
-func (m *NoModel) ValidateBlock(block *monkchain.Block) error{
+func (m *NoModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error{
     return fmt.Errorf("No!")
 }
 
@@ -265,13 +265,13 @@ func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.St
     return monkchain.InvalidPermError(addr, role)
 }
 
-func (m *StdLibModel) ValidateBlock(block *monkchain.Block) error{
+func (m *StdLibModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error{
     if Adversary!=0{
         return nil
     }
 
     // we have to verify using the state of the previous block!
-    prevBlock := monkchain.GetBlock(block.PrevHash)
+    prevBlock := bc.GetBlock(block.PrevHash)
 
     // check that miner has permission to mine
     if !m.HasPermission(block.Coinbase, "mine", prevBlock.State()){
@@ -370,9 +370,9 @@ func (m *EthModel) ValidatePerm(addr []byte, role string, state *monkstate.State
     return nil
 }
 
-func (m *EthModel) ValidateBlock(block *monkchain.Block) error{
+func (m *EthModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error{
     // we have to verify using the state of the previous block!
-    prevBlock := monkchain.GetBlock(block.PrevHash)
+    prevBlock := bc.GetBlock(block.PrevHash)
 
     // check that signature of block matches miners coinbase
     // XXX: not strictly necessary for eth...
