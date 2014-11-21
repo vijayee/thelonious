@@ -277,11 +277,9 @@ func (sm *StateManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 		return
 	}
 
-    fmt.Println("##### old TD:", sm.bc.TD)
 	// Calculate the new total difficulty and sync back to the db
 	if td, ok := sm.CalculateTD(block); ok{
 		// Sync the current block's state to the database and cancelling out the deferred Undo
-        fmt.Println("##### new TD:", sm.bc.TD, td)
 		state.Sync()
 
 		// Add the block to the chain
@@ -339,16 +337,12 @@ func (sm *StateManager) CalculateTD(block *Block) (*big.Int, bool) {
 	for _, uncle := range block.Uncles {
 		uncleDiff = uncleDiff.Add(uncleDiff, uncle.Difficulty)
 	}
-    fmt.Println("uncles:", len(block.Uncles), uncleDiff)
 
 	// TD(genesis_block) = 0 and TD(B) = TD(B.parent) + sum(u.difficulty for u in B.uncles) + B.difficulty
 	td := new(big.Int)
 	td = td.Add(sm.bc.TD, uncleDiff)
 	td = td.Add(td, block.Difficulty)
 
-    fmt.Println("pre total:", sm.bc.TD)
-    fmt.Println("block diff:", block.Difficulty)
-    fmt.Println("new diff:", td)
 
 	// The new TD will only be accepted if the new difficulty is
 	// is greater than the previous.

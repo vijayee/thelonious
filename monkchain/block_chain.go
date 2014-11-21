@@ -12,6 +12,14 @@ import (
 
 var chainlogger = monklog.NewLogger("CHAIN")
 
+// sorry. this isn't nice. but it's here so the GetBlock function can act
+// without a ChainManager receiver
+// it means there can only ever be one chain manager
+// that shouldn't be a problem, at least for now
+// maybe we will bring monkdoug back in here to rectify...
+// ::sigh::
+var blockChain *ChainManager
+
 type ChainManager struct {
 	Ethereum EthManager
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
@@ -19,25 +27,27 @@ type ChainManager struct {
 	// Last known total difficulty
 	TD *big.Int
 
+    // Our canonical chain
 	LastBlockNumber uint64
-
 	CurrentBlock  *Block
 	LastBlockHash []byte
 
-    workingChain *BlockChain
-    blockCache map[[]byte] *Block // cache of competing chains
-    
+    // Cache of competing chains
+    // Every non-canonical block is cached here
+    workingTree map[string] *link
 }
 
 func NewChainManager(ethereum EthManager) *ChainManager{
 	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
 	bc.Ethereum = ethereum
-
+    bc.workingTree = make(map[string]*link)
     // Prepare the genesis block!
     bc.Ethereum.GenesisPointer(bc.genesisBlock)
 
 	bc.setLastBlock()
+
+    blockChain = bc
 
 	return bc
 }
@@ -101,9 +111,7 @@ func (bc *ChainManager) CalculateBlockTD(block *Block) *big.Int {
 	for _, uncle := range block.Uncles {
 		blockDiff = blockDiff.Add(blockDiff, uncle.Difficulty)
 	}
-    fmt.Println("uncles:", len(block.Uncles), blockDiff)
 	blockDiff = blockDiff.Add(blockDiff, block.Difficulty)
-    fmt.Println("total block diff:", blockDiff)
 
 	return blockDiff
 }
@@ -183,12 +191,11 @@ func (bc *ChainManager) setLastBlock() {
 }
 
 func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
-    fmt.Println("running set total diff..", bc.TD, td)
 	monkutil.Config.Db.Put([]byte("LTD"), td.Bytes())
 	bc.TD = td
 }
 
-// Add a block to the chain and record addition information
+// Add a block to the canonical chain and record addition information
 func (bc *ChainManager) add(block *Block) {
 	bc.writeBlockInfo(block)
 	// Prepare the genesis block
@@ -202,51 +209,41 @@ func (bc *ChainManager) add(block *Block) {
 }
 
 func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {
-    fmt.Println("calc total diff:", monkutil.Bytes2Hex(block.Hash()))
 	parent := self.GetBlock(block.PrevHash)
 	if parent == nil {
 		return nil, fmt.Errorf("Unable to calculate total diff without known parent %x", block.PrevHash)
 	}
 
 	parentTd := parent.BlockInfo().TD
-    fmt.Println("parent TD:", parentTd)
 
 	uncleDiff := new(big.Int)
 	for _, uncle := range block.Uncles {
 		uncleDiff = uncleDiff.Add(uncleDiff, uncle.Difficulty)
 	}
-    fmt.Println("uncles:", len(block.Uncles), uncleDiff)
 
 	td := new(big.Int)
 	td = td.Add(parentTd, uncleDiff)
 	td = td.Add(td, block.Difficulty)
-    fmt.Println("block diff:", block.Difficulty)
-    fmt.Println("total chain diff:", td)
 
 	return td, nil
 }
 
+
+// I'm sorry I'm sorry...
 func GetBlock(hash []byte) *Block{
 	data, _ := monkutil.Config.Db.Get(hash)
 	if len(data) == 0 {
-		return nil
+        // see if this block is in workingTree
+        if l, ok := blockChain.workingTree[string(hash)]; ok{
+            return l.block
+        }
+        return nil
 	}
 	return NewBlockFromBytes(data)
 }
 
 func (bc *ChainManager) GetBlock(hash []byte) *Block {
-    b := GetBlock(hash)
-    if b == nil{
-		if bc.workingChain != nil {
-			// Check the temp chain
-			for e := bc.workingChain.Front(); e != nil; e = e.Next() {
-				if bytes.Compare(e.Value.(*link).block.Hash(), hash) == 0 {
-					return e.Value.(*link).block
-				}
-			}
-		}
-    }
-    return b
+    return GetBlock(hash)
 }
 
 func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
@@ -296,7 +293,6 @@ func (bc *ChainManager) writeBlockInfo(block *Block) {
 	    bc.LastBlockNumber++
     }
 	bi := BlockInfo{Number: bc.LastBlockNumber, Hash: block.Hash(), Parent: block.PrevHash, TD: bc.TD}
-    fmt.Println("writing block info. total diff:", bc.TD)
 
 	// For now we use the block hash with the words "info" appended as key
 	monkutil.Config.Db.Put(append(block.Hash(), []byte("Info")...), bi.RlpEncode())
@@ -308,12 +304,19 @@ func (bc *ChainManager) Stop() {
 	}
 }
 
+
+// a link in the working tree
+// from here we can only see older blocks
 type link struct {
 	block    *Block
 	//messages state.Messages
 	td       *big.Int
+    
+    // branchPoint ...
 }
 
+// general blockchain node on the workingTree
+// it is a list of links (so we can traverse forward or backward)
 type BlockChain struct {
 	*list.List
 }
@@ -322,50 +325,52 @@ func NewChain(blocks Blocks) *BlockChain {
 	chain := &BlockChain{list.New()}
 
 	for _, block := range blocks {
-        fmt.Println("in new chain:", block.r, block.s)
 		chain.PushBack(&link{block, nil})
 	}
 
 	return chain
 }
 
-// This function assumes you've done your checking. No checking is done at this stage anymore
-func (self *ChainManager) InsertChain(chain *BlockChain) {
-    fmt.Println("running insert chain...")
-	for e := chain.Front(); e != nil; e = e.Next() {
-		link := e.Value.(*link)
-
-		self.SetTotalDifficulty(link.td)
-		self.add(link.block)
-		//self.Ethereum.Reactor().Post(NewBlockEvent{link.block})
-		//self.Ethereum.Reactor().Post(link.messages)
-	}
-
-	b, e := chain.Front(), chain.Back()
-	if b != nil && e != nil {
-		front, back := b.Value.(*link).block, e.Value.(*link).block
-		chainlogger.Infof("Imported %d blocks. #%v (%x) / %#v (%x)", chain.Len(), front.Number, front.Hash()[0:4], back.Number, back.Hash()[0:4])
-	}
-}
-
+// Validate the new chain with respect to its parent
+// Do not add it to anything, simply verify its validity
+// TODO: Note this will sync new states (we may not want that)
 func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) {
-	self.workingChain = chain
-	defer func() { self.workingChain = nil }()
 
+    // We need to add this chain to the workingTree
+    // since we use GetBlock all over the place
+    // but if this function returns an error,
+    // we remove them all
+    for e := chain.Front(); e != nil; e = e.Next(){
+        l := e.Value.(*link)
+        block := l.block
+        // add up difficulty
+        //td = new(big.Int).Add(td, block.Difficulty)
+        //l.td = td
+        self.workingTree[string(block.Hash())] = l
+    }
+    defer func(){
+        if err != nil{
+            for e := chain.Front(); e != nil; e = e.Next(){
+                l := e.Value.(*link)
+                block := l.block
+                delete(self.workingTree, string(block.Hash()))
+            }
+        }
+    }()
+
+    // Process the chain starting from its parent to ensure its valid
+    // If any block is invalid, we discard the whole chain
 	for e := chain.Front(); e != nil; e = e.Next() {
-		var (
-			l      = e.Value.(*link)
-			block  = l.block
-			parent = self.GetBlock(block.PrevHash)
-		)
+        l      := e.Value.(*link)
+        block  := l.block
+        parent := self.GetBlock(block.PrevHash)
+        // note parent may be on canonical or a fork on workingTree
 
 		if parent == nil {
 			err = fmt.Errorf("incoming chain broken on hash %x\n", block.PrevHash[0:4])
 			return
 		}
 
-        fmt.Println("################")
-        fmt.Println("Current difficulty:", self.TD)
 		//var messages state.Messages
 		td, err = self.Ethereum.StateManager().ProcessWithParent(block, parent)
 		if err != nil {
@@ -376,20 +381,100 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 			err = fmt.Errorf("incoming chain failed %v\n", err)
 			return
 		}
+
 		l.td = td
 		//l.messages = messages
 	}
-    fmt.Println("Incoming difficulty:", td)
+    return td, nil
+    
+}
 
+// This function assumes you've done your checking. No validity checking is done at this stage anymore
+// Here we add either to the main chain or to the workingTree
+// and add up the total difficulty along the way
+// if InsertChain results in a new branch of the tree having most difficulty,
+// we call for a re-org!
+func (self *ChainManager) InsertChain(chain *BlockChain) {
+    // All blocks passed validation. Ready to add to working tree
+    // Determine if we are
+    // 1) On top of the best chain
+    // 2) A new fork off the best chain
+    // 3) On top of a fork
+    // 4) A new fork off a fork
+
+    frontLink := chain.Front().Value.(*link)
+    // first link in the new chain
+    front := frontLink.block
+    // link's anchor point 
+    parent := self.GetBlock(front.PrevHash)
+    // canonical head
+    head := self.CurrentBlock
+   
+    // 1) Check if parent is top block on chain
+    if bytes.Compare(head.Hash(), parent.Hash()) == 0{
+        // We are lengthening canonical!
+        // for each block, set the new difficulty, add to chain
+        for e := chain.Front(); e != nil; e = e.Next() {
+            link := e.Value.(*link)
+
+            self.SetTotalDifficulty(link.td)
+            self.add(link.block)
+            delete(self.workingTree, string(link.block.Hash()))
+
+            // XXX: Post. Do we do this here? Prob better for caller ...
+            //self.Ethereum.Reactor().Post(NewBlockEvent{link.block})
+            //self.Ethereum.Reactor().Post(link.messages)
+        }
+
+        // summarize
+        b, e := chain.Front(), chain.Back()
+        if b != nil && e != nil {
+            front, back := b.Value.(*link).block, e.Value.(*link).block
+            chainlogger.Infof("Imported %d blocks. #%v (%x) / %#v (%x)", chain.Len(), front.Number, front.Hash()[0:4], back.Number, back.Hash()[0:4])
+        }
+        return
+    }
+
+    var td *big.Int
+    // The parent is either on canonical (not in tree) or is a fork (in tree)
+    if l, ok := self.workingTree[string(parent.Hash())]; !ok{
+        // 2) This is a new fork off the main chain
+        chainlogger.Infof("Fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, head.Hash(), head.Number)
+        
+        // get TD of parent on canonical
+        td = parent.BlockInfo().TD        
+    } else {
+        // 3,4) If it's on the working tree, it's either a new head of a fork
+        // or a new fork off a fork, but we don't really care which
+        chainlogger.Infoln("Extending a fork...")
+
+        // Get the total diff from that node (it should have been updated
+        //  when that node was added to workingTree)
+        td = l.td
+    }
+
+    // Add all blocks to the workingTree
+    // TODO: this happens already in TestChain, btu not with td...
+    for e := chain.Front(); e != nil; e = e.Next(){
+        l := e.Value.(*link)
+        block := l.block
+        // add up difficulty
+        td = new(big.Int).Add(td, block.Difficulty)
+        l.td = td
+        self.workingTree[string(block.Hash())] = l
+    }
+
+
+    if td.Cmp(self.TD) > 0{
+        //TODO: Reorg!
+        chainlogger.Infoln("A fork has overtaken canonical. Time for a reorg!")
+    }
+    /*
 	if td.Cmp(self.TD) <= 0 {
 		err = &TDError{td, self.TD}
 		return
-	}
+	}*/
 
-    // hrmph
-    //self.TD = td
-
-	self.workingChain = nil
-
-	return
+	//self.workingChain = nil
 }
+

@@ -57,7 +57,7 @@ func runMaster(){
     mm.Init()
     mm.Start()
 
-    time.Sleep(100*time.Second)
+    time.Sleep(10*time.Second)
 }
 
 func runClient(){
@@ -76,11 +76,11 @@ func runClient(){
     mm.Init()
     mm.Start()
 
-    time.Sleep(100*time.Second)
+    time.Sleep(60*time.Second)
 
     // tally chain
     latest := mm.LatestBlock()
-    for {
+    for i:=0;i<100;i++{
         b := mm.Block(latest)
         if b == nil{
             break
@@ -118,7 +118,8 @@ func setupSimEnv(n int){
     // load genesis json, append new keys. allocations.
     g := monkdoug.LoadGenesis(path.Join(monk.ErisLtd, "thelonious", "monk", "genesis-std.json"))
 
-    g.Difficulty = 12
+    g.Difficulty = 17
+    g.Consensus = ""
 
     // generate N keys and N dirs,
     // put a key in each dir 
@@ -135,7 +136,7 @@ func setupSimEnv(n int){
             Address: monkutil.Bytes2Hex(kP.Address()),
             Name: strconv.Itoa(i),
             Balance: "12345678900000",
-            Permissions: map[string]int{"mine":0, "transact":1, "create":0},
+            Permissions: map[string]int{"mine":1, "transact":1, "create":0},
         }
         g.Accounts = append(g.Accounts, &acc)
     }

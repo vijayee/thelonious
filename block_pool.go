@@ -272,14 +272,13 @@ out:
 						// outer "blocks"
 						if bytes.Compare(block.PrevHash, blocks[i].Hash()) != 0 {
 							blocks = blocks[:i]
-
 							break
 						}
 					}
 				} else {
 					blocks = nil
 				}
-			}
+			} 
 
 			// TODO figure out whether we were catching up
 			// If caught up and just a new block has been propagated:
@@ -287,16 +286,21 @@ out:
 			// otherwise process and don't emit anything
 			if len(blocks) > 0 {
 				chainManager := self.eth.BlockChain()
-				// Test and import
+
+                // sling blocks into a chain
 				bchain := monkchain.NewChain(blocks)
-				td, err := chainManager.TestChain(bchain)
-                fmt.Println("test chain:", td, err)
+                // validate the chain
+				_, err := chainManager.TestChain(bchain)
+
+                // If validation failed, we flush the pool
+                // and punish the peer
 				if err != nil && !monkchain.IsTDError(err) {
-                    fmt.Println("not td error:", err)
 					poollogger.Debugln(err)
 
 					self.Reset()
 
+                    /*
+                        TODO: fix this peer handling!
 					if self.peer != nil && self.peer.conn != nil {
 						poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
 
@@ -306,9 +310,11 @@ out:
                         self.peer.Stop()
                         self.td = monkutil.Big0
                         self.peer = nil
-					}
+					}*/
 				} else {
-                    fmt.Println("ok, inserting chain")
+                    // Validation was successful
+                    // Add chain to working tree
+                    // Remove blocks from pool
 					chainManager.InsertChain(bchain)
 					for _, block := range blocks {
 						self.Remove(block.Hash())
