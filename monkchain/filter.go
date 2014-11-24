@@ -118,16 +118,16 @@ func (self *Filter) SetSkip(skip int) {
 func (self *Filter) Find() []*monkstate.Message {
 	var earliestBlockNo uint64 = uint64(self.earliest)
 	if self.earliest == -1 {
-		earliestBlockNo = self.eth.BlockChain().CurrentBlock.Number.Uint64()
+		earliestBlockNo = self.eth.ChainManager().CurrentBlock.Number.Uint64()
 	}
 	var latestBlockNo uint64 = uint64(self.latest)
 	if self.latest == -1 {
-		latestBlockNo = self.eth.BlockChain().CurrentBlock.Number.Uint64()
+		latestBlockNo = self.eth.ChainManager().CurrentBlock.Number.Uint64()
 	}
 
 	var (
 		messages []*monkstate.Message
-		block    = self.eth.BlockChain().GetBlockByNumber(latestBlockNo)
+		block    = self.eth.ChainManager().GetBlockByNumber(latestBlockNo)
 		quit     bool
 	)
 	for i := 0; !quit && block != nil; i++ {
@@ -143,7 +143,7 @@ func (self *Filter) Find() []*monkstate.Message {
 		// current parameters
 		if self.bloomFilter(block) {
 			// Get the messages of the block
-			msgs, err := self.eth.StateManager().GetMessages(block)
+			msgs, err := self.eth.BlockManager().GetMessages(block)
 			if err != nil {
 				chainlogger.Warnln("err: filter get messages ", err)
 
@@ -153,7 +153,7 @@ func (self *Filter) Find() []*monkstate.Message {
 			messages = append(messages, self.FilterMessages(msgs)...)
 		}
 
-		block = self.eth.BlockChain().GetBlock(block.PrevHash)
+		block = self.eth.ChainManager().GetBlock(block.PrevHash)
 	}
 
 	skip := int(math.Min(float64(len(messages)), float64(self.skip)))

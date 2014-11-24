@@ -40,6 +40,7 @@ type PermModel interface{
 
     // generic validation functions for arbitrary consensus models
     // satisfies monkchain.GenDougModel
+    Deploy(block *monkchain.Block)
     Difficulty(block, parent *monkchain.Block) *big.Int
     ValidatePerm(addr []byte, perm string, state *monkstate.State) error
     ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error
@@ -55,6 +56,10 @@ type YesModel struct{
 
 func NewYesModel(g *GenesisConfig) PermModel{
     return &YesModel{g}
+}
+
+func (m *YesModel) Deploy(block *monkchain.Block){
+    m.g.Deploy(block)
 }
 
 func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
@@ -94,6 +99,10 @@ type NoModel struct{
 
 func NewNoModel(g *GenesisConfig) PermModel{
     return &NoModel{g}
+}
+
+func (m *NoModel) Deploy(block *monkchain.Block){
+    m.g.Deploy(block)
 }
 
 func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){
@@ -144,6 +153,10 @@ func NewStdLibModel(g *GenesisConfig) PermModel{
         g:      g,
         pow:    &monkchain.EasyPow{},
     }
+}
+
+func (m *StdLibModel) Deploy(block *monkchain.Block){
+    m.g.Deploy(block)
 }
 
 func (m *StdLibModel) PermLocator(addr []byte, perm string, state *monkstate.State) (*Location, error){
@@ -348,6 +361,10 @@ type EthModel struct{
 
 func NewEthModel(g *GenesisConfig) PermModel{
     return &EthModel{&monkchain.EasyPow{}, g}
+}
+
+func (m *EthModel) Deploy(block *monkchain.Block){
+    m.g.Deploy(block)
 }
 
 func (m *EthModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt){

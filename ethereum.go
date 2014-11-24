@@ -54,7 +54,7 @@ type Ethereum struct {
 	// DB interface
 	db monkutil.Database
 	// State manager for processing new blocks and managing the over all states
-	stateManager *monkchain.StateManager
+	blockManager *monkchain.BlockManager
 	// The transaction pool. Transaction can be pushed on this pool
 	// for later including in the blocks
 	txPool *monkchain.TxPool
@@ -130,14 +130,15 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-    ethereum.setGenesis(genConfig)
+    genModel := ethereum.setGenesis(genConfig)
 
 	ethereum.reactor = monkreact.New()
 
 	ethereum.blockPool = NewBlockPool(ethereum)
 	ethereum.txPool = monkchain.NewTxPool(ethereum)
-	ethereum.blockChain = monkchain.NewChainManager(ethereum)
-	ethereum.stateManager = monkchain.NewStateManager(ethereum)
+	ethereum.blockChain = monkchain.NewChainManager(genModel)
+	ethereum.blockManager = monkchain.NewBlockManager(ethereum)
+	ethereum.blockChain.SetProcessor(ethereum.blockManager)
 
 	// Start the tx pool
 	ethereum.txPool.Start()
@@ -161,13 +162,14 @@ func (s *Ethereum) GenesisModel() monkchain.GenDougModel{
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) error{
+func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel{
     if s.genConfig != nil{
-        return fmt.Errorf("GenesisConfig already set")    
+        fmt.Println("GenesisConfig already set")    
+        return nil
     }
     s.genConfig = genConfig
     s.genModel = genConfig.Model()
-    return nil
+    return s.genModel
 }
 
 func (s *Ethereum) Reactor() *monkreact.ReactorEngine {
@@ -182,12 +184,12 @@ func (s *Ethereum) ClientIdentity() monkwire.ClientIdentity {
 	return s.clientIdentity
 }
 
-func (s *Ethereum) BlockChain() *monkchain.ChainManager {
+func (s *Ethereum) ChainManager() *monkchain.ChainManager {
 	return s.blockChain
 }
 
-func (s *Ethereum) StateManager() *monkchain.StateManager {
-	return s.stateManager
+func (s *Ethereum) BlockManager() *monkchain.BlockManager {
+	return s.blockManager
 }
 
 func (s *Ethereum) TxPool() *monkchain.TxPool {
@@ -569,7 +571,7 @@ func (s *Ethereum) Stop() {
 		s.RpcServer.Stop()
 	}
 	s.txPool.Stop()
-	s.stateManager.Stop()
+	s.blockManager.Stop()
 	s.reactor.Flush()
 	s.reactor.Stop()
 	s.blockPool.Stop()

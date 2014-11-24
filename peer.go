@@ -476,7 +476,7 @@ func (p *Peer) HandleInbound() {
 					hash := msg.Data.Get(0).Bytes()
 					amount := msg.Data.Get(1).Uint()
 
-					hashes := p.ethereum.BlockChain().GetChainHashesFromHash(hash, amount)
+					hashes := p.ethereum.ChainManager().GetChainHashesFromHash(hash, amount)
 
 					p.QueueMessage(monkwire.NewMessage(monkwire.MsgBlockHashesTy, monkutil.ByteSliceToInterface(hashes)))
 
@@ -487,7 +487,7 @@ func (p *Peer) HandleInbound() {
 
 					for i := 0; i < max; i++ {
 						hash := msg.Data.Get(i).Bytes()
-						block := p.ethereum.BlockChain().GetBlock(hash)
+						block := p.ethereum.ChainManager().GetBlock(hash)
 						if block != nil {
 							blocks = append(blocks, block.Value().Raw())
 						}
@@ -666,9 +666,9 @@ func (self *Peer) pushStatus() {
 	msg := monkwire.NewMessage(monkwire.MsgStatusTy, []interface{}{
 		uint32(ProtocolVersion),
 		uint32(NetVersion),
-		self.ethereum.BlockChain().TD,
-		self.ethereum.BlockChain().CurrentBlock.Hash(),
-		self.ethereum.BlockChain().Genesis().Hash(),
+		self.ethereum.ChainManager().TD,
+		self.ethereum.ChainManager().CurrentBlock.Hash(),
+		self.ethereum.ChainManager().Genesis().Hash(),
 	})
 
 	self.QueueMessage(msg)
@@ -685,7 +685,7 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 		genesis      = c.Get(4).Bytes()
 	)
 
-	if bytes.Compare(self.ethereum.BlockChain().Genesis().Hash(), genesis) != 0 {
+	if bytes.Compare(self.ethereum.ChainManager().Genesis().Hash(), genesis) != 0 {
 		monklogger.Warnf("Invalid genisis hash %x. Disabling [eth]\n", genesis)
 		return
 	}
@@ -709,7 +709,7 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 
 	// Compare the total TD with the blockchain TD. If remote is higher
 	// fetch hashes from highest TD node.
-	if self.td.Cmp(self.ethereum.BlockChain().TD) > 0 {
+	if self.td.Cmp(self.ethereum.ChainManager().TD) > 0 {
 		self.ethereum.blockPool.AddHash(self.lastReceivedHash, self)
 		self.FetchHashes()
 	}

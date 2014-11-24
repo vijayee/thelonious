@@ -41,7 +41,7 @@ func test_state_trie(){
     eth := chain.NewEth(nil)
     eth.Init()
 
-    gen := eth.Ethereum.BlockChain().Genesis()
+    gen := eth.Ethereum.ChainManager().Genesis()
     monkchain.AddTestNetFunds(gen)
     state := gen.State()
     trie := state.Trie

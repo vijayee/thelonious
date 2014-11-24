@@ -66,11 +66,11 @@ func (self *BlockPool) HasLatestHash() bool {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
-	return self.pool[string(self.eth.BlockChain().CurrentBlock.Hash())] != nil
+	return self.pool[string(self.eth.ChainManager().CurrentBlock.Hash())] != nil
 }
 
 func (self *BlockPool) HasCommonHash(hash []byte) bool {
-	return self.eth.BlockChain().GetBlock(hash) != nil
+	return self.eth.ChainManager().GetBlock(hash) != nil
 }
 
 func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
@@ -104,13 +104,13 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
     // Leave it to TestChain to ignore blocks already in forks
     // Also, we can one day use the information on which/howmany peers
     //  give us which blocks, in the td calculation. Hold on to your hats!
-	if self.pool[hash] == nil && !self.eth.BlockChain().HasBlock(b.Hash()) {
+	if self.pool[hash] == nil && !self.eth.ChainManager().HasBlock(b.Hash()) {
 		poollogger.Infof("Got unrequested block (%x...)\n", hash[0:4])
 
 		self.hashPool = append(self.hashPool, b.Hash())
 		self.pool[hash] = &block{peer, peer, b, time.Now(), 0}
 
-		if !self.eth.BlockChain().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
+		if !self.eth.ChainManager().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
 			poollogger.Infof("Unknown block, requesting parent (%x...)\n", b.PrevHash[0:4])
 			//peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
 		}
@@ -141,7 +141,7 @@ func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmo
         fmt.Println("no blocks in pool!")
     }
 	for _, block := range blocks {
-		if self.eth.BlockChain().HasBlock(block.PrevHash) {
+		if self.eth.ChainManager().HasBlock(block.PrevHash) {
 			procAmount++
 
 			f(block)
@@ -270,7 +270,7 @@ out:
 
 			// Find first block with prevhash in canonical
 			for i, block := range blocks {
-				if self.eth.BlockChain().HasBlock(block.PrevHash) {
+				if self.eth.ChainManager().HasBlock(block.PrevHash) {
 					blocks = blocks[i:]
 					break
 				}
@@ -279,7 +279,7 @@ out:
             // Find first conescutive chain
 			if len(blocks) > 0 {
                 // Find chain of blocks
-				if self.eth.BlockChain().HasBlock(blocks[0].PrevHash) {
+				if self.eth.ChainManager().HasBlock(blocks[0].PrevHash) {
 					for i, block := range blocks[1:] {
 						// NOTE: The Ith element in this loop refers to the previous block in
 						// outer "blocks"
@@ -298,7 +298,7 @@ out:
 			// sm.eth.EventMux().Post(NewBlockEvent{block})
 			// otherwise process and don't emit anything
 			if len(blocks) > 0 {
-				chainManager := self.eth.BlockChain()
+				chainManager := self.eth.ChainManager()
 
                 // sling blocks into a list
 				bchain := monkchain.NewChain(blocks)
@@ -324,19 +324,9 @@ out:
 				}
             }
 
-			/*amount := self.ProcessCanonical(func(block *monkchain.Block) {
-				err := self.eth.StateManager().Process(block, false)
-				if err != nil {
-                    fmt.Println("block failed...")
-					poollogger.Infoln(err)
-					poollogger.Debugf("Block #%v failed (%x...)\n", block.Number, block.Hash()[0:4])
-					poollogger.Debugln(block)
-				}
-			})*/
-
 			/* Do not propagate to the network on catchups
 			if amount == 1 {
-				block := self.eth.BlockChain().CurrentBlock
+				block := self.eth.ChainManager().CurrentBlock
 				self.eth.Broadcast(monkwire.MsgBlockTy, []interface{}{block.Value().Val})
 			}*/
 		}

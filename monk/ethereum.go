@@ -364,16 +364,16 @@ func (monk *Monk) StorageAt(contract_addr string, storage_addr string) string {
 }
 
 func (monk *Monk) BlockCount() int {
-	return int(monk.ethereum.BlockChain().LastBlockNumber)
+	return int(monk.ethereum.ChainManager().LastBlockNumber)
 }
 
 func (monk *Monk) LatestBlock() string {
-	return monkutil.Bytes2Hex(monk.ethereum.BlockChain().LastBlockHash)
+	return monkutil.Bytes2Hex(monk.ethereum.ChainManager().LastBlockHash)
 }
 
 func (monk *Monk) Block(hash string) *modules.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
-	block := monk.ethereum.BlockChain().GetBlock(hashBytes)
+	block := monk.ethereum.ChainManager().GetBlock(hashBytes)
 	return convertBlock(block)
 }
 

@@ -21,17 +21,17 @@ func NewJSPipe(eth monkchain.EthManager) *JSPipe {
 
 func (self *JSPipe) BlockByHash(strHash string) *JSBlock {
 	hash := monkutil.Hex2Bytes(strHash)
-	block := self.obj.BlockChain().GetBlock(hash)
+	block := self.obj.ChainManager().GetBlock(hash)
 
 	return NewJSBlock(block)
 }
 
 func (self *JSPipe) BlockByNumber(num int32) *JSBlock {
 	if num == -1 {
-		return NewJSBlock(self.obj.BlockChain().CurrentBlock)
+		return NewJSBlock(self.obj.ChainManager().CurrentBlock)
 	}
 
-	return NewJSBlock(self.obj.BlockChain().GetBlockByNumber(uint64(num)))
+	return NewJSBlock(self.obj.ChainManager().GetBlockByNumber(uint64(num)))
 }
 
 func (self *JSPipe) Block(v interface{}) *JSBlock {
@@ -224,10 +224,10 @@ func (self *JSPipe) Transact(key, toStr, valueStr, gasStr, gasPriceStr, codeStr 
 		tx = monkchain.NewTransactionMessage(hash, value, gas, gasPrice, data)
 	}
 
-	acc := self.obj.StateManager().TransState().GetOrNewStateObject(keyPair.Address())
+	acc := self.obj.BlockManager().TransState().GetOrNewStateObject(keyPair.Address())
 	tx.Nonce = acc.Nonce
 	acc.Nonce += 1
-	self.obj.StateManager().TransState().UpdateStateObject(acc)
+	self.obj.BlockManager().TransState().UpdateStateObject(acc)
 
 	tx.Sign(keyPair.PrivateKey)
 	self.obj.TxPool().QueueTransaction(tx)

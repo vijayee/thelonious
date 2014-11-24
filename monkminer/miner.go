@@ -56,10 +56,10 @@ func (miner *Miner) Start() {
 
 	// Insert initial TXs in our little miner 'pool'
 	miner.txs = miner.ethereum.TxPool().Flush()
-	miner.block = miner.ethereum.BlockChain().NewBlock(miner.coinbase)
+	miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase)
 
 	// Prepare inital block
-	//miner.ethereum.StateManager().Prepare(miner.block.State(), miner.block.State())
+	//miner.ethereum.BlockManager().Prepare(miner.block.State(), miner.block.State())
 	go miner.listener()
 
 	reactor := miner.ethereum.Reactor()
@@ -116,7 +116,7 @@ func (miner *Miner) receiveTx(tx *monkchain.Transaction){
 
 func (miner *Miner) receiveBlock(block *monkchain.Block){
     //logger.Infoln("Got new block via Reactor")
-    if bytes.Compare(miner.ethereum.BlockChain().CurrentBlock.Hash(), block.Hash()) == 0 {
+    if bytes.Compare(miner.ethereum.ChainManager().CurrentBlock.Hash(), block.Hash()) == 0 {
         // TODO: Perhaps continue mining to get some uncle rewards
         //logger.Infoln("New top block found resetting state")
 
@@ -136,10 +136,10 @@ func (miner *Miner) receiveBlock(block *monkchain.Block){
         miner.txs = newtxs
 
         // Setup a fresh state to mine on
-        //miner.block = miner.ethereum.BlockChain().NewBlock(miner.coinbase, miner.txs)
+        //miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase, miner.txs)
 
     } else {
-        if bytes.Compare(block.PrevHash, miner.ethereum.BlockChain().CurrentBlock.PrevHash) == 0 {
+        if bytes.Compare(block.PrevHash, miner.ethereum.ChainManager().CurrentBlock.PrevHash) == 0 {
             logger.Infoln("Adding uncle block")
             miner.uncles = append(miner.uncles, block)
         }
@@ -165,12 +165,12 @@ func (miner *Miner) Stop() {
 }
 
 func (self *Miner) mineNewBlock() {
-	stateManager := self.ethereum.StateManager()
-    chainMan := self.ethereum.BlockChain()
+	stateManager := self.ethereum.BlockManager()
+    chainMan := self.ethereum.ChainManager()
     self.block = chainMan.NewBlock(self.coinbase)
 
 
-	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
+	parent := self.ethereum.ChainManager().GetBlock(self.block.PrevHash)
 
     // if parent is not built yet, return
     if parent == nil{
@@ -234,7 +234,7 @@ func (self *Miner) mineNewBlock() {
 
 		go self.mineNewBlock()
         /*
-		err := self.ethereum.StateManager().Process(self.block, false)
+		err := self.ethereum.BlockManager().Process(self.block, false)
 		if err != nil {
 			logger.Infoln(err)
 		} else {

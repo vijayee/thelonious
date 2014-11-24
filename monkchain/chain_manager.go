@@ -28,7 +28,9 @@ var chainlogger = monklog.NewLogger("CHAIN")
 */
 
 type ChainManager struct {
-	Ethereum EthManager
+	//Ethereum EthManager
+    processor BlockProcessor
+    protocol  GenDougModel
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
 	genesisBlock *Block
 	// Last known total difficulty
@@ -43,17 +45,22 @@ type ChainManager struct {
     workingChain *BlockChain
 }
 
-func NewChainManager(ethereum EthManager) *ChainManager{
+func NewChainManager(protocol GenDougModel) *ChainManager{
 	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
-	bc.Ethereum = ethereum
+	//bc.Ethereum = ethereum
     bc.workingTree = make(map[string]*link)
     // Prepare the genesis block!
-    bc.Ethereum.GenesisPointer(bc.genesisBlock)
+    //bc.Ethereum.GenesisPointer(bc.genesisBlock)
+    bc.protocol = protocol
 
 	bc.setLastBlock()
 
 	return bc
+}
+
+func (bc *ChainManager) SetProcessor(proc BlockProcessor){
+    bc.processor = proc
 }
 
 func (bc *ChainManager) Genesis() *Block {
@@ -179,20 +186,27 @@ func (bc *ChainManager) setLastBlock() {
 		bc.LastBlockNumber = block.Number.Uint64()
 
 	} else {
-        // genesis block must be prepared ahead of time
-		bc.add(bc.genesisBlock)
-		fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
-		bc.Ethereum.Db().Put(fk, make([]byte, 255))
-		bc.CurrentBlock = bc.genesisBlock
+        bc.Reset()
 	}
-    // set the genDoug model for determining chain permissions
-    genDoug = bc.Ethereum.GenesisModel()
+    // set the genDoug model (global var) for determining chain permissions
+    genDoug = bc.protocol //Ethereum.GenesisModel()
+
+	//bc.SetTotalDifficulty(ethutil.Big("0"))
 
 	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
 
 	chainlogger.Infof("Last block (#%d) %x\n", bc.LastBlockNumber, bc.CurrentBlock.Hash())
+}
 
+func (bc *ChainManager) Reset() {
+    // prepare genesis (calls sync)
+    bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+
+    bc.add(bc.genesisBlock)
+    //fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
+    //bc.Ethereum.Db().Put(fk, make([]byte, 255))
+    bc.CurrentBlock = bc.genesisBlock
 }
 
 func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
@@ -392,7 +406,7 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 		}
 
 		//var messages state.Messages
-		td, err = self.Ethereum.StateManager().ProcessWithParent(block, parent)
+		td, err = self.processor.ProcessWithParent(block, parent)
 		if err != nil {
 			chainlogger.Infoln(err)
 			chainlogger.Debugf("Block #%v failed (%x...)\n", block.Number, block.Hash()[0:4])

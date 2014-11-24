@@ -95,7 +95,7 @@ func (t *Test) TestBig(){
 func (t *Test) TestMaxGas(){
     t.tester("max gas", func(mod *MonkModule){
         //mod.Start()
-        v := monkchain.DougValue("maxgas", "values", mod.monk.ethereum.BlockChain().CurrentBlock.State())
+        v := monkchain.DougValue("maxgas", "values", mod.monk.ethereum.ChainManager().CurrentBlock.State())
         fmt.Println(v)
         os.Exit(0)
     }, 0)
@@ -106,7 +106,7 @@ func (t *Test) TestMaxGas(){
 func (t *Test) TestValidate(){
     t.tester("validate", func(mod *MonkModule){
         PrettyPrintChainAccounts(mod)
-        gen := mod.monk.ethereum.BlockChain().Genesis()
+        gen := mod.monk.ethereum.ChainManager().Genesis()
         a1 := monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
         a2 := monkutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
         a3 := monkutil.Hex2Bytes("cced0756041f7aed3ce278c56ee638bade96d001")
@@ -122,7 +122,7 @@ func (t *Test) TestValidate(){
 // print the genesis state
 func (t *Test) TestGenesisAccounts(){
     t.tester("genesis contract", func(mod *MonkModule){
-        curchain := mod.monk.ethereum.BlockChain()
+        curchain := mod.monk.ethereum.ChainManager()
         block := curchain.CurrentBlock
         PrettyPrintBlockAccounts(block)
         os.Exit(0)
@@ -133,7 +133,7 @@ func (t *Test) TestGenesisAccounts(){
 func (t *Test) TestBlockNum(){
 
     t.tester("block num", func(mod *MonkModule){
-        curchain := mod.monk.ethereum.BlockChain()
+        curchain := mod.monk.ethereum.ChainManager()
         block := curchain.CurrentBlock
         fmt.Println(curchain.LastBlockNumber)
         fmt.Println(block.Number)

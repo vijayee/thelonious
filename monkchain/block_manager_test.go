@@ -15,7 +15,7 @@ func TestVm(t *testing.T) {
 
 	db, _ := monkdb.NewMemDatabase()
 	monkutil.Config.Db = db
-	bm := NewStateManager(nil)
+	bm := NewBlockManager(nil)
 
 	block := bm.bc.genesisBlock
 	bm.Prepare(block.State(), block.State())

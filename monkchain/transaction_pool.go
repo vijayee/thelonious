@@ -95,7 +95,7 @@ func (pool *TxPool) addTransaction(tx *Transaction) {
 func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	// Get the last block so we can retrieve the sender and receiver from
 	// the merkle trie
-	block := pool.Ethereum.BlockChain().CurrentBlock
+	block := pool.Ethereum.ChainManager().CurrentBlock
 	// Something has gone horribly wrong if this happens
 	if block == nil {
 		return fmt.Errorf("[TXPL] No last block on the block chain")
@@ -110,8 +110,8 @@ func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	}
 
 	// Get the sender
-	//sender := pool.Ethereum.StateManager().procState.GetAccount(tx.Sender())
-	sender := pool.Ethereum.StateManager().CurrentState().GetAccount(tx.Sender())
+	//sender := pool.Ethereum.BlockManager().procState.GetAccount(tx.Sender())
+	sender := pool.Ethereum.BlockManager().CurrentState().GetAccount(tx.Sender())
 
 	totAmount := new(big.Int).Set(tx.Value)
 	// Make sure there's enough in the sender's account. Having insufficient
