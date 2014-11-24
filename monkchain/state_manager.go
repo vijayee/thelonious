@@ -323,6 +323,7 @@ func (sm *StateManager) ApplyDiff(state *monkstate.State, parent, block *Block) 
 	return receipts, nil
 }
 
+// TODO: this is a sham...
 func (sm *StateManager) CalculateTD(block *Block) (*big.Int, bool) {
     b, e := sm.bc.CalcTotalDiff(block)
     if e == nil{
@@ -342,7 +343,6 @@ func (sm *StateManager) CalculateTD(block *Block) (*big.Int, bool) {
 	td := new(big.Int)
 	td = td.Add(sm.bc.TD, uncleDiff)
 	td = td.Add(td, block.Difficulty)
-
 
 	// The new TD will only be accepted if the new difficulty is
 	// is greater than the previous.

@@ -213,6 +213,7 @@ func (self *BlockPool) DistributeHashes() {
 	}
 }
 
+
 func (self *BlockPool) Start() {
 	go self.downloadThread()
 	go self.chainThread()
@@ -248,7 +249,7 @@ out:
 	}
 }
 
-// Sort blocks by number
+// Sort blocks in pool by number
 // Find first with prevhash in canonical
 // Find first consecutive chain
 // TestChain (add blocks to workingTree, remove if any fail)
@@ -267,7 +268,7 @@ out:
 			blocks := self.Blocks()
 			monkchain.BlockBy(monkchain.Number).Sort(blocks)
 
-			// Find firs block with prevhash in canonical
+			// Find first block with prevhash in canonical
 			for i, block := range blocks {
 				if self.eth.BlockChain().HasBlock(block.PrevHash) {
 					blocks = blocks[i:]
@@ -310,30 +311,19 @@ out:
 					poollogger.Debugln(err)
 
 					self.Reset()
-
-                    /*
-                        TODO: fix this peer handling!
-					if self.peer != nil && self.peer.conn != nil {
-						poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
-
-					// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
-					//self.eth.BlacklistPeer(self.peer)
-					//self.peer.StopWithReason(DiscBadPeer)
-                        self.peer.Stop()
-                        self.td = monkutil.Big0
-                        self.peer = nil
-					}*/
+                    //self.punishPeer()
 				} else {
                     // Validation was successful
                     // Sum-difficulties, insert chain
                     // Possibly re-org 
-                    // Remove all blocks from pool
 					chainManager.InsertChain(bchain)
+                    // Remove all blocks from pool
 					for _, block := range blocks {
 						self.Remove(block.Hash())
 					}
 				}
             }
+
 			/*amount := self.ProcessCanonical(func(block *monkchain.Block) {
 				err := self.eth.StateManager().Process(block, false)
 				if err != nil {
@@ -351,4 +341,20 @@ out:
 			}*/
 		}
 	}
+}
+
+func (self *BlockPool) punishPeer(){
+                    /*
+                        TODO: fix this peer handling!
+					if self.peer != nil && self.peer.conn != nil {
+						poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
+
+					// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
+					//self.eth.BlacklistPeer(self.peer)
+					//self.peer.StopWithReason(DiscBadPeer)
+                        self.peer.Stop()
+                        self.td = monkutil.Big0
+                        self.peer = nil
+					}*/
+
 }
