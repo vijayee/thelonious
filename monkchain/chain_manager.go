@@ -27,6 +27,19 @@ var chainlogger = monklog.NewLogger("CHAIN")
             can we put it in a trie?
 */
 
+func CalcDifficulty(block, parent *Block) *big.Int {
+	diff := new(big.Int)
+
+	adjust := new(big.Int).Rsh(parent.Difficulty, 10)
+	if block.Time >= parent.Time+5 {
+		diff.Sub(parent.Difficulty, adjust)
+	} else {
+		diff.Add(parent.Difficulty, adjust)
+	}
+
+	return diff
+}
+
 type ChainManager struct {
 	//Ethereum EthManager
     processor BlockProcessor
@@ -233,7 +246,8 @@ func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {
 	}
 
     // this has no effect on blocks in the workingTree!
-	parentTd := parent.BlockInfo().TD
+	//parentTd := parent.BlockInfo().TD
+    parentTd := self.BlockInfo(parent).TD
 
 	uncleDiff := new(big.Int)
 	for _, uncle := range block.Uncles {
@@ -263,6 +277,9 @@ func (self *ChainManager) GetBlockWorking(hash []byte) *Block{
         return l.block
     }
 
+    if l, ok := self.workingTree[string(hash)]; ok{
+        return l.block
+    }
     if self.workingChain != nil {
         for e := self.workingChain.Front(); e != nil; e = e.Next() {
             if bytes.Compare(e.Value.(*link).block.Hash(), hash) == 0 {
@@ -320,6 +337,23 @@ func (bc *ChainManager) BlockInfoByHash(hash []byte) BlockInfo {
 func (bc *ChainManager) BlockInfo(block *Block) BlockInfo {
 	bi := BlockInfo{}
 	data, _ := monkutil.Config.Db.Get(append(block.Hash(), []byte("Info")...))
+	if len(data) == 0 {
+        if l, ok := bc.workingTree[string(block.Hash())]; ok{
+            b := l.block
+		    return BlockInfo{Number: b.Number.Uint64(), Hash: b.Hash(), Parent: b.PrevHash, TD: l.td}
+        }
+
+		if bc.workingChain != nil {
+			// Check the temp chain
+			for e := bc.workingChain.Front(); e != nil; e = e.Next() {
+				l := e.Value.(*link)
+				b := l.block
+				if bytes.Compare(b.Hash(), block.Hash()) == 0 {
+					return BlockInfo{Number: b.Number.Uint64(), Hash: b.Hash(), Parent: b.PrevHash, TD: l.td}
+				}
+			}
+		}
+	}
 	bi.RlpDecode(data)
 
 	return bi
@@ -383,8 +417,9 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
     defer func(){ self.workingChain = nil }()
 
     var parent *Block
+    var fork bool
 
-    fork := self.detectFork(chain)
+    parent, fork = self.detectFork(chain)
     if fork{
         if _, ok := self.workingTree[string(parent.Hash())]; !ok{
             chainlogger.Infof("New fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, self.CurrentBlock.Hash(), self.CurrentBlock.Number)
@@ -682,15 +717,18 @@ func (self *ChainManager) sumDifficulties(chain *BlockChain){
 // Detect if this chain extends or creates a fork
 // ie. does the first block in the chain point to the head of 
 // canonical or not?
-func (self *ChainManager) detectFork(chain *BlockChain) bool{
+func (self *ChainManager) detectFork(chain *BlockChain) (*Block, bool){
     var (
         oldest = chain.Front().Value.(*link).block
         branchParent = self.GetBlock(oldest.PrevHash)
         head = self.CurrentBlock
     )
+    if branchParent == nil{
+        return nil, false
+    }
 
     if bytes.Compare(head.Hash(), branchParent.Hash()) == 0{
-        return false
+        return branchParent, false
     }
-    return true
+    return branchParent, true
 }

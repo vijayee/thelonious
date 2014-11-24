@@ -305,7 +305,8 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 		sm.eth.TxPool().RemoveSet(block.Transactions())
         return td, nil
 	} else {
-		return nil, fmt.Errorf("total diff failed")
+        // TODO: error here?
+		return td, nil //nil, fmt.Errorf("total diff failed")
 	}
 
 	//return nil
@@ -326,25 +327,11 @@ func (sm *BlockManager) ApplyDiff(state *monkstate.State, parent, block *Block) 
 
 // TODO: this is a sham...
 func (sm *BlockManager) CalculateTD(block *Block) (*big.Int, bool) {
-    b, e := sm.bc.CalcTotalDiff(block)
-    if e == nil{
-        return b, true
-    } else{
-        fmt.Println("err on calc td :", e)
-        return b, false
+    td, err := sm.bc.CalcTotalDiff(block)
+    if err != nil{
+        fmt.Println(err)
+        return nil, false
     }
-
-
-	uncleDiff := new(big.Int)
-	for _, uncle := range block.Uncles {
-		uncleDiff = uncleDiff.Add(uncleDiff, uncle.Difficulty)
-	}
-
-	// TD(genesis_block) = 0 and TD(B) = TD(B.parent) + sum(u.difficulty for u in B.uncles) + B.difficulty
-	td := new(big.Int)
-	td = td.Add(sm.bc.TD, uncleDiff)
-	td = td.Add(td, block.Difficulty)
-
 	// The new TD will only be accepted if the new difficulty is
 	// is greater than the previous.
 	if td.Cmp(sm.bc.TD) > 0 {
@@ -354,7 +341,7 @@ func (sm *BlockManager) CalculateTD(block *Block) (*big.Int, bool) {
 		return td, true
 	}
 
-	return nil, false
+	return td, false
 }
 
 // Validates the current block. Returns an error if the block was invalid,
