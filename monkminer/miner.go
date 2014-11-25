@@ -3,7 +3,6 @@ package monkminer
 import (
 	"bytes"
 	"sort"
-    "fmt"
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -220,7 +219,6 @@ func (self *Miner) mineNewBlock() {
         // process the completed block
 		lchain := monkchain.NewChain(monkchain.Blocks{self.block})
 		_, err := chainMan.TestChain(lchain)
-        fmt.Println("done run test chain:", err)
 		if err != nil {
 			logger.Infoln(err)
 		} else {
