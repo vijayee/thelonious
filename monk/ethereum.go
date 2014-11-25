@@ -354,11 +354,8 @@ func (monk *Monk) StorageAt(contract_addr string, storage_addr string) string {
 	caddr := monkutil.Hex2Bytes(contract_addr)
 	w := monk.pipe.World()
 	ret := w.SafeGet(caddr).GetStorage(saddr)
-	//returns an ethValue
-	// TODO: figure it out!
-	//val := BigNumStrToHex(ret)
 	if ret.IsNil() {
-		return "0x"
+		return ""
 	}
 	return monkutil.Bytes2Hex(ret.Bytes())
 }

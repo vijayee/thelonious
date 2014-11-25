@@ -1,7 +1,6 @@
 package monk
 
 import (
-    "fmt"
     "testing"
     "time"
     "github.com/eris-ltd/decerver-interfaces/modules"
@@ -36,8 +35,6 @@ func TestSubscribe(t *testing.T){
                 }
                 if _, ok := a.Resource.(*modules.Block); !ok{
                     t.Error("Event resource not a block!")
-                } else{
-                    fmt.Println("got block")
                 }
             }
         }()

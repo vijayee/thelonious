@@ -73,7 +73,7 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
     } 
     mod.ReadConfig("eth-config.json")
     fmt.Println("log:", mod.Config.LogLevel)
-    mod.Config.Mining = true
+    mod.Config.Mining = false
     mod.Config.DbName = "tests/"+name
     /*
     // more trouble than it's worth for now
@@ -100,10 +100,10 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
 func tester(name string, testing func(mod *MonkModule), end int){
     mod := NewMonk(nil) 
     mod.ReadConfig("eth-config.json")
-    mod.monk.config.Mining = true
+    mod.monk.config.Mining = false
     mod.monk.config.DbName = "tests/"+name
     g := mod.LoadGenesis(mod.Config.GenesisConfig)
-    g.Difficulty = 5 // so we always mine quickly
+    g.Difficulty = 10 // so we always mine quickly
     mod.SetGenesis(g)
     testing(mod)
     
@@ -114,18 +114,15 @@ func tester(name string, testing func(mod *MonkModule), end int){
     time.Sleep(time.Second*3)
 }
 
+// TODO: deprecate these
 func callback(name string, mod *MonkModule, caller func()) {
-    ch := make(chan monkreact.Event, 1)
-    mod.monk.ethereum.Reactor().Subscribe("newBlock", ch)
-    _ = <- ch
+    mod.Commit()
     fmt.Println("####RESPONSE: "+ name +  " ####")
     caller()
 } 
 
 func (t *Test) callback(name string, mod *MonkModule, caller func()) {
-    ch := make(chan monkreact.Event, 1)
-    t.reactor.Subscribe("newBlock", ch)
-    _ = <- ch
+    mod.Commit()
     fmt.Println("####RESPONSE: "+ name +  " ####")
     caller()
 } 

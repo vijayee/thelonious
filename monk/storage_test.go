@@ -70,6 +70,9 @@ func TestMsgStorage(t *testing.T){
             key := "0x21"
             value := "0x400"
             time.Sleep(time.Nanosecond) // needed or else subscribe channels block and are skipped ... TODO: why?!
+            fmt.Println("contract account:", mod.Account(contract_addr))
+            fmt.Println("my account:", mod.Account(mod.ActiveAddress()))
+
             mod.Msg(contract_addr, []string{key, value})
             callback("test key-value", mod, func(){
                 start := time.Now()
@@ -78,7 +81,7 @@ func TestMsgStorage(t *testing.T){
                 fmt.Println("get storage took", dif)
                 result := check_recovered(value, recovered)
                 if !result{
-                    t.Error("got:", value, "expected:", recovered)
+                    t.Error("got:", recovered, "expected:", value)
                 }
             })
         })

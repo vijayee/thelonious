@@ -190,7 +190,7 @@ func NewPermModel(g *GenesisConfig) (model PermModel){
         case "eth":
             model = NewEthModel(g)
         default:
-            model = NewEthModel(g)
+            model = NewYesModel(g) //NewEthModel(g)
     }
     return 
 }
