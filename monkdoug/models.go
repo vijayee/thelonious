@@ -260,6 +260,8 @@ func (m *StdLibModel) Difficulty(block, parent *monkchain.Block) *big.Int{
         b = m.RoundRobinDifficulty(block, parent)
     case "stake-weight":
         b = m.StakeDifficulty(block, parent)
+    case "constant":
+        b = m.baseDifficulty(parent.State())
     default:
         blockTime := m.blocktime(parent.State())
         b = EthDifficulty(blockTime, block, parent)

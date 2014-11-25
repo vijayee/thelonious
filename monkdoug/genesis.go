@@ -121,8 +121,6 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block){
     if err != nil{
         log.Fatal("da fuq?", err)
     }
-    fmt.Println(keys.PrivateKey)
-    fmt.Println(keys.PublicKey)
     fmt.Println(keys.Address())
 
     // create the genesis doug

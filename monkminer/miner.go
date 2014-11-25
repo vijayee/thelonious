@@ -228,9 +228,10 @@ func (self *Miner) mineNewBlock() {
 
 			logger.Infof("🔨  Mined block %x\n", self.block.Hash())
 			logger.Infoln(self.block)
+            self.txs = self.ethereum.TxPool().CurrentTransactions()
 		}
 
-		go self.mineNewBlock()
+		// go self.mineNewBlock()
         /*
 		err := self.ethereum.BlockManager().Process(self.block, false)
 		if err != nil {
