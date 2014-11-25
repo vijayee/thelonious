@@ -28,7 +28,8 @@ import (
 const (
 	seedTextFileUri string = "http://www.ethereum.org/servers.poc3.txt"
 	//seedNodeAddress        = "162.218.65.211:30303"
-    seedNodeAddress        = "92.243.15.73:30303"
+    //seedNodeAddress        = "92.243.15.73:30303"
+    seedNodeAddress        = "localhost:30303"
 )
 
 var monklogger = monklog.NewLogger("SERV")
@@ -53,12 +54,12 @@ type Ethereum struct {
 	// DB interface
 	db monkutil.Database
 	// State manager for processing new blocks and managing the over all states
-	stateManager *monkchain.StateManager
+	blockManager *monkchain.BlockManager
 	// The transaction pool. Transaction can be pushed on this pool
 	// for later including in the blocks
 	txPool *monkchain.TxPool
 	// The canonical chain
-	blockChain *monkchain.BlockChain
+	blockChain *monkchain.ChainManager
 	// The block pool
 	blockPool *BlockPool
 	// Peers (NYI)
@@ -129,14 +130,15 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-    ethereum.setGenesis(genConfig)
+    genModel := ethereum.setGenesis(genConfig)
 
 	ethereum.reactor = monkreact.New()
 
 	ethereum.blockPool = NewBlockPool(ethereum)
 	ethereum.txPool = monkchain.NewTxPool(ethereum)
-	ethereum.blockChain = monkchain.NewBlockChain(ethereum)
-	ethereum.stateManager = monkchain.NewStateManager(ethereum)
+	ethereum.blockChain = monkchain.NewChainManager(genModel)
+	ethereum.blockManager = monkchain.NewBlockManager(ethereum)
+	ethereum.blockChain.SetProcessor(ethereum.blockManager)
 
 	// Start the tx pool
 	ethereum.txPool.Start()
@@ -146,7 +148,6 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 
 // Deploy the genesis block from a preconfigured GenesisJSON object
 // if genConfig is nil, this function has no effect, and the genesis block is empty
-// TODO: make sure to set the model!
 func (s *Ethereum) GenesisPointer(block *monkchain.Block){
     if s.genConfig != nil{
         s.genConfig.Deploy(block)
@@ -161,13 +162,14 @@ func (s *Ethereum) GenesisModel() monkchain.GenDougModel{
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) error{
+func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel{
     if s.genConfig != nil{
-        return fmt.Errorf("GenesisConfig already set")    
+        fmt.Println("GenesisConfig already set")    
+        return nil
     }
     s.genConfig = genConfig
-    s.genModel = genConfig.Model
-    return nil
+    s.genModel = genConfig.Model()
+    return s.genModel
 }
 
 func (s *Ethereum) Reactor() *monkreact.ReactorEngine {
@@ -182,12 +184,12 @@ func (s *Ethereum) ClientIdentity() monkwire.ClientIdentity {
 	return s.clientIdentity
 }
 
-func (s *Ethereum) BlockChain() *monkchain.BlockChain {
+func (s *Ethereum) ChainManager() *monkchain.ChainManager {
 	return s.blockChain
 }
 
-func (s *Ethereum) StateManager() *monkchain.StateManager {
-	return s.stateManager
+func (s *Ethereum) BlockManager() *monkchain.BlockManager {
+	return s.blockManager
 }
 
 func (s *Ethereum) TxPool() *monkchain.TxPool {
@@ -569,7 +571,7 @@ func (s *Ethereum) Stop() {
 		s.RpcServer.Stop()
 	}
 	s.txPool.Stop()
-	s.stateManager.Stop()
+	s.blockManager.Stop()
 	s.reactor.Flush()
 	s.reactor.Stop()
 	s.blockPool.Stop()

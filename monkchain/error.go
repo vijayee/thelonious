@@ -3,6 +3,7 @@ package monkchain
 import (
 	"fmt"
 	"math/big"
+    "github.com/eris-ltd/thelonious/monkutil"
 )
 
 // Parent error. In case a parent is unknown this error will be thrown
@@ -138,15 +139,59 @@ type TxFail struct {
     Err error
 }
 
-type InvalidPermErr struct{
-    Message string
-    Addr string
-}
+type InvalidPermErr string
 
-func InvalidPermError(addr, role string) *InvalidPermErr{
-    return &InvalidPermErr{Message: fmt.Sprintf("Invalid permissions err on role %s for adddress %s", role, addr), Addr:addr}
+func InvalidPermError(addr []byte, role string) *InvalidPermErr{
+    s := InvalidPermErr(fmt.Sprintf("Invalid permissions err on role %s for adddress %s", role, monkutil.Bytes2Hex(addr)))
+    return &s
 }
 
 func (self *InvalidPermErr) Error() string{
-    return self.Message
+    return string(*self)
+}
+
+type InvalidSigErr string
+
+func InvalidSigError(signer, coinbase []byte) *InvalidSigErr{
+    s := InvalidSigErr(fmt.Sprintf("Invalid signature err for coinbase %s signed by %s", monkutil.Bytes2Hex(coinbase), monkutil.Bytes2Hex(signer)))
+    return &s
+}
+
+func (self *InvalidSigErr) Error() string{
+    return string(*self)
+}
+
+type InvalidTurnErr string
+
+func InvalidTurnError(observed, expected []byte) *InvalidTurnErr{
+    s := InvalidTurnErr(fmt.Sprintf("Invalid miner in sequence. Got %s, expected %s", monkutil.Bytes2Hex(observed), monkutil.Bytes2Hex(expected)))
+    return &s
+}
+
+func (self *InvalidTurnErr) Error() string{
+    return string(*self)
+}
+
+
+type InvalidDifficultyErr string
+
+func InvalidDifficultyError(observed, expected *big.Int, coinbase []byte) *InvalidDifficultyErr{
+    s := InvalidDifficultyErr(fmt.Sprintf("Invalid difficulty for coinbase %s. Got %s, expected %s", monkutil.Bytes2Hex(coinbase), observed.String(), expected.String()))
+    return &s
+}
+
+func (self *InvalidDifficultyErr) Error() string{
+    return string(*self)
+}
+
+type TDError struct {
+	a, b *big.Int
+}
+
+func (self *TDError) Error() string {
+	return fmt.Sprintf("incoming chain has a lower or equal TD (%v <= %v)", self.a, self.b)
+}
+func IsTDError(e error) bool {
+	_, ok := e.(*TDError)
+	return ok
 }

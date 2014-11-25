@@ -104,6 +104,9 @@ func (mod *MonkModule) Init() error {
         mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
     }
     m.genConfig = mod.GenesisConfig
+
+    monkdoug.Adversary = mod.Config.Adversary
+
 	// if no ethereum instance
 	if m.ethereum == nil {
 		m.ethConfig()
@@ -259,13 +262,14 @@ func (mod *MonkModule) AddressCount() int {
 
 // Load genesis json file (so calling pkg need not import monkdoug)
 func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
-    return monkdoug.LoadGenesis(file)
+    g := monkdoug.LoadGenesis(file)
+    return g
 }
 
 // Set the genesis json object. This can only be done once
 func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
     // reset the permission model struct (since config may have changed)
-    genJson.Model = monkdoug.NewPermModel(genJson.ModelName, genJson.ByteAddr)
+    genJson.SetModel(monkdoug.NewPermModel(genJson))
     mod.GenesisConfig = genJson
 }
 
@@ -360,16 +364,16 @@ func (monk *Monk) StorageAt(contract_addr string, storage_addr string) string {
 }
 
 func (monk *Monk) BlockCount() int {
-	return int(monk.ethereum.BlockChain().LastBlockNumber)
+	return int(monk.ethereum.ChainManager().LastBlockNumber)
 }
 
 func (monk *Monk) LatestBlock() string {
-	return monkutil.Bytes2Hex(monk.ethereum.BlockChain().LastBlockHash)
+	return monkutil.Bytes2Hex(monk.ethereum.ChainManager().LastBlockHash)
 }
 
 func (monk *Monk) Block(hash string) *modules.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
-	block := monk.ethereum.BlockChain().GetBlock(hashBytes)
+	block := monk.ethereum.ChainManager().GetBlock(hashBytes)
 	return convertBlock(block)
 }
 
@@ -735,6 +739,9 @@ func PackTxDataArgs(args ...string) string {
 
 // convert ethereum block to modules block
 func convertBlock(block *monkchain.Block) *modules.Block{
+    if block == nil{
+        return nil
+    }
 	b := &modules.Block{}
 	b.Coinbase = hex.EncodeToString(block.Coinbase)
 	b.Difficulty = block.Difficulty.String()

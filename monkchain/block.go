@@ -102,7 +102,7 @@ type Block struct {
 	TxSha        []byte
     
     // signature for verified miners
-    v       byte
+    v       byte 
     r, s    []byte
 }
 
@@ -168,8 +168,10 @@ func (block *Block) Transactions() []*Transaction {
 	return block.transactions
 }
 
+// TODO: GenDoug?
 func (block *Block) CalcGasLimit(parent *Block) *big.Int {
     return monkutil.Big("100000000000000000000000")
+
 	if block.Number.Cmp(big.NewInt(0)) == 0 {
 		return monkutil.BigPow(10, 6)
 	}
@@ -278,7 +280,7 @@ func (self *Block) SetTxHash(receipts Receipts) {
 }
 
 func (block *Block) Value() *monkutil.Value {
-	return monkutil.NewValue([]interface{}{block.header(), block.rlpReceipts(), block.rlpUncles()})
+	return monkutil.NewValue([]interface{}{block.header(), block.rlpReceipts(), block.rlpUncles(), []interface{}{block.v, block.r, block.s}})
 }
 
 func (block *Block) RlpEncode() []byte {
@@ -332,6 +334,14 @@ func (block *Block) RlpValueDecode(decoder *monkutil.Value) {
 		}
 	}
 
+	if decoder.Get(3).IsNil() == false { // Yes explicitness
+		sig := decoder.Get(3)
+        block.v = sig.Get(0).Byte()
+        block.r = sig.Get(1).Bytes()
+        block.s = sig.Get(2).Bytes()
+	}
+
+
 }
 
 func NewUncleBlockFromValue(header *monkutil.Value) *Block {
@@ -383,7 +393,7 @@ func (self *Block) PublicKey() []byte{
     s := monkutil.LeftPadBytes(self.s, 32)
     sig := append(r, s...)
     sig = append(sig, self.v-27)
-    
+
     pubkey, _ := secp256k1.RecoverPubkey(hash, sig)
 
     return pubkey
@@ -393,6 +403,7 @@ func (self *Block) Signer() []byte{
     if len(self.r) == 0 || len(self.s) == 0 {
        return []byte("\x00") 
     }
+
     pubkey := self.PublicKey()
 
     if pubkey[0] != 4{

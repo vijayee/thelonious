@@ -3,6 +3,7 @@ package monkminer
 import (
 	"bytes"
 	"sort"
+    "fmt"
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -55,10 +56,10 @@ func (miner *Miner) Start() {
 
 	// Insert initial TXs in our little miner 'pool'
 	miner.txs = miner.ethereum.TxPool().Flush()
-	miner.block = miner.ethereum.BlockChain().NewBlock(miner.coinbase)
+	miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase)
 
 	// Prepare inital block
-	//miner.ethereum.StateManager().Prepare(miner.block.State(), miner.block.State())
+	//miner.ethereum.BlockManager().Prepare(miner.block.State(), miner.block.State())
 	go miner.listener()
 
 	reactor := miner.ethereum.Reactor()
@@ -115,7 +116,7 @@ func (miner *Miner) receiveTx(tx *monkchain.Transaction){
 
 func (miner *Miner) receiveBlock(block *monkchain.Block){
     //logger.Infoln("Got new block via Reactor")
-    if bytes.Compare(miner.ethereum.BlockChain().CurrentBlock.Hash(), block.Hash()) == 0 {
+    if bytes.Compare(miner.ethereum.ChainManager().CurrentBlock.Hash(), block.Hash()) == 0 {
         // TODO: Perhaps continue mining to get some uncle rewards
         //logger.Infoln("New top block found resetting state")
 
@@ -135,10 +136,10 @@ func (miner *Miner) receiveBlock(block *monkchain.Block){
         miner.txs = newtxs
 
         // Setup a fresh state to mine on
-        //miner.block = miner.ethereum.BlockChain().NewBlock(miner.coinbase, miner.txs)
+        //miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase, miner.txs)
 
     } else {
-        if bytes.Compare(block.PrevHash, miner.ethereum.BlockChain().CurrentBlock.PrevHash) == 0 {
+        if bytes.Compare(block.PrevHash, miner.ethereum.ChainManager().CurrentBlock.PrevHash) == 0 {
             logger.Infoln("Adding uncle block")
             miner.uncles = append(miner.uncles, block)
         }
@@ -164,12 +165,22 @@ func (miner *Miner) Stop() {
 }
 
 func (self *Miner) mineNewBlock() {
-    // TODO: check if we are a currently valid miner
-    // if not, return
+	stateManager := self.ethereum.BlockManager()
+    chainMan := self.ethereum.ChainManager()
+    self.block = chainMan.NewBlock(self.coinbase)
 
-	stateManager := self.ethereum.StateManager()
 
-	self.block = self.ethereum.BlockChain().NewBlock(self.coinbase)
+	parent := self.ethereum.ChainManager().GetBlock(self.block.PrevHash)
+
+    // if parent is not built yet, return
+    if parent == nil{
+        return 
+    }
+
+    // check if we should even bother mining (potential energy savings)
+    if !self.ethereum.GenesisModel().StartMining(self.coinbase, parent){
+        return
+    }
 
 	// Apply uncles
 	if len(self.uncles) > 0 {
@@ -181,7 +192,6 @@ func (self *Miner) mineNewBlock() {
 
 	// Accumulate all valid transactions and apply them to the new state
 	// Error may be ignored. It's not important during mining
-	parent := self.ethereum.BlockChain().GetBlock(self.block.PrevHash)
 	coinbase := self.block.State().GetOrNewStateObject(self.block.Coinbase)
 	coinbase.SetGasPool(self.block.CalcGasLimit(parent))
 	receipts, txs, unhandledTxs, err := stateManager.ProcessTransactions(coinbase, self.block.State(), self.block, self.block, self.txs)
@@ -199,7 +209,7 @@ func (self *Miner) mineNewBlock() {
 
 	self.block.State().Update()
 
-	logger.Infof("Mining on block. Includes %v transactions", len(self.txs))
+	logger.Infof("Mining on block %d. Includes %v transactions", self.block.Number, len(self.txs))
 
 	// Find a valid nonce
 	self.block.Nonce = self.pow.Search(self.block, self.powQuitChan)
@@ -208,7 +218,23 @@ func (self *Miner) mineNewBlock() {
         keypair := self.ethereum.KeyManager().KeyPair()
         self.block.Sign(keypair.PrivateKey)
         // process the completed block
-		err := self.ethereum.StateManager().Process(self.block, false)
+		lchain := monkchain.NewChain(monkchain.Blocks{self.block})
+		_, err := chainMan.TestChain(lchain)
+        fmt.Println("done run test chain:", err)
+		if err != nil {
+			logger.Infoln(err)
+		} else {
+			chainMan.InsertChain(lchain)
+			//self.eth.EventMux().Post(chain.NewBlockEvent{block})
+			self.ethereum.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
+
+			logger.Infof("🔨  Mined block %x\n", self.block.Hash())
+			logger.Infoln(self.block)
+		}
+
+		go self.mineNewBlock()
+        /*
+		err := self.ethereum.BlockManager().Process(self.block, false)
 		if err != nil {
 			logger.Infoln(err)
 		} else {
@@ -217,6 +243,6 @@ func (self *Miner) mineNewBlock() {
 			logger.Infoln(self.block)
 			// Gather the new batch of transactions currently in the tx pool
 			self.txs = self.ethereum.TxPool().CurrentTransactions()
-		}
+		}*/
 	}
 }

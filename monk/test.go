@@ -72,6 +72,7 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
         t.mod = mod
     } 
     mod.ReadConfig("eth-config.json")
+    fmt.Println("log:", mod.Config.LogLevel)
     mod.Config.Mining = true
     mod.Config.DbName = "tests/"+name
     /*
@@ -101,12 +102,9 @@ func tester(name string, testing func(mod *MonkModule), end int){
     mod.ReadConfig("eth-config.json")
     mod.monk.config.Mining = true
     mod.monk.config.DbName = "tests/"+name
-    /*
-    g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
-    //g.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
+    g := mod.LoadGenesis(mod.Config.GenesisConfig)
+    g.Difficulty = 5 // so we always mine quickly
     mod.SetGenesis(g)
-    */
     testing(mod)
     
     if end > 0{
@@ -162,7 +160,7 @@ func PrettyPrintBlockAccounts(block *monkchain.Block){
 
 // print all accounts and storage in the latest block
 func PrettyPrintChainAccounts(mod *MonkModule){
-    curchain := mod.monk.ethereum.BlockChain()
+    curchain := mod.monk.ethereum.ChainManager()
     block := curchain.CurrentBlock
     PrettyPrintBlockAccounts(block)
 }

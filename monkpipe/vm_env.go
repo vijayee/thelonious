@@ -33,4 +33,4 @@ func (self *VMEnv) BlockHash() []byte      { return self.block.Hash() }
 func (self *VMEnv) Value() *big.Int        { return self.value }
 func (self *VMEnv) State() *monkstate.State { return self.state }
 // TODO:  fuck....
-func (self *VMEnv) DougValidate(addr []byte, role string, state *monkstate.State) bool{ return true }//monkchain.GenDoug.ValidatePerm(addr, role, state)}
+func (self *VMEnv) DougValidate(addr []byte, role string, state *monkstate.State) error { return nil }//monkchain.GenDoug.ValidatePerm(addr, role, state)}

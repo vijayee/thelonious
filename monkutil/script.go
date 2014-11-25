@@ -118,7 +118,7 @@ func PackTxDataArgs2(args ... string) []byte{
     //fmt.Println("pack data:", args)
     ret := *new([]byte)
     for _, s := range args{
-        if s[:2] == "0x"{
+        if len(s) > 1 && s[:2] == "0x"{
             t := s[2:]
             if len(t) % 2 == 1{
                 t = "0"+t

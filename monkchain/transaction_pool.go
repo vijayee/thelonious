@@ -95,7 +95,7 @@ func (pool *TxPool) addTransaction(tx *Transaction) {
 func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	// Get the last block so we can retrieve the sender and receiver from
 	// the merkle trie
-	block := pool.Ethereum.BlockChain().CurrentBlock
+	block := pool.Ethereum.ChainManager().CurrentBlock
 	// Something has gone horribly wrong if this happens
 	if block == nil {
 		return fmt.Errorf("[TXPL] No last block on the block chain")
@@ -110,8 +110,8 @@ func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	}
 
 	// Get the sender
-	//sender := pool.Ethereum.StateManager().procState.GetAccount(tx.Sender())
-	sender := pool.Ethereum.StateManager().CurrentState().GetAccount(tx.Sender())
+	//sender := pool.Ethereum.BlockManager().procState.GetAccount(tx.Sender())
+	sender := pool.Ethereum.BlockManager().CurrentState().GetAccount(tx.Sender())
 
 	totAmount := new(big.Int).Set(tx.Value)
 	// Make sure there's enough in the sender's account. Having insufficient
@@ -201,6 +201,22 @@ func (pool *TxPool) RemoveInvalid(state *monkstate.State) {
 	}
 }
 
+func (self *TxPool) RemoveSet(txs Transactions) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
+	for _, tx := range txs {
+		EachTx(self.pool, func(t *Transaction, element *list.Element) bool {
+			if t == tx {
+				self.pool.Remove(element)
+				return true // To stop the loop
+			}
+			return false
+		})
+	}
+}
+
+
 func (pool *TxPool) Flush() []*Transaction {
 	txList := pool.CurrentTransactions()
 
@@ -221,4 +237,12 @@ func (pool *TxPool) Stop() {
 	pool.Flush()
 
 	txplogger.Infoln("Stopped")
+}
+
+func EachTx(pool *list.List, it func(*Transaction, *list.Element) bool) {
+	for e := pool.Front(); e != nil; e = e.Next() {
+		if it(e.Value.(*Transaction), e) {
+			break
+		}
+	}
 }

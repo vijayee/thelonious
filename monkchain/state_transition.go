@@ -99,6 +99,7 @@ func (self *StateTransition) AddGas(amount *big.Int) {
 	self.gas.Add(self.gas, amount)
 }
 
+// Move this to monkdoug?
 func (self *StateTransition) BuyGas() error {
 	var err error
 
@@ -129,38 +130,17 @@ func (self *StateTransition) RefundGas() {
 }
 
 func (self *StateTransition) preCheck() (err error) {
-	var (
-		tx     = self.tx
-		sender = self.Sender()
-	)
-
-    /*
-        preCheck() should be a proxy for calling a doug permissions model
-        the permissions model will check all the things
-        else, default to base ethereum permissions model
-    */
-   
-    // state transition only has the genesis block if 
-    // created by Eris 
-    if self.genesis != nil && !genDoug.ValidatePerm(sender.Address(), "transact", self.block.State()){
-        return InvalidPermError(monkutil.Bytes2Hex(sender.Address()), "transact")
+    // preCheck() should be a proxy for calling a doug permissions model
+    // the permissions model will check all the things
+    if err := genDoug.ValidateTx(self.tx, self.state); err != nil{
+        return err
     }
-
-	// Make sure this transaction's nonce is correct
-	if sender.Nonce != tx.Nonce {
-		return NonceError(tx.Nonce, sender.Nonce)
-	}
-
-    if !genDoug.ValidateValue("maxgas", self.tx.GasValue(), self.block.State()){
-            return fmt.Errorf("max gas err")
-            //TODO: return GasLimitTxError(gas, maxBig)
-    }
-
-	// Pre-pay gas / Buy gas of the coinbase account
+	// Pre-pay gas / Buy gas off the coinbase account
+    // TODO: reconfigure this to run from gendoug
+    //  probably by moving the BuyGas function over
 	if err = self.BuyGas(); err != nil {
 		return err
 	}
-
 	return nil
 }
 

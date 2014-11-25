@@ -186,7 +186,6 @@ func (s *State) Sync() {
 		if stateObject.State == nil {
 			continue
 		}
-
 		stateObject.State.Sync()
 	}
 

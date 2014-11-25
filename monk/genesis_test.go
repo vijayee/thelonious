@@ -21,7 +21,7 @@ func TestTraverseGenesis(t *testing.T){
         mod.Init()
         mod.Start()
         callback("traverse_to_genesis", mod, func(){
-            curchain := mod.monk.ethereum.BlockChain()
+            curchain := mod.monk.ethereum.ChainManager()
             curblock := curchain.CurrentBlock
             gen_tr := traverse_to_genesis(curchain, curblock)
             gen := curchain.Genesis()
@@ -45,7 +45,7 @@ func TestGenesisMsg(t *testing.T){
         mod.Start()
             key := "0x21"
             value := "0x400"
-            gendoug := monkutil.Bytes2Hex(g.ByteAddr)
+            gendoug := monkutil.Bytes2Hex([]byte(g.Address))
             mod.Msg(gendoug, []string{key, value})
             callback("genesis msg", mod, func(){
                 recovered := "0x"+ mod.StorageAt(gendoug, key)
@@ -57,7 +57,7 @@ func TestGenesisMsg(t *testing.T){
 }
 
 // follow the prevhashes back to genesis
-func traverse_to_genesis(curchain *monkchain.BlockChain, curblock *monkchain.Block) *monkchain.Block{
+func traverse_to_genesis(curchain *monkchain.ChainManager, curblock *monkchain.Block) *monkchain.Block{
     prevhash := curblock.PrevHash
     prevblock := curchain.GetBlock(prevhash)
     fmt.Println("prevblock", prevblock)

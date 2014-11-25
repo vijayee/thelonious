@@ -158,7 +158,7 @@ func StartEthereum(ethereum *eth.Ethereum, UseSeed bool) {
 }
 
 func ShowGenesis(ethereum *eth.Ethereum) {
-	logger.Infoln(ethereum.BlockChain().Genesis())
+	logger.Infoln(ethereum.ChainManager().Genesis())
 	exit(nil)
 }
 
@@ -300,14 +300,14 @@ func StopMining(ethereum *eth.Ethereum) bool {
 
 // Replay block
 func BlockDo(ethereum *eth.Ethereum, hash []byte) error {
-	block := ethereum.BlockChain().GetBlock(hash)
+	block := ethereum.ChainManager().GetBlock(hash)
 	if block == nil {
 		return fmt.Errorf("unknown block %x", hash)
 	}
 
-	parent := ethereum.BlockChain().GetBlock(block.PrevHash)
+	parent := ethereum.ChainManager().GetBlock(block.PrevHash)
 
-	_, err := ethereum.StateManager().ApplyDiff(parent.State(), parent, block)
+	_, err := ethereum.BlockManager().ApplyDiff(parent.State(), parent, block)
 	if err != nil {
 		return err
 	}

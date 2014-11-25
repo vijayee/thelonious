@@ -10,6 +10,7 @@ import (
     "github.com/eris-ltd/thelonious/monkstate"    
     "github.com/eris-ltd/thelonious/monktrie"    
     "github.com/eris-ltd/thelonious/monkchain"
+    "github.com/eris-ltd/thelonious/monkcrypto"
 )
 
 var (
@@ -17,81 +18,15 @@ var (
     ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
 )
 
-// Load a genesis.json and deploy
-// Called from monkchain by setLastBlock when a new blockchain is created
-// If it can't find the file, fail
-//TODO: deprecate
-func GenesisPointer(jsonFile string, block *monkchain.Block){
-    _, err := os.Stat(jsonFile)
-    if err != nil{
-        fmt.Printf("Genesis.json file %s could not be found")
-        os.Exit(0)
-    }
-    gson := LoadGenesis(jsonFile)
-    gson.Deploy(block)
-}
-
-
 /*
-   Model is a global variable set at eth startup
-    DougValidate and DougValue are our windows into the model
-*/
-func NewPermModel(modelName string, dougAddr []byte) (model monkchain.GenDougModel){
-    switch(modelName){
-        case "fake":
-            model = NewFakeModel(dougAddr)
-        case "dennis":
-            model = NewGenDougModel(dougAddr)
-        case "std":
-            model = NewStdLibModel(dougAddr)
-        case "yes":
-            model = NewYesModel()
-        case "no":
-            model = NewNoModel()
-        default:
-            fmt.Println("shitty default")
-            model = NewYesModel()
-    }
-    return 
-}
-
-
-/*
-    TODO: deprecate
-type GenDoug struct{
-
-}
-
-// use gendoug and permissions model to validate addr's role
-func (g *GenDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) bool{
-    if GenDougByteAddr == nil || Model == nil{
-        return true
-    }
-
-    if Model == nil{
-        return false
-    }
-    return Model.HasPermission(addr, role, state)
-}
-
-// look up a special doug param
-func (g *GenDoug) ValidateValue(name string, value interface{}, state *monkstate.State) bool { //[]byte{
-    return true
-    if GENDOUG == nil{
-        return nil 
-    }
-    return Model.GetValue(key, namespace, state)
-}
-*/
-
-/*
-    Functions for setting for loading the genesis contract
-    and processing the state changes
+    Functions for updating state without all the weight
+    of the standard protocol.
+    Mostly used for setting up the genesis block
 */
 
 // create a new tx from a script, with dummy keypair
 // creates tx but does not sign!
-func NewGenesisContract(scriptFile string) *monkchain.Transaction{
+func NewContract(scriptFile string) *monkchain.Transaction{
     // if mutan, load the script. else, pass file name
     var s string
     if scriptFile[len(scriptFile)-3:] == ".mu"{
@@ -109,11 +44,9 @@ func NewGenesisContract(scriptFile string) *monkchain.Transaction{
         fmt.Println("failed compile", err)
         os.Exit(0)
     }
-    //fmt.Println("script: ", script)
 
     // create tx
     tx := monkchain.NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
-    //tx.Sign(keys.PrivateKey)
 
     return tx
 }
@@ -170,36 +103,45 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
     return receipt
 }
 
-/*
-    sigh...
-*/
-
-func PrettyPrintAccount(obj *monkstate.StateObject){
-    fmt.Println("Address", monkutil.Bytes2Hex(obj.Address())) //monkutil.Bytes2Hex([]byte(addr)))
-    fmt.Println("\tNonce", obj.Nonce)
-    fmt.Println("\tBalance", obj.Balance)
-    if true { // only if contract, but how?!
-        fmt.Println("\tInit", monkutil.Bytes2Hex(obj.InitCode))
-        fmt.Println("\tCode", monkutil.Bytes2Hex(obj.Code))
-        fmt.Println("\tStorage:")
-        obj.EachStorage(func(key string, val *monkutil.Value){
-            val.Decode()
-            fmt.Println("\t\t", monkutil.Bytes2Hex([]byte(key)), "\t:\t", monkutil.Bytes2Hex([]byte(val.Str())))
-        }) 
+// make and apply an administrative tx (simplified vm processing)
+// addr is typically gendoug
+func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt){
+    var tx *monkchain.Transaction
+    if codePath != ""{
+        tx = NewContract(codePath)        
+    } else{
+        tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
     }
-}
-/*
 
-// print all accounts and storage in a block
-func PrettyPrintBlockAccounts(block *monkchain.Block){
-    state := block.State()
-    it := state.Trie.NewIterator()   
-    it.Each(func(key string, value *monkutil.Value) {  
-        addr := monkutil.Address([]byte(key))
-//        obj := monkstate.NewStateObjectFromBytes(addr, value.Bytes())
-        obj := block.State().GetAccount(addr)
-        PrettyPrintAccount(obj)
+    tx.Sign(keys.PrivateKey)
+    //fmt.Println(tx.String())
+    receipt := SimpleTransitionState(addr, block, tx)
+    txs := append(block.Transactions(), tx)
+    receipts := append(block.Receipts(), receipt)
+    block.SetReceipts(receipts, txs)
+    
+    return tx, receipt
+}
+
+
+func String2Big(s string) *big.Int{
+    // right pad the string, convert to big num
+    return monkutil.BigD(monkutil.PackTxDataArgs(s))
+}
+
+// pretty print chain queries and storage
+func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject){
+    for k, v := range m{
+        if vv, ok := v.(*monkutil.Value); ok{
+            fmt.Println(k, monkutil.Bytes2Hex(vv.Bytes()))
+        } else if vv, ok := v.(*big.Int); ok{
+            fmt.Println(k, monkutil.Bytes2Hex(vv.Bytes()))
+        } else if vv, ok := v.([]byte); ok{
+            fmt.Println(k, monkutil.Bytes2Hex(vv))
+        }
+    }
+    obj.EachStorage(func(k string, v *monkutil.Value){
+        fmt.Println(monkutil.Bytes2Hex([]byte(k)), monkutil.Bytes2Hex(v.Bytes()))
     })
 }
 
-*/

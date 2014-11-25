@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"fmt"
 	"math/big"
-    "errors"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
@@ -53,7 +52,7 @@ type Environment interface {
 	Difficulty() *big.Int
 	Value() *big.Int
 	BlockHash() []byte
-    DougValidate(addr []byte, role string, state *monkstate.State) bool
+    DougValidate(addr []byte, role string, state *monkstate.State) error
 }
 
 type Object interface {
@@ -242,9 +241,8 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			origin := self.env.Origin()
             // TODO: maybe this should be safer 
             if self.env.BlockNumber().Cmp(big.NewInt(0)) > 0{
-                valid := self.env.DougValidate(origin, "create", self.env.State())
-                if !valid{
-                    return closure.Return(nil), errors.New(fmt.Sprintf("Invalid permissions err on role %s for address %s", "create", origin))
+                if err := self.env.DougValidate(origin, "create", self.env.State()); err != nil{
+                    return closure.Return(nil), err
                 }
             }
 			require(3)
