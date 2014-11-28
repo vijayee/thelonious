@@ -35,7 +35,7 @@ type Peer interface {
 	Caps() *monkutil.Value
 }
 
-type EthManager interface {
+type NodeManager interface {
 	BlockManager() *BlockManager
 	ChainManager() *ChainManager
 	TxPool() *TxPool
@@ -80,8 +80,8 @@ type BlockManager struct {
 	mem map[string]*big.Int
 	// Proof of work used for validating
 	Pow PoW
-	// The ethereum manager interface
-	eth EthManager
+	// The thelonious manager interface
+	th NodeManager
 	// The managed states
 	// Transiently state. The trans state isn't ever saved, validated and
 	// it could be used for setting account nonces without effecting
@@ -97,21 +97,21 @@ type BlockManager struct {
 	lastAttemptedBlock *Block
 }
 
-func NewBlockManager(ethereum EthManager) *BlockManager {
+func NewBlockManager(thelonious NodeManager) *BlockManager {
 	sm := &BlockManager{
 		mem:      make(map[string]*big.Int),
 		Pow:      &EasyPow{},
-		eth: ethereum,
-		bc:       ethereum.ChainManager(),
+		th:       thelonious,
+		bc:       thelonious.ChainManager(),
 	}
-	sm.transState = ethereum.ChainManager().CurrentBlock.State().Copy()
-	sm.miningState = ethereum.ChainManager().CurrentBlock.State().Copy()
+	sm.transState = thelonious.ChainManager().CurrentBlock.State().Copy()
+	sm.miningState = thelonious.ChainManager().CurrentBlock.State().Copy()
 
 	return sm
 }
 
 func (sm *BlockManager) CurrentState() *monkstate.State {
-	return sm.eth.ChainManager().CurrentBlock.State()
+	return sm.th.ChainManager().CurrentBlock.State()
 }
 
 func (sm *BlockManager) TransState() *monkstate.State {
@@ -123,7 +123,7 @@ func (sm *BlockManager) MiningState() *monkstate.State {
 }
 
 func (sm *BlockManager) NewMiningState() *monkstate.State {
-	sm.miningState = sm.eth.ChainManager().CurrentBlock.State().Copy()
+	sm.miningState = sm.th.ChainManager().CurrentBlock.State().Copy()
 
 	return sm.miningState
 }
@@ -152,17 +152,17 @@ done:
 			statelogger.Infoln(err)
 			switch {
 			case IsNonceErr(err):
-                self.eth.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
+                self.th.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 				err = nil // ignore error
 				continue
             case IsGasLimitTxErr(err):
-                self.eth.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
+                self.th.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 				err = nil // ignore error
 				continue
 			case IsGasLimitErr(err):
 				unhandled = txs[i:]
                 for _, t := range unhandled{
-                    self.eth.Reactor().Post("newTx:post:fail", &TxFail{t, err})
+                    self.th.Reactor().Post("newTx:post:fail", &TxFail{t, err})
                 }
 				break done
 			default:
@@ -176,11 +176,11 @@ done:
         if st.msg != nil{
             // if msg is nil, an error should have triggered above
             // publish return value
-            self.eth.Reactor().Post("tx:"+string(tx.Hash())+":return", st.msg.Output)
+            self.th.Reactor().Post("tx:"+string(tx.Hash())+":return", st.msg.Output)
         }
 
 		// Notify all subscribers
-		self.eth.Reactor().Post("newTx:post", tx)
+		self.th.Reactor().Post("newTx:post", tx)
 
 		// Update the state with pending changes
 		state.Update()
@@ -287,7 +287,7 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 		// sm.bc.Add(block)
         
 		//if dontReact == false {
-			sm.eth.Reactor().Post("newBlock", block)
+			sm.th.Reactor().Post("newBlock", block)
 			state.Manifest().Reset()
 		//}
 
@@ -299,10 +299,10 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 		filter := sm.createBloomFilter(state)
 		// Persist the data
 		fk := append([]byte("bloom"), block.Hash()...)
-		sm.Ethereum.Db().Put(fk, filter.Bin())
+		sm.Thelonious.Db().Put(fk, filter.Bin())
         */
-		//sm.Ethereum.TxPool().RemoveInvalid(state)
-		sm.eth.TxPool().RemoveSet(block.Transactions())
+		//sm.Thelonious.TxPool().RemoveInvalid(state)
+		sm.th.TxPool().RemoveSet(block.Transactions())
         return td, nil
 	} else {
         // TODO: error here?
@@ -389,7 +389,7 @@ func (sm *BlockManager) AccumelateRewards(state *monkstate.State, block, parent 
 
 	// Get the account associated with the coinbase
 	account := state.GetAccount(block.Coinbase)
-	// Reward amount of ether to the coinbase address
+	// Reward amount of junk to the coinbase address
 	account.AddAmount(reward)
 
 	return nil
@@ -408,7 +408,7 @@ func (sm *BlockManager) createBloomFilter(state *monkstate.State) *BloomFilter {
 		bloomf.Set(msg.From)
 	}
 
-	sm.eth.Reactor().Post("messages", state.Manifest().Messages)
+	sm.th.Reactor().Post("messages", state.Manifest().Messages)
 
 	return bloomf
 }

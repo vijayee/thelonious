@@ -1,4 +1,4 @@
-package eth
+package thelonious
 
 import (
 	"container/list"
@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	seedTextFileUri string = "http://www.ethereum.org/servers.poc3.txt"
+	seedTextFileUri string = "http://www.thelonious.org/servers.poc3.txt"
 	//seedNodeAddress        = "162.218.65.211:30303"
 	//seedNodeAddress        = "92.243.15.73:30303"
 	seedNodeAddress = "localhost:30303"
@@ -48,8 +48,8 @@ const (
 	processReapingTimeout = 60 // TODO increase
 )
 
-type Ethereum struct {
-	// Channel for shutting down the ethereum
+type Thelonious struct {
+	// Channel for shutting down the thelonious
 	shutdownChan chan bool
 	quit         chan bool
 	peerQuit     chan bool // shut down the peerHandler
@@ -102,7 +102,7 @@ type Ethereum struct {
 	genModel monkchain.GenDougModel
 }
 
-func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Ethereum, error) {
+func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Thelonious, error) {
 	var err error
 	var nat NAT
 
@@ -118,7 +118,7 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 	monkutil.Config.Db = db
 
 	nonce, _ := monkutil.RandomUint64()
-	ethereum := &Ethereum{
+	th := &Thelonious{
 		shutdownChan:   make(chan bool),
 		quit:           make(chan bool),
 		peerQuit:       make(chan bool, 1),
@@ -133,90 +133,91 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-	genModel := ethereum.setGenesis(genConfig)
+    genModel := th.setGenesis(genConfig)
 
-	ethereum.reactor = monkreact.New()
+	th.reactor = monkreact.New()
 
-	ethereum.blockPool = NewBlockPool(ethereum)
-	ethereum.txPool = monkchain.NewTxPool(ethereum)
-	ethereum.blockChain = monkchain.NewChainManager(genModel)
-	ethereum.blockManager = monkchain.NewBlockManager(ethereum)
-	ethereum.blockChain.SetProcessor(ethereum.blockManager)
+	th.blockPool = NewBlockPool(th)
+	th.txPool = monkchain.NewTxPool(th)
+	th.blockChain = monkchain.NewChainManager(genModel)
+	th.blockManager = monkchain.NewBlockManager(th)
+	th.blockChain.SetProcessor(th.blockManager)
 
 	// Start the tx pool
-	ethereum.txPool.Start()
+	th.txPool.Start()
 
-	return ethereum, nil
+	return th, nil
 }
 
 // Deploy the genesis block from a preconfigured GenesisJSON object
 // if genConfig is nil, this function has no effect, and the genesis block is empty
-func (s *Ethereum) GenesisPointer(block *monkchain.Block) {
-	if s.genConfig != nil {
-		s.genConfig.Deploy(block)
-	} else {
-		fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
-	}
+func (s *Thelonious) GenesisPointer(block *monkchain.Block){
+    if s.genConfig != nil{
+        s.genConfig.Deploy(block)
+    } else{
+        fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
+    }
 }
 
-func (s *Ethereum) GenesisModel() monkchain.GenDougModel {
-	return s.genModel
+func (s *Thelonious) GenesisModel() monkchain.GenDougModel{
+   return s.genModel 
 }
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel {
-	if s.genConfig != nil {
-		fmt.Println("GenesisConfig already set")
-		return nil
-	}
-	s.genConfig = genConfig
-	s.genModel = genConfig.Model()
-	return s.genModel
+func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel{
+    if s.genConfig != nil{
+        fmt.Println("GenesisConfig already set")    
+        return nil
+    }
+    s.genConfig = genConfig
+    s.genModel = genConfig.Model()
+    return s.genModel
 }
 
-func (s *Ethereum) Reactor() *monkreact.ReactorEngine {
+func (s *Thelonious) Reactor() *monkreact.ReactorEngine {
 	return s.reactor
 }
 
-func (s *Ethereum) KeyManager() *monkcrypto.KeyManager {
+func (s *Thelonious) KeyManager() *monkcrypto.KeyManager {
 	return s.keyManager
 }
 
-func (s *Ethereum) ClientIdentity() monkwire.ClientIdentity {
+func (s *Thelonious) ClientIdentity() monkwire.ClientIdentity {
 	return s.clientIdentity
 }
 
-func (s *Ethereum) ChainManager() *monkchain.ChainManager {
+func (s *Thelonious) ChainManager() *monkchain.ChainManager {
 	return s.blockChain
 }
 
-func (s *Ethereum) BlockManager() *monkchain.BlockManager {
+func (s *Thelonious) BlockManager() *monkchain.BlockManager {
 	return s.blockManager
 }
 
-func (s *Ethereum) TxPool() *monkchain.TxPool {
+func (s *Thelonious) TxPool() *monkchain.TxPool {
 	return s.txPool
 }
-func (s *Ethereum) BlockPool() *BlockPool {
+func (s *Thelonious) BlockPool() *BlockPool {
 	return s.blockPool
 }
-func (self *Ethereum) Db() monkutil.Database {
+func (self *Thelonious) Db() monkutil.Database {
 	return self.db
 }
 
-func (s *Ethereum) ServerCaps() Caps {
+func (s *Thelonious) ServerCaps() Caps {
 	return s.serverCaps
 }
-func (s *Ethereum) IsMining() bool {
+func (s *Thelonious) IsMining() bool {
 	return s.Mining
 }
-func (s *Ethereum) PeerCount() int {
+
+func (s *Thelonious) PeerCount() int {
 	s.peerMut.Lock()
 	defer s.peerMut.Unlock()
 	return s.peers.Len()
 }
-func (s *Ethereum) IsUpToDate() bool {
+func (s *Thelonious) IsUpToDate() bool {
 	upToDate := true
 	s.peerMut.Lock()
 	defer s.peerMut.Unlock()
@@ -229,16 +230,17 @@ func (s *Ethereum) IsUpToDate() bool {
 	})
 	return upToDate
 }
-func (s *Ethereum) PushPeer(peer *Peer) {
+
+func (s *Thelonious) PushPeer(peer *Peer) {
 	s.peerMut.Lock()
 	defer s.peerMut.Unlock()
 	s.peers.PushBack(peer)
 }
-func (s *Ethereum) IsListening() bool {
+func (s *Thelonious) IsListening() bool {
 	return s.listening
 }
 
-func (s *Ethereum) HighestTDPeer() (td *big.Int) {
+func (s *Thelonious) HighestTDPeer() (td *big.Int) {
 	td = big.NewInt(0)
 
 	eachPeer(s.peers, func(p *Peer, v *list.Element) {
@@ -250,7 +252,7 @@ func (s *Ethereum) HighestTDPeer() (td *big.Int) {
 	return
 }
 
-func (s *Ethereum) AddPeer(conn net.Conn) {
+func (s *Thelonious) AddPeer(conn net.Conn) {
 	peer := NewPeer(conn, s, true)
 
 	if peer != nil {
@@ -262,14 +264,14 @@ func (s *Ethereum) AddPeer(conn net.Conn) {
 	}
 }
 
-func (s *Ethereum) ProcessPeerList(addrs []string) {
+func (s *Thelonious) ProcessPeerList(addrs []string) {
 	for _, addr := range addrs {
 		// TODO Probably requires some sanity checks
 		s.ConnectToPeer(addr)
 	}
 }
 
-func (s *Ethereum) ConnectToPeer(addr string) error {
+func (s *Thelonious) ConnectToPeer(addr string) error {
 	if s.peers.Len() < s.MaxPeers {
 		var alreadyConnected bool
 
@@ -332,7 +334,7 @@ func (s *Ethereum) ConnectToPeer(addr string) error {
 	return nil
 }
 
-func (s *Ethereum) OutboundPeers() []*Peer {
+func (s *Thelonious) OutboundPeers() []*Peer {
 	// Create a new peer slice with at least the length of the total peers
 	outboundPeers := make([]*Peer, s.peers.Len())
 	length := 0
@@ -346,7 +348,7 @@ func (s *Ethereum) OutboundPeers() []*Peer {
 	return outboundPeers[:length]
 }
 
-func (s *Ethereum) InboundPeers() []*Peer {
+func (s *Thelonious) InboundPeers() []*Peer {
 	// Create a new peer slice with at least the length of the total peers
 	inboundPeers := make([]*Peer, s.peers.Len())
 	length := 0
@@ -360,7 +362,7 @@ func (s *Ethereum) InboundPeers() []*Peer {
 	return inboundPeers[:length]
 }
 
-func (s *Ethereum) InOutPeers() []*Peer {
+func (s *Thelonious) InOutPeers() []*Peer {
 	// Reap the dead peers first
 	s.reapPeers()
 
@@ -378,22 +380,22 @@ func (s *Ethereum) InOutPeers() []*Peer {
 	return inboundPeers[:length]
 }
 
-func (s *Ethereum) Broadcast(msgType monkwire.MsgType, data []interface{}) {
+func (s *Thelonious) Broadcast(msgType monkwire.MsgType, data []interface{}) {
 	msg := monkwire.NewMessage(msgType, data)
 	s.BroadcastMsg(msg)
 }
 
-func (s *Ethereum) BroadcastMsg(msg *monkwire.Msg) {
+func (s *Thelonious) BroadcastMsg(msg *monkwire.Msg) {
 	eachPeer(s.peers, func(p *Peer, e *list.Element) {
 		p.QueueMessage(msg)
 	})
 }
 
-func (s *Ethereum) Peers() *list.List {
+func (s *Thelonious) Peers() *list.List {
 	return s.peers
 }
 
-func (s *Ethereum) reapPeers() {
+func (s *Thelonious) reapPeers() {
 	s.peerMut.Lock()
 	defer s.peerMut.Unlock()
 	eachPeer(s.peers, func(p *Peer, e *list.Element) {
@@ -403,17 +405,18 @@ func (s *Ethereum) reapPeers() {
 	})
 }
 
-func (s *Ethereum) removePeerElement(e *list.Element) {
-	// put lock on eachPeer and always call this from eachPeer
+func (s *Thelonious) removePeerElement(e *list.Element) {
+	s.peerMut.Lock()
+	defer s.peerMut.Unlock()
+
 	s.peers.Remove(e)
 
 	s.reactor.Post("peerList", s.peers)
 }
 
-func (s *Ethereum) RemovePeer(p *Peer) {
+func (s *Thelonious) RemovePeer(p *Peer) {
 	s.peerMut.Lock()
 	defer s.peerMut.Unlock()
-
 	eachPeer(s.peers, func(peer *Peer, e *list.Element) {
 		if peer == p {
 			s.removePeerElement(e)
@@ -421,7 +424,7 @@ func (s *Ethereum) RemovePeer(p *Peer) {
 	})
 }
 
-func (s *Ethereum) ReapDeadPeerHandler() {
+func (s *Thelonious) ReapDeadPeerHandler() {
 	reapTimer := time.NewTicker(processReapingTimeout * time.Second)
 
 	for {
@@ -432,8 +435,8 @@ func (s *Ethereum) ReapDeadPeerHandler() {
 	}
 }
 
-// Start the ethereum
-func (s *Ethereum) Start(seed bool) {
+// Start thelonious
+func (s *Thelonious) Start(seed bool) {
 	s.reactor.Start()
 	s.blockPool.Start()
 	s.StartListening()
@@ -453,7 +456,7 @@ func (s *Ethereum) Start(seed bool) {
 	monklogger.Infoln("Server started")
 }
 
-func (s *Ethereum) Seed() {
+func (s *Thelonious) Seed() {
 	ips := PastPeers()
 	if len(ips) > 0 {
 		for _, ip := range ips {
@@ -507,15 +510,15 @@ func (s *Ethereum) Seed() {
 	}*/
 }
 
-func (s *Ethereum) StartListening() {
-	ln, err := net.Listen("tcp", ":"+s.Port)
+func (s *Thelonious) StartListening(){
+    ln, err := net.Listen("tcp", ":"+s.Port)
 	if err != nil {
 		monklogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
 		s.listening = false
 	} else {
 		s.listening = true
-		// add listener to ethereum so we can close it later
-		s.listener = ln
+        // add listener to thelonious so we can close it later
+        s.listener = ln
 		// Starting accepting connections
 		monklogger.Infoln("Ready and accepting connections")
 		// Start the peer handler
@@ -524,16 +527,16 @@ func (s *Ethereum) StartListening() {
 }
 
 // use to toggle listening
-func (s *Ethereum) StopListening() {
-	if s.listening {
-		s.peerQuit <- true
-		// does not kill already established peer go routines (just stops listening)
-		s.listener.Close()
-		s.listening = false
-	}
+func (s *Thelonious) StopListening(){
+    if s.listening{
+        s.peerQuit <- true
+        // does not kill already established peer go routines (just stops listening)
+        s.listener.Close()
+        s.listening = false
+    }
 }
 
-func (s *Ethereum) peerHandler(listener net.Listener) {
+func (s *Thelonious) peerHandler(listener net.Listener) {
 out:
 	for {
 		select {
@@ -554,7 +557,7 @@ out:
 	//listener.Close()
 }
 
-func (s *Ethereum) Stop() {
+func (s *Thelonious) Stop() {
 	// Close the database
 	defer s.db.Close()
 
@@ -593,11 +596,11 @@ func (s *Ethereum) Stop() {
 }
 
 // This function will wait for a shutdown and resumes main thread execution
-func (s *Ethereum) WaitForShutdown() {
+func (s *Thelonious) WaitForShutdown() {
 	<-s.shutdownChan
 }
 
-func (s *Ethereum) upnpUpdateThread() {
+func (s *Thelonious) upnpUpdateThread() {
 	// Go off immediately to prevent code duplication, thereafter we renew
 	// lease every 15 minutes.
 	timer := time.NewTimer(5 * time.Minute)
@@ -636,7 +639,7 @@ out:
 	}
 }
 
-func (self *Ethereum) update() {
+func (self *Thelonious) update() {
 	upToDateTimer := time.NewTicker(1 * time.Second)
 
 out:
@@ -658,7 +661,7 @@ out:
 
 var filterId = 0
 
-func (self *Ethereum) InstallFilter(object map[string]interface{}) (*monkchain.Filter, int) {
+func (self *Thelonious) InstallFilter(object map[string]interface{}) (*monkchain.Filter, int) {
 	defer func() { filterId++ }()
 
 	filter := monkchain.NewFilterFromMap(object, self)
@@ -667,15 +670,15 @@ func (self *Ethereum) InstallFilter(object map[string]interface{}) (*monkchain.F
 	return filter, filterId
 }
 
-func (self *Ethereum) UninstallFilter(id int) {
+func (self *Thelonious) UninstallFilter(id int) {
 	delete(self.filters, id)
 }
 
-func (self *Ethereum) GetFilter(id int) *monkchain.Filter {
+func (self *Thelonious) GetFilter(id int) *monkchain.Filter {
 	return self.filters[id]
 }
 
-func (self *Ethereum) filterLoop() {
+func (self *Thelonious) filterLoop() {
 	blockChan := make(chan monkreact.Event, 5)
 	messageChan := make(chan monkreact.Event, 5)
 	// Subscribe to events

@@ -21,7 +21,7 @@ var (
 
 /*
 // this is for running a pure eth-go node
-func NewEthereum() *eth.Ethereum{
+func NewThelonious() *eth.Thelonious{
     db := utils.NewDatabase()
 
     keyManager := utils.NewKeyManager("db", "./datadir", db)
@@ -46,7 +46,7 @@ func Run(){
     monkutil.ReadConfig(path.Join("./datadir", "config"), "./datadir", "monkchain")
     // data dir, logfile, log level, debug file
     utils.InitLogging("./datadir", "", 5, "")
-    e := NewEthereum()
+    e := NewThelonious()
     e.Start(false)
     utils.StartMining(e)
     e.WaitForShutdown()

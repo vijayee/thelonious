@@ -19,7 +19,7 @@ type VmVars struct {
 }
 
 type Pipe struct {
-	obj          monkchain.EthManager
+	obj          monkchain.NodeManager
 	stateManager *monkchain.BlockManager
 	blockChain   *monkchain.ChainManager
 	world        *World
@@ -27,7 +27,7 @@ type Pipe struct {
 	Vm VmVars
 }
 
-func New(obj monkchain.EthManager) *Pipe {
+func New(obj monkchain.NodeManager) *Pipe {
 	pipe := &Pipe{
 		obj:          obj,
 		stateManager: obj.BlockManager(),

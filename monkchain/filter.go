@@ -16,7 +16,7 @@ type data struct {
 
 // Filtering interface
 type Filter struct {
-	eth      EthManager
+	eth      NodeManager
 	earliest int64
 	latest   int64
 	skip     int
@@ -31,11 +31,11 @@ type Filter struct {
 
 // Create a new filter which uses a bloom filter on blocks to figure out whether a particular block
 // is interesting or not.
-func NewFilter(eth EthManager) *Filter {
+func NewFilter(eth NodeManager) *Filter {
 	return &Filter{eth: eth}
 }
 
-func NewFilterFromMap(object map[string]interface{}, eth EthManager) *Filter {
+func NewFilterFromMap(object map[string]interface{}, eth NodeManager) *Filter {
 	filter := NewFilter(eth)
 
 	if object["earliest"] != nil {

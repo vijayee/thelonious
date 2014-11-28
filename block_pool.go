@@ -1,4 +1,4 @@
-package eth
+package thelonious
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ type block struct {
 type BlockPool struct {
 	mut sync.Mutex
 
-	eth *Ethereum
+	eth *Thelonious
 
 	hashPool [][]byte
 	pool     map[string]*block
@@ -44,7 +44,7 @@ type BlockPool struct {
 	peer *Peer
 }
 
-func NewBlockPool(eth *Ethereum) *BlockPool {
+func NewBlockPool(eth *Thelonious) *BlockPool {
 	return &BlockPool{
 		eth:  eth,
 		pool: make(map[string]*block),

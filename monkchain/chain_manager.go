@@ -42,9 +42,9 @@ func CalcDifficulty(block, parent *Block) *big.Int {
 }
 
 type ChainManager struct {
-	//Ethereum EthManager
-	processor BlockProcessor
-	protocol  GenDougModel
+	//Thelonious NodeManager
+    processor BlockProcessor
+    protocol  GenDougModel
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
 	genesisBlock *Block
 	// Last known total difficulty
@@ -64,11 +64,10 @@ type ChainManager struct {
 func NewChainManager(protocol GenDougModel) *ChainManager {
 	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
-	//bc.Ethereum = ethereum
-	bc.workingTree = make(map[string]*link)
-	// Prepare the genesis block!
-	//bc.Ethereum.GenesisPointer(bc.genesisBlock)
-	bc.protocol = protocol
+    bc.workingTree = make(map[string]*link)
+    // Prepare the genesis block!
+    //bc.Thelonious.GenesisPointer(bc.genesisBlock)
+    bc.protocol = protocol
 
 	bc.setLastBlock()
 
@@ -202,10 +201,10 @@ func (bc *ChainManager) setLastBlock() {
 	} else {
 		bc.Reset()
 	}
-	// set the genDoug model (global var) for determining chain permissions
-	genDoug = bc.protocol //Ethereum.GenesisModel()
+    // set the genDoug model (global var) for determining chain permissions
+    genDoug = bc.protocol //Thelonious.GenesisModel()
 
-	//bc.SetTotalDifficulty(ethutil.Big("0"))
+	//bc.SetTotalDifficulty(monkutil.Big("0"))
 
 	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
@@ -491,10 +490,10 @@ func (self *ChainManager) insertChain(chain *BlockChain) {
 		self.SetTotalDifficulty(link.td)
 		self.add(link.block)
 
-		// XXX: Post. Do we do this here? Prob better for caller ...
-		//self.Ethereum.Reactor().Post(NewBlockEvent{link.block})
-		//self.Ethereum.Reactor().Post(link.messages)
-	}
+        // XXX: Post. Do we do this here? Prob better for caller ...
+        //self.Thelonious.Reactor().Post(NewBlockEvent{link.block})
+        //self.Thelonious.Reactor().Post(link.messages)
+    }
 
 	// summarize
 	b, e := chain.Front(), chain.Back()

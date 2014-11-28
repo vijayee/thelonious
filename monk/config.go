@@ -49,7 +49,7 @@ var DefaultConfig = &ChainConfig{
         //LLLPath: path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
         LLLPath: "NETCALL",
         ContractPath: path.Join(ErisLtd, "eris-std-lib"),
-        ClientIdentifier: "Ethereum(decerver)",
+        ClientIdentifier: "Thelonious(decerver)",
         Version: "0.5.17",
         Identifier: "chainId",
         KeyStore: "file",
@@ -123,7 +123,7 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error{
 
 // Set the package global variables, create the root data dir,
 //  copy keys if they are available, and setup logging
-func (monk *Monk) ethConfig() {
+func (monk *Monk) thConfig() {
     cfg := monk.config
     // set lll path
     if cfg.LLLPath != ""{

@@ -14,7 +14,7 @@ var logger = monklog.NewLogger("MINER")
 
 type Miner struct {
 	pow         monkchain.PoW
-	ethereum    monkchain.EthManager
+	thelonious monkchain.NodeManager
 	coinbase    []byte
 	reactChan   chan monkreact.Event
 	txs         monkchain.Transactions // is []*monkchain.Transaction
@@ -31,10 +31,10 @@ func (self *Miner) GetPow() monkchain.PoW {
 	return self.pow
 }
 
-func NewDefaultMiner(coinbase []byte, ethereum monkchain.EthManager) *Miner {
+func NewDefaultMiner(coinbase []byte, thelonious monkchain.NodeManager) *Miner {
 	miner := Miner{
 		pow:      &monkchain.EasyPow{},
-		ethereum: ethereum,
+		thelonious: thelonious,
 		coinbase: coinbase,
 	}
 
@@ -54,14 +54,14 @@ func (miner *Miner) Start() {
 	miner.quitChan = make(chan chan error, 1)
 
 	// Insert initial TXs in our little miner 'pool'
-	miner.txs = miner.ethereum.TxPool().Flush()
-	miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase)
+	miner.txs = miner.thelonious.TxPool().Flush()
+	miner.block = miner.thelonious.ChainManager().NewBlock(miner.coinbase)
 
 	// Prepare inital block
-	//miner.ethereum.BlockManager().Prepare(miner.block.State(), miner.block.State())
+	//miner.thelonious.BlockManager().Prepare(miner.block.State(), miner.block.State())
 	go miner.listener()
 
-	reactor := miner.ethereum.Reactor()
+	reactor := miner.thelonious.Reactor()
 	reactor.Subscribe("newBlock", miner.reactChan)
 	reactor.Subscribe("newTx:pre", miner.reactChan)
 
@@ -135,7 +135,7 @@ func (miner *Miner) receiveBlock(block *monkchain.Block){
         miner.txs = newtxs
 
         // Setup a fresh state to mine on
-        //miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase, miner.txs)
+        //miner.block = miner.thelonious.ChainManager().NewBlock(miner.coinbase, miner.txs)
 
     } else {
         if bytes.Compare(block.PrevHash, miner.ethereum.ChainManager().CurrentBlockPrevHash()) == 0 {
@@ -154,7 +154,7 @@ func (miner *Miner) Stop() {
 	miner.quitChan <- status
 	<-status
 
-	reactor := miner.ethereum.Reactor()
+	reactor := miner.thelonious.Reactor()
 	reactor.Unsubscribe("newBlock", miner.powQuitChan)
 	reactor.Unsubscribe("newTx:pre", miner.powQuitChan)
 	reactor.Unsubscribe("newBlock", miner.reactChan)
@@ -164,12 +164,12 @@ func (miner *Miner) Stop() {
 }
 
 func (self *Miner) mineNewBlock() {
-	stateManager := self.ethereum.BlockManager()
-    chainMan := self.ethereum.ChainManager()
+	stateManager := self.thelonious.BlockManager()
+    chainMan := self.thelonious.ChainManager()
     self.block = chainMan.NewBlock(self.coinbase)
 
 
-	parent := self.ethereum.ChainManager().GetBlock(self.block.PrevHash)
+	parent := self.thelonious.ChainManager().GetBlock(self.block.PrevHash)
 
     // if parent is not built yet, return
     if parent == nil{
@@ -177,7 +177,7 @@ func (self *Miner) mineNewBlock() {
     }
 
     // check if we should even bother mining (potential energy savings)
-    if !self.ethereum.GenesisModel().StartMining(self.coinbase, parent){
+    if !self.thelonious.GenesisModel().StartMining(self.coinbase, parent){
         return
     }
 
@@ -214,7 +214,7 @@ func (self *Miner) mineNewBlock() {
 	self.block.Nonce = self.pow.Search(self.block, self.powQuitChan)
 	if self.block.Nonce != nil {
         // sign the block
-        keypair := self.ethereum.KeyManager().KeyPair()
+        keypair := self.thelonious.KeyManager().KeyPair()
         self.block.Sign(keypair.PrivateKey)
         // process the completed block
 		lchain := monkchain.NewChain(monkchain.Blocks{self.block})
@@ -223,25 +223,25 @@ func (self *Miner) mineNewBlock() {
 			logger.Infoln(err)
 		} else {
 			chainMan.InsertChain(lchain)
-			//self.eth.EventMux().Post(chain.NewBlockEvent{block})
-			self.ethereum.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
+			//self.thelonious.EventMux().Post(chain.NewBlockEvent{block})
+			self.thelonious.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
 
 			logger.Infof("🔨  Mined block %x\n", self.block.Hash())
 			logger.Infoln(self.block)
-            self.txs = self.ethereum.TxPool().CurrentTransactions()
+            self.txs = self.thelonious.TxPool().CurrentTransactions()
 		}
 
 		// go self.mineNewBlock()
         /*
-		err := self.ethereum.BlockManager().Process(self.block, false)
+		err := self.thelonious.BlockManager().Process(self.block, false)
 		if err != nil {
 			logger.Infoln(err)
 		} else {
-			self.ethereum.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
+			self.thelonious.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
 			logger.Infof("🔨  Mined block %x\n", self.block.Hash())
 			logger.Infoln(self.block)
 			// Gather the new batch of transactions currently in the tx pool
-			self.txs = self.ethereum.TxPool().CurrentTransactions()
+			self.txs = self.thelonious.TxPool().CurrentTransactions()
 		}*/
 	}
 }

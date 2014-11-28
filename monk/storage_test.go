@@ -116,7 +116,7 @@ func TestTx(t *testing.T){
                 t.Error("got:", newb.String(), "expected:", n.String())
             }
         })
-        //mod.Ethereum.WaitForShutdown()
+        //mod.Thelonious.WaitForShutdown()
     }, 0)
 }
 
@@ -149,7 +149,7 @@ func TestManyTx(t *testing.T){
                 t.Error("got:", newb.String(), "expected:", n.String())
             }
         })
-        //mod.Ethereum.WaitForShutdown()
+        //mod.Thelonious.WaitForShutdown()
     }, 0)
 }
 

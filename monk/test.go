@@ -63,15 +63,15 @@ func (t *Test) Run(){
     fmt.Println(t.success)
 }
 
-// general tester function on an eth node
-// note, you ought to call eth.Start() somewhere in testing()!
+// general tester function on a thelonious node
+// note, you ought to call th.Start() somewhere in testing()!
 func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
     mod := t.mod
     if mod == nil{
         mod = NewMonk(nil) 
         t.mod = mod
     } 
-    mod.ReadConfig("eth-config.json")
+    mod.ReadConfig("monk-config.json")
     fmt.Println("log:", mod.Config.LogLevel)
     mod.Config.Mining = true
     mod.Config.DbName = "tests/"+name
@@ -85,7 +85,7 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
     */
     mod.Init()
 
-    t.reactor = mod.monk.ethereum.Reactor()
+    t.reactor = mod.monk.thelonious.Reactor()
     testing(mod)
     
     if end > 0{
@@ -99,7 +99,7 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
 // called by `go test` functions
 func tester(name string, testing func(mod *MonkModule), end int){
     mod := NewMonk(nil) 
-    mod.ReadConfig("eth-config.json")
+    mod.ReadConfig("monk-config.json")
     mod.monk.config.Mining = false
     mod.monk.config.DbName = "tests/"+name
     g := mod.LoadGenesis(mod.Config.GenesisConfig)
@@ -157,7 +157,7 @@ func PrettyPrintBlockAccounts(block *monkchain.Block){
 
 // print all accounts and storage in the latest block
 func PrettyPrintChainAccounts(mod *MonkModule){
-    curchain := mod.monk.ethereum.ChainManager()
+    curchain := mod.monk.thelonious.ChainManager()
     block := curchain.CurrentBlock
     PrettyPrintBlockAccounts(block)
 }

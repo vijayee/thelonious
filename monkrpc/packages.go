@@ -10,7 +10,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkutil"
 )
 
-type EthereumApi struct {
+type TheloniousApi struct {
 	pipe *monkpipe.JSPipe
 }
 
@@ -68,7 +68,7 @@ func (b *GetBlockArgs) requirements() error {
 	return nil
 }
 
-func (p *EthereumApi) GetBlock(args *GetBlockArgs, reply *string) error {
+func (p *TheloniousApi) GetBlock(args *GetBlockArgs, reply *string) error {
 	err := args.requirements()
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func (a *NewTxArgs) requirementsContract() error {
 	return nil
 }
 
-func (p *EthereumApi) Transact(args *NewTxArgs, reply *string) error {
+func (p *TheloniousApi) Transact(args *NewTxArgs, reply *string) error {
 	err := args.requirements()
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (p *EthereumApi) Transact(args *NewTxArgs, reply *string) error {
 	return nil
 }
 
-func (p *EthereumApi) Create(args *NewTxArgs, reply *string) error {
+func (p *TheloniousApi) Create(args *NewTxArgs, reply *string) error {
 	err := args.requirementsContract()
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (a *PushTxArgs) requirementsPushTx() error {
     return nil
 }
 
-func (p *EthereumApi) PushTx(args *PushTxArgs, reply *string) error {
+func (p *TheloniousApi) PushTx(args *PushTxArgs, reply *string) error {
     err := args.requirementsPushTx()
     if err != nil {
         return err
@@ -166,7 +166,7 @@ func (p *EthereumApi) PushTx(args *PushTxArgs, reply *string) error {
     return nil
 }
 
-func (p *EthereumApi) GetKey(args interface{}, reply *string) error {
+func (p *TheloniousApi) GetKey(args interface{}, reply *string) error {
 	*reply = NewSuccessRes(p.pipe.Key())
 	return nil
 }
@@ -192,7 +192,7 @@ type GetStorageAtRes struct {
 	Address string `json:"address"`
 }
 
-func (p *EthereumApi) GetStorageAt(args *GetStorageArgs, reply *string) error {
+func (p *TheloniousApi) GetStorageAt(args *GetStorageArgs, reply *string) error {
 	err := args.requirements()
 	if err != nil {
 		return err
@@ -232,7 +232,7 @@ type GetPeerCountRes struct {
 	PeerCount int `json:"peerCount"`
 }
 
-func (p *EthereumApi) GetPeerCount(args *interface{}, reply *string) error {
+func (p *TheloniousApi) GetPeerCount(args *interface{}, reply *string) error {
 	*reply = NewSuccessRes(GetPeerCountRes{PeerCount: p.pipe.PeerCount()})
 	return nil
 }
@@ -241,7 +241,7 @@ type GetListeningRes struct {
 	IsListening bool `json:"isListening"`
 }
 
-func (p *EthereumApi) GetIsListening(args *interface{}, reply *string) error {
+func (p *TheloniousApi) GetIsListening(args *interface{}, reply *string) error {
 	*reply = NewSuccessRes(GetListeningRes{IsListening: p.pipe.IsListening()})
 	return nil
 }
@@ -250,7 +250,7 @@ type GetCoinbaseRes struct {
 	Coinbase string `json:"coinbase"`
 }
 
-func (p *EthereumApi) GetCoinbase(args *interface{}, reply *string) error {
+func (p *TheloniousApi) GetCoinbase(args *interface{}, reply *string) error {
 	*reply = NewSuccessRes(GetCoinbaseRes{Coinbase: p.pipe.CoinBase()})
 	return nil
 }
@@ -259,12 +259,12 @@ type GetMiningRes struct {
 	IsMining bool `json:"isMining"`
 }
 
-func (p *EthereumApi) GetIsMining(args *interface{}, reply *string) error {
+func (p *TheloniousApi) GetIsMining(args *interface{}, reply *string) error {
 	*reply = NewSuccessRes(GetMiningRes{IsMining: p.pipe.IsMining()})
 	return nil
 }
 
-func (p *EthereumApi) GetTxCountAt(args *GetTxCountArgs, reply *string) error {
+func (p *TheloniousApi) GetTxCountAt(args *GetTxCountArgs, reply *string) error {
 	err := args.requirements()
 	if err != nil {
 		return err
@@ -290,7 +290,7 @@ type BalanceRes struct {
 	Address string `json:"address"`
 }
 
-func (p *EthereumApi) GetBalanceAt(args *GetBalanceArgs, reply *string) error {
+func (p *TheloniousApi) GetBalanceAt(args *GetBalanceArgs, reply *string) error {
 	err := args.requirements()
 	if err != nil {
 		return err
@@ -305,7 +305,7 @@ type TestRes struct {
 	Answer       int `json:"answer"`
 }
 
-func (p *EthereumApi) Test(args *GetBlockArgs, reply *string) error {
+func (p *TheloniousApi) Test(args *GetBlockArgs, reply *string) error {
 	*reply = NewSuccessRes(TestRes{Answer: 15})
 	return nil
 }
