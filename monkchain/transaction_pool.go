@@ -74,10 +74,10 @@ type TxPool struct {
 
 func NewTxPool(thelonious NodeManager) *TxPool {
 	return &TxPool{
-		pool:      list.New(),
-		queueChan: make(chan *Transaction, txPoolQueueSize),
-		quit:      make(chan bool),
-		Thelonious:  thelonious,
+		pool:       list.New(),
+		queueChan:  make(chan *Transaction, txPoolQueueSize),
+		quit:       make(chan bool),
+		Thelonious: thelonious,
 	}
 }
 
@@ -150,7 +150,7 @@ out:
 			err := pool.ValidateTransaction(tx)
 			if err != nil {
 				txplogger.Debugln("Validating Tx failed", err)
-                pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
+				pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
 			} else {
 				// Call blocking version.
 				pool.addTransaction(tx)
@@ -215,7 +215,6 @@ func (self *TxPool) RemoveSet(txs Transactions) {
 		})
 	}
 }
-
 
 func (pool *TxPool) Flush() []*Transaction {
 	txList := pool.CurrentTransactions()

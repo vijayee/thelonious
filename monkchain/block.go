@@ -100,10 +100,10 @@ type Block struct {
 	transactions []*Transaction
 	receipts     []*Receipt
 	TxSha        []byte
-    
-    // signature for verified miners
-    v       byte 
-    r, s    []byte
+
+	// signature for verified miners
+	v    byte
+	r, s []byte
 }
 
 func NewBlockFromBytes(raw []byte) *Block {
@@ -170,7 +170,7 @@ func (block *Block) Transactions() []*Transaction {
 
 // TODO: GenDoug?
 func (block *Block) CalcGasLimit(parent *Block) *big.Int {
-    return monkutil.Big("100000000000000000000000")
+	return monkutil.Big("100000000000000000000000")
 
 	if block.Number.Cmp(big.NewInt(0)) == 0 {
 		return monkutil.BigPow(10, 6)
@@ -336,11 +336,10 @@ func (block *Block) RlpValueDecode(decoder *monkutil.Value) {
 
 	if decoder.Get(3).IsNil() == false { // Yes explicitness
 		sig := decoder.Get(3)
-        block.v = sig.Get(0).Byte()
-        block.r = sig.Get(1).Bytes()
-        block.s = sig.Get(2).Bytes()
+		block.v = sig.Get(0).Byte()
+		block.r = sig.Get(1).Bytes()
+		block.s = sig.Get(2).Bytes()
 	}
-
 
 }
 
@@ -373,46 +372,45 @@ func (self *Block) Receipts() []*Receipt {
 }
 
 // blocks need signatures that should match the coinbase
-func (self *Block) Signature(key []byte) []byte{
-    hash := self.Hash()
-    sig, _ := secp256k1.Sign(hash, key)
-    return sig
+func (self *Block) Signature(key []byte) []byte {
+	hash := self.Hash()
+	sig, _ := secp256k1.Sign(hash, key)
+	return sig
 }
 
 func (self *Block) Sign(privk []byte) {
-    sig := self.Signature(privk)
-    self.r = sig[:32]
-    self.s = sig[32:64]
-    self.v = sig[64] + 27
+	sig := self.Signature(privk)
+	self.r = sig[:32]
+	self.s = sig[32:64]
+	self.v = sig[64] + 27
 }
 
-func (self *Block) PublicKey() []byte{
-    hash := self.Hash()
+func (self *Block) PublicKey() []byte {
+	hash := self.Hash()
 
-    r := monkutil.LeftPadBytes(self.r, 32)
-    s := monkutil.LeftPadBytes(self.s, 32)
-    sig := append(r, s...)
-    sig = append(sig, self.v-27)
+	r := monkutil.LeftPadBytes(self.r, 32)
+	s := monkutil.LeftPadBytes(self.s, 32)
+	sig := append(r, s...)
+	sig = append(sig, self.v-27)
 
-    pubkey, _ := secp256k1.RecoverPubkey(hash, sig)
+	pubkey, _ := secp256k1.RecoverPubkey(hash, sig)
 
-    return pubkey
+	return pubkey
 }
 
-func (self *Block) Signer() []byte{
-    if len(self.r) == 0 || len(self.s) == 0 {
-       return []byte("\x00") 
-    }
+func (self *Block) Signer() []byte {
+	if len(self.r) == 0 || len(self.s) == 0 {
+		return []byte("\x00")
+	}
 
-    pubkey := self.PublicKey()
+	pubkey := self.PublicKey()
 
-    if pubkey[0] != 4{
-        return nil
-    }
+	if pubkey[0] != 4 {
+		return nil
+	}
 
-    return monkcrypto.Sha3Bin(pubkey[1:])[12:]
+	return monkcrypto.Sha3Bin(pubkey[1:])[12:]
 }
-
 
 func (block *Block) header() []interface{} {
 	return []interface{}{

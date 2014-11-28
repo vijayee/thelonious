@@ -38,7 +38,7 @@ type Vm struct {
 
 	queue *list.List
 
-    callStack *[][]byte // list of addrs
+	callStack *[][]byte // list of addrs
 }
 
 type Environment interface {
@@ -52,7 +52,7 @@ type Environment interface {
 	Difficulty() *big.Int
 	Value() *big.Int
 	BlockHash() []byte
-    DougValidate(addr []byte, role string, state *monkstate.State) error
+	DougValidate(addr []byte, role string, state *monkstate.State) error
 }
 
 type Object interface {
@@ -121,19 +121,19 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		}
 	)
 
-    // Put the new address on the call stack
-    // if it's empty, add the caller's address as well ... (ORIGIN)
-    if len(*self.callStack) == 0{
-        *self.callStack = append(*self.callStack, closure.caller.Address())
-    }
-    *self.callStack = append(*self.callStack, closure.Address())
+	// Put the new address on the call stack
+	// if it's empty, add the caller's address as well ... (ORIGIN)
+	if len(*self.callStack) == 0 {
+		*self.callStack = append(*self.callStack, closure.caller.Address())
+	}
+	*self.callStack = append(*self.callStack, closure.Address())
 
-    // Remove the last address from the callstack
-    defer func(){
-        *self.callStack = (*self.callStack)[:len(*self.callStack)-1]
-        // note that the original callers address will never be removed. is this even an issue? TODO
-        // TODO: deal with POSTs
-    }()
+	// Remove the last address from the callstack
+	defer func() {
+		*self.callStack = (*self.callStack)[:len(*self.callStack)-1]
+		// note that the original callers address will never be removed. is this even an issue? TODO
+		// TODO: deal with POSTs
+	}()
 
 	for {
 		prevStep = step
@@ -239,12 +239,12 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			newMemSize = monkutil.BigMax(x, y)
 		case CREATE:
 			origin := self.env.Origin()
-            // TODO: maybe this should be safer 
-            if self.env.BlockNumber().Cmp(big.NewInt(0)) > 0{
-                if err := self.env.DougValidate(origin, "create", self.env.State()); err != nil{
-                    return closure.Return(nil), err
-                }
-            }
+			// TODO: maybe this should be safer
+			if self.env.BlockNumber().Cmp(big.NewInt(0)) > 0 {
+				if err := self.env.DougValidate(origin, "create", self.env.State()); err != nil {
+					return closure.Return(nil), err
+				}
+			}
 			require(3)
 			gas.Set(GasCreate)
 
@@ -543,31 +543,31 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(monkutil.BigD(origin))
 
 			self.Printf(" => %x", origin)
-        case CALLSTACK:
-            /*
-                CALLSTACK looks like: [origin, c1, c2, ..., cn]
-                (CALLSTACK 0) == (ORIGIN)
-                (CALLSTACKSIZE) == n
-                (CALLSTACK (CALLSTACKSIZE)) == current
-            */
-            require(1)
-            var addr []byte
-            frame := stack.Pop()
-            framen := frame.Uint64()
-            if int(framen) > len(*self.callStack)-1{
-                stack.Push(big.NewInt(0))
-            } else{
-                addr = (*self.callStack)[framen]
-                stack.Push(monkutil.BigD(addr))
-            }
-            
-            self.Printf(" => %x", addr) 
-        case CALLSTACKSIZE:
-            l := len(*self.callStack)
-            if l > 0{
-                l = l-1
-            }
-            stack.Push(big.NewInt(int64(l)))
+		case CALLSTACK:
+			/*
+			   CALLSTACK looks like: [origin, c1, c2, ..., cn]
+			   (CALLSTACK 0) == (ORIGIN)
+			   (CALLSTACKSIZE) == n
+			   (CALLSTACK (CALLSTACKSIZE)) == current
+			*/
+			require(1)
+			var addr []byte
+			frame := stack.Pop()
+			framen := frame.Uint64()
+			if int(framen) > len(*self.callStack)-1 {
+				stack.Push(big.NewInt(0))
+			} else {
+				addr = (*self.callStack)[framen]
+				stack.Push(monkutil.BigD(addr))
+			}
+
+			self.Printf(" => %x", addr)
+		case CALLSTACKSIZE:
+			l := len(*self.callStack)
+			if l > 0 {
+				l = l - 1
+			}
+			stack.Push(big.NewInt(int64(l)))
 		case CALLER:
 			caller := closure.caller.Address()
 			stack.Push(monkutil.BigD(caller))
@@ -813,7 +813,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			// Generate a new address
 			addr := monkcrypto.CreateAddress(closure.Address(), closure.object.Nonce)
 			for i := uint64(0); self.env.State().GetStateObject(addr) != nil; i++ {
-                //TODO: is this missing an addr = 
+				//TODO: is this missing an addr =
 				monkcrypto.CreateAddress(closure.Address(), closure.object.Nonce+i)
 			}
 			closure.object.Nonce++
@@ -822,10 +822,10 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			closure.UseGas(closure.Gas)
 
-            // this is necessary to preset the code
-            // when exec is called, it looks for this code!
-            obj := self.env.State().GetOrNewStateObject(addr)
-            obj.Code = input
+			// this is necessary to preset the code
+			// when exec is called, it looks for this code!
+			obj := self.env.State().GetOrNewStateObject(addr)
+			obj.Code = input
 
 			msg := NewMessage(self, addr, input, gas, closure.Price, value)
 			ret, err := msg.Exec(addr, closure)
@@ -837,7 +837,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 				self.Printf("CREATE err %v", err)
 			} else {
-                //fmt.Println("msg.object.Code = ", ret)
+				//fmt.Println("msg.object.Code = ", ret)
 				msg.object.Code = ret
 
 				stack.Push(monkutil.BigD(addr))

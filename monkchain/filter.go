@@ -7,7 +7,7 @@ import (
 
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
-//	"gopkg.in/qml.v1"
+	//	"gopkg.in/qml.v1"
 )
 
 type data struct {
@@ -271,21 +271,21 @@ func makeAltered(v interface{}) (d []data) {
 		for _, item := range slice {
 			d = append(d, makeAltered(item)...)
 		}
-	/*} else if qList, ok := v.(*qml.List); ok {
-		var s []interface{}
-		qList.Convert(&s)
+		/*} else if qList, ok := v.(*qml.List); ok {
+			var s []interface{}
+			qList.Convert(&s)
 
-		fmt.Println(s)
+			fmt.Println(s)
 
-		d = makeAltered(s)
-	} else if qMap, ok := v.(*qml.Map); ok {
-		var m map[string]interface{}
-		qMap.Convert(&m)
-		fmt.Println(m)
+			d = makeAltered(s)
+		} else if qMap, ok := v.(*qml.Map); ok {
+			var m map[string]interface{}
+			qMap.Convert(&m)
+			fmt.Println(m)
 
-		d = makeAltered(m)
-	}*/
-    } else {
+			d = makeAltered(m)
+		}*/
+	} else {
 		panic(fmt.Sprintf("makeAltered err (unknown conversion): %T\n", v))
 	}
 

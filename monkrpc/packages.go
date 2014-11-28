@@ -146,24 +146,24 @@ func (p *TheloniousApi) Create(args *NewTxArgs, reply *string) error {
 }
 
 type PushTxArgs struct {
-    Tx string
+	Tx string
 }
 
 func (a *PushTxArgs) requirementsPushTx() error {
-    if a.Tx == "" {
-        return NewErrorResponse("PushTx requires a 'tx' as argument")
-    }
-    return nil
+	if a.Tx == "" {
+		return NewErrorResponse("PushTx requires a 'tx' as argument")
+	}
+	return nil
 }
 
 func (p *TheloniousApi) PushTx(args *PushTxArgs, reply *string) error {
-    err := args.requirementsPushTx()
-    if err != nil {
-        return err
-    }
-    result, _ := p.pipe.PushTx(args.Tx)
-    *reply = NewSuccessRes(result)
-    return nil
+	err := args.requirementsPushTx()
+	if err != nil {
+		return err
+	}
+	result, _ := p.pipe.PushTx(args.Tx)
+	*reply = NewSuccessRes(result)
+	return nil
 }
 
 func (p *TheloniousApi) GetKey(args interface{}, reply *string) error {

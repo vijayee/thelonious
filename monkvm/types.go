@@ -38,21 +38,21 @@ const (
 	SHA3 = 0x20
 
 	// 0x30 range - closure state
-	ADDRESS      = 0x30
-	BALANCE      = 0x31
-	ORIGIN       = 0x32
-	CALLER       = 0x33
-	CALLVALUE    = 0x34
-	CALLDATALOAD = 0x35
-	CALLDATASIZE = 0x36
-	CALLDATACOPY = 0x37
-	CODESIZE     = 0x38
-	CODECOPY     = 0x39
-	GASPRICE     = 0x3a
-	EXTCODECOPY  = 0x3b
-	EXTCODESIZE  = 0x3c
-    CALLSTACK    = 0x3d
-    CALLSTACKSIZE    = 0x3e
+	ADDRESS       = 0x30
+	BALANCE       = 0x31
+	ORIGIN        = 0x32
+	CALLER        = 0x33
+	CALLVALUE     = 0x34
+	CALLDATALOAD  = 0x35
+	CALLDATASIZE  = 0x36
+	CALLDATACOPY  = 0x37
+	CODESIZE      = 0x38
+	CODECOPY      = 0x39
+	GASPRICE      = 0x3a
+	EXTCODECOPY   = 0x3b
+	EXTCODESIZE   = 0x3c
+	CALLSTACK     = 0x3d
+	CALLSTACKSIZE = 0x3e
 
 	// 0x40 range - block operations
 	PREVHASH   = 0x40
@@ -189,19 +189,19 @@ var opCodeToString = map[OpCode]string{
 	SHA3: "SHA3",
 
 	// 0x30 range - closure state
-	ADDRESS:      "ADDRESS",
-	BALANCE:      "BALANCE",
-	ORIGIN:       "ORIGIN",
-	CALLER:       "CALLER",
-	CALLVALUE:    "CALLVALUE",
-	CALLDATALOAD: "CALLDATALOAD",
-	CALLDATASIZE: "CALLDATASIZE",
-	CALLDATACOPY: "CALLDATACOPY",
-	CODESIZE:     "CODESIZE",
-	CODECOPY:     "CODECOPY",
-	GASPRICE:     "TXGASPRICE",
-    CALLSTACK:    "CALLSTACK",
-    CALLSTACKSIZE:    "CALLSTACKSIZE",
+	ADDRESS:       "ADDRESS",
+	BALANCE:       "BALANCE",
+	ORIGIN:        "ORIGIN",
+	CALLER:        "CALLER",
+	CALLVALUE:     "CALLVALUE",
+	CALLDATALOAD:  "CALLDATALOAD",
+	CALLDATASIZE:  "CALLDATASIZE",
+	CALLDATACOPY:  "CALLDATACOPY",
+	CODESIZE:      "CODESIZE",
+	CODECOPY:      "CODECOPY",
+	GASPRICE:      "TXGASPRICE",
+	CALLSTACK:     "CALLSTACK",
+	CALLSTACKSIZE: "CALLSTACKSIZE",
 
 	// 0x40 range - block operations
 	PREVHASH:    "PREVHASH",
@@ -347,21 +347,21 @@ var OpCodes = map[string]byte{
 	"SHA3": 0x20,
 
 	// 0x30 range - closure state
-	"ADDRESS":      0x30,
-	"BALANCE":      0x31,
-	"ORIGIN":       0x32,
-	"CALLER":       0x33,
-	"CALLVALUE":    0x34,
-	"CALLDATALOAD": 0x35,
-	"CALLDATASIZE": 0x36,
-	"CALLDATACOPY": 0x37,
-	"CODESIZE":     0x38,
-	"CODECOPY":     0x39,
-	"GASPRICE":     0x3a,
-	"EXTCODECOPY":  0x3b,
-	"EXTCODESIZE":  0x3c,
-    "CALLSTACK":    0x3d,
-    "CALLSTACKSIZE":    0x3e,
+	"ADDRESS":       0x30,
+	"BALANCE":       0x31,
+	"ORIGIN":        0x32,
+	"CALLER":        0x33,
+	"CALLVALUE":     0x34,
+	"CALLDATALOAD":  0x35,
+	"CALLDATASIZE":  0x36,
+	"CALLDATACOPY":  0x37,
+	"CODESIZE":      0x38,
+	"CODECOPY":      0x39,
+	"GASPRICE":      0x3a,
+	"EXTCODECOPY":   0x3b,
+	"EXTCODESIZE":   0x3c,
+	"CALLSTACK":     0x3d,
+	"CALLSTACKSIZE": 0x3e,
 
 	// 0x40 range - block operations
 	"PREVHASH":   0x40,

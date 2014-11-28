@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
-    "strconv"
 )
 
 type Bytes []byte
@@ -110,13 +110,13 @@ func IsHex(str string) bool {
 	return l >= 4 && l%2 == 0 && str[0:2] == "0x"
 }
 
-func StripHex(s string) string{
-    if len(s) > 1{
-        if s[:2] == "0x"{
-            return s[2:]
-        }
-    }
-    return s
+func StripHex(s string) string {
+	if len(s) > 1 {
+		if s[:2] == "0x" {
+			return s[2:]
+		}
+	}
+	return s
 }
 
 func Bytes2Hex(d []byte) string {
@@ -129,11 +129,11 @@ func Hex2Bytes(str string) []byte {
 	return h
 }
 
-func UserHex2Bytes(str string) []byte{
-    if str[:2] == "0x"{
-        str = str[2:]
-    }
-    return Hex2Bytes(str)
+func UserHex2Bytes(str string) []byte {
+	if str[:2] == "0x" {
+		str = str[2:]
+	}
+	return Hex2Bytes(str)
 }
 
 func StringToByteFunc(str string, cb func(str string) []byte) (ret []byte) {
@@ -253,25 +253,24 @@ func ByteSliceToInterface(slice [][]byte) (ret []interface{}) {
 // if int, use enough bytes to represent the int in big endian
 // if hex, return hex (with even num nibbles)
 // if string, convert to 32 byte little endian
-func Coerce2Hex(s string) string{
-    // is int?
-    i, err := strconv.Atoi(s)
-    if err == nil{
-        return "0x"+hex.EncodeToString(NumberToBytes(int32(i), i/256+1))
-    }
-    // is already prefixed hex?
-    if len(s) > 1 && s[:2] == "0x"{
-        if len(s) % 2 == 0{
-            return s
-        }
-        return "0x0"+s[2:]
-    }
-    // is unprefixed hex?
-    if len(s) > 32{
-        return "0x"+s
-    }
-    pad := s + strings.Repeat("\x00", (32-len(s)))
-    ret := "0x"+hex.EncodeToString([]byte(pad))
-    return ret
+func Coerce2Hex(s string) string {
+	// is int?
+	i, err := strconv.Atoi(s)
+	if err == nil {
+		return "0x" + hex.EncodeToString(NumberToBytes(int32(i), i/256+1))
+	}
+	// is already prefixed hex?
+	if len(s) > 1 && s[:2] == "0x" {
+		if len(s)%2 == 0 {
+			return s
+		}
+		return "0x0" + s[2:]
+	}
+	// is unprefixed hex?
+	if len(s) > 32 {
+		return "0x" + s
+	}
+	pad := s + strings.Repeat("\x00", (32-len(s)))
+	ret := "0x" + hex.EncodeToString([]byte(pad))
+	return ret
 }
-

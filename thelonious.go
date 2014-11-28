@@ -133,7 +133,7 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-    genModel := th.setGenesis(genConfig)
+	genModel := th.setGenesis(genConfig)
 
 	th.reactor = monkreact.New()
 
@@ -151,28 +151,28 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 
 // Deploy the genesis block from a preconfigured GenesisJSON object
 // if genConfig is nil, this function has no effect, and the genesis block is empty
-func (s *Thelonious) GenesisPointer(block *monkchain.Block){
-    if s.genConfig != nil{
-        s.genConfig.Deploy(block)
-    } else{
-        fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
-    }
+func (s *Thelonious) GenesisPointer(block *monkchain.Block) {
+	if s.genConfig != nil {
+		s.genConfig.Deploy(block)
+	} else {
+		fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
+	}
 }
 
-func (s *Thelonious) GenesisModel() monkchain.GenDougModel{
-   return s.genModel 
+func (s *Thelonious) GenesisModel() monkchain.GenDougModel {
+	return s.genModel
 }
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel{
-    if s.genConfig != nil{
-        fmt.Println("GenesisConfig already set")    
-        return nil
-    }
-    s.genConfig = genConfig
-    s.genModel = genConfig.Model()
-    return s.genModel
+func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel {
+	if s.genConfig != nil {
+		fmt.Println("GenesisConfig already set")
+		return nil
+	}
+	s.genConfig = genConfig
+	s.genModel = genConfig.Model()
+	return s.genModel
 }
 
 func (s *Thelonious) Reactor() *monkreact.ReactorEngine {
@@ -510,15 +510,15 @@ func (s *Thelonious) Seed() {
 	}*/
 }
 
-func (s *Thelonious) StartListening(){
-    ln, err := net.Listen("tcp", ":"+s.Port)
+func (s *Thelonious) StartListening() {
+	ln, err := net.Listen("tcp", ":"+s.Port)
 	if err != nil {
 		monklogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
 		s.listening = false
 	} else {
 		s.listening = true
-        // add listener to thelonious so we can close it later
-        s.listener = ln
+		// add listener to thelonious so we can close it later
+		s.listener = ln
 		// Starting accepting connections
 		monklogger.Infoln("Ready and accepting connections")
 		// Start the peer handler
@@ -527,13 +527,13 @@ func (s *Thelonious) StartListening(){
 }
 
 // use to toggle listening
-func (s *Thelonious) StopListening(){
-    if s.listening{
-        s.peerQuit <- true
-        // does not kill already established peer go routines (just stops listening)
-        s.listener.Close()
-        s.listening = false
-    }
+func (s *Thelonious) StopListening() {
+	if s.listening {
+		s.peerQuit <- true
+		// does not kill already established peer go routines (just stops listening)
+		s.listener.Close()
+		s.listening = false
+	}
 }
 
 func (s *Thelonious) peerHandler(listener net.Listener) {

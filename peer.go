@@ -169,7 +169,7 @@ func NewPeer(conn net.Conn, th *Thelonious, inbound bool) *Peer {
 	return &Peer{
 		outputQueue:        make(chan *monkwire.Msg, outputBufferSize),
 		quit:               make(chan bool),
-		thelonious:           th,
+		thelonious:         th,
 		conn:               conn,
 		inbound:            inbound,
 		disconnect:         0,
@@ -189,7 +189,7 @@ func NewOutboundPeer(addr string, th *Thelonious, caps Caps) *Peer {
 	p := &Peer{
 		outputQueue:        make(chan *monkwire.Msg, outputBufferSize),
 		quit:               make(chan bool),
-		thelonious:           th,
+		thelonious:         th,
 		inbound:            false,
 		connected:          0,
 		disconnect:         0,

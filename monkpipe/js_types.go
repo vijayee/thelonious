@@ -15,16 +15,16 @@ import (
 type JSBlock struct {
 	//Transactions string `json:"transactions"`
 	ref          *monkchain.Block
-	Size         string        `json:"size"`
-	Number       int           `json:"number"`
-	Hash         string        `json:"hash"`
+	Size         string         `json:"size"`
+	Number       int            `json:"number"`
+	Hash         string         `json:"hash"`
 	Transactions *monkutil.List `json:"transactions"`
-	Time         int64         `json:"time"`
-	Coinbase     string        `json:"coinbase"`
-	Name         string        `json:"name"`
-	GasLimit     string        `json:"gasLimit"`
-	GasUsed      string        `json:"gasUsed"`
-	PrevHash     string        `json:"prevHash"`
+	Time         int64          `json:"time"`
+	Coinbase     string         `json:"coinbase"`
+	Name         string         `json:"name"`
+	GasLimit     string         `json:"gasLimit"`
+	GasUsed      string         `json:"gasUsed"`
+	PrevHash     string         `json:"prevHash"`
 }
 
 // Creates a new QML Block from a chain block

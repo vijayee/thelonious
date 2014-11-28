@@ -15,13 +15,13 @@ import (
 type TestEnv struct {
 }
 
-func (self TestEnv) Origin() []byte         { return nil }
-func (self TestEnv) BlockNumber() *big.Int  { return nil }
-func (self TestEnv) PrevHash() []byte       { return nil }
-func (self TestEnv) Coinbase() []byte       { return nil }
-func (self TestEnv) Time() int64            { return 0 }
-func (self TestEnv) Difficulty() *big.Int   { return nil }
-func (self TestEnv) Value() *big.Int        { return nil }
+func (self TestEnv) Origin() []byte          { return nil }
+func (self TestEnv) BlockNumber() *big.Int   { return nil }
+func (self TestEnv) PrevHash() []byte        { return nil }
+func (self TestEnv) Coinbase() []byte        { return nil }
+func (self TestEnv) Time() int64             { return 0 }
+func (self TestEnv) Difficulty() *big.Int    { return nil }
+func (self TestEnv) Value() *big.Int         { return nil }
 func (self TestEnv) State() *monkstate.State { return nil }
 
 func TestVm(t *testing.T) {

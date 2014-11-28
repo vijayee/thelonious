@@ -1,6 +1,7 @@
 package monk
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"os/user"
 	"strconv"
 	"time"
-	"encoding/hex"
 
 	"github.com/eris-ltd/decerver-interfaces/api"
 	"github.com/eris-ltd/decerver-interfaces/core"
@@ -18,13 +18,13 @@ import (
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
-	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkreact"
+	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkdoug"
 )
 
 var (
@@ -37,9 +37,9 @@ var logger *monklog.Logger = monklog.NewLogger("MonkChain(decerver)")
 
 // implements decerver-interfaces Module
 type MonkModule struct {
-	monk *Monk
-    Config *ChainConfig
-    GenesisConfig *monkdoug.GenesisConfig
+	monk          *Monk
+	Config        *ChainConfig
+	GenesisConfig *monkdoug.GenesisConfig
 
 	wsAPIServiceFactory api.WsAPIServiceFactory
 	httpAPIService      interface{}
@@ -51,21 +51,21 @@ type MonkModule struct {
 // as such, it does not have "administrative" methods
 type Monk struct {
 	config     *ChainConfig
-    genConfig  *monkdoug.GenesisConfig
+	genConfig  *monkdoug.GenesisConfig
 	thelonious *thelonious.Thelonious
 	pipe       *monkpipe.Pipe
 	keyManager *monkcrypto.KeyManager
 	reactor    *monkreact.ReactorEngine
 	started    bool
 	chans      map[string]chan events.Event
-    reactchans   map[string]chan monkreact.Event
+	reactchans map[string]chan monkreact.Event
 }
 
 /*
    First, the functions to satisfy Module
 */
 
-// Create a new MonkModule and internal Monk, with default config. 
+// Create a new MonkModule and internal Monk, with default config.
 // Accepts an thelonious instance to yield a new
 // interface into the same chain.
 // It will not initialize a thelonious object for you,
@@ -76,7 +76,7 @@ func NewMonk(th *thelonious.Thelonious) *MonkModule {
 	// Here we load default config and leave it to caller
 	// to read a config file to overwrite
 	mm.Config = DefaultConfig
-    m.config = mm.Config
+	m.config = mm.Config
 	if th != nil {
 		m.thelonious = th
 	}
@@ -100,12 +100,12 @@ func (mod *MonkModule) Init() error {
 	if m.config == nil {
 		m.config = DefaultConfig
 	}
-    if mod.GenesisConfig == nil{
-        mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
-    }
-    m.genConfig = mod.GenesisConfig
+	if mod.GenesisConfig == nil {
+		mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
+	}
+	m.genConfig = mod.GenesisConfig
 
-    monkdoug.Adversary = mod.Config.Adversary
+	monkdoug.Adversary = mod.Config.Adversary
 
 	// if no thelonious instance
 	if m.thelonious == nil {
@@ -195,11 +195,11 @@ func (mod *MonkModule) IsScript(target string) bool {
 	return mod.monk.IsScript(target)
 }
 
-func (mod *MonkModule) Tx(addr, amt string) (string, error){
+func (mod *MonkModule) Tx(addr, amt string) (string, error) {
 	return mod.monk.Tx(addr, amt)
 }
 
-func (mod *MonkModule) Msg(addr string, data []string) (string, error){
+func (mod *MonkModule) Msg(addr string, data []string) (string, error) {
 	return mod.monk.Msg(addr, data)
 }
 
@@ -207,12 +207,12 @@ func (mod *MonkModule) Script(file, lang string) (string, error) {
 	return mod.monk.Script(file, lang)
 }
 
-func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event{
-    return mod.monk.Subscribe(name, event, target)
+func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event {
+	return mod.monk.Subscribe(name, event, target)
 }
 
-func (mod *MonkModule) UnSubscribe(name string){
-    mod.monk.UnSubscribe(name)
+func (mod *MonkModule) UnSubscribe(name string) {
+	mod.monk.UnSubscribe(name)
 }
 
 func (mod *MonkModule) Commit() {
@@ -256,25 +256,25 @@ func (mod *MonkModule) AddressCount() int {
 }
 
 /*
-   Non-interface functions that otherwise prove useful 
+   Non-interface functions that otherwise prove useful
     in standalone applications, testing, and debuging
 */
 
 // Load genesis json file (so calling pkg need not import monkdoug)
-func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
-    g := monkdoug.LoadGenesis(file)
-    return g
+func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig {
+	g := monkdoug.LoadGenesis(file)
+	return g
 }
 
 // Set the genesis json object. This can only be done once
-func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
-    // reset the permission model struct (since config may have changed)
-    genJson.SetModel(monkdoug.NewPermModel(genJson))
-    mod.GenesisConfig = genJson
+func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig) {
+	// reset the permission model struct (since config may have changed)
+	genJson.SetModel(monkdoug.NewPermModel(genJson))
+	mod.GenesisConfig = genJson
 }
 
-func (mod *MonkModule) MonkState() *monkstate.State{
-   return mod.monk.pipe.World().State() 
+func (mod *MonkModule) MonkState() *monkstate.State {
+	return mod.monk.pipe.World().State()
 }
 
 /*
@@ -418,9 +418,9 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 
 func (monk *Monk) Script(file, lang string) (string, error) {
 	var script string
-    if lang == "lll-literal"{
-        script = CompileLLL(file, true)
-    }
+	if lang == "lll-literal" {
+		script = CompileLLL(file, true)
+	}
 	if lang == "lll" {
 		script = CompileLLL(file, false) // if lll, compile and pass along
 	} else if lang == "mutan" {
@@ -453,53 +453,52 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 		monk.reactor.Subscribe(event, th_ch)
 	}
 
-    ch := make(chan events.Event) 
+	ch := make(chan events.Event)
 	monk.chans[name] = ch
-    monk.reactchans[name] = th_ch
+	monk.reactchans[name] = th_ch
 
 	// fire up a goroutine and broadcast module specific chan on our main chan
 	go func() {
 		for {
 			eve, more := <-th_ch
-            if !more{
-                break
-            }
-            returnEvent := events.Event{
+			if !more {
+				break
+			}
+			returnEvent := events.Event{
 				Event:     event,
 				Target:    target,
 				Source:    "monk",
 				TimeStamp: time.Now(),
 			}
-            // cast resource to appropriate type
-            resource := eve.Resource
-            if block, ok := resource.(*monkchain.Block); ok{
-                returnEvent.Resource = convertBlock(block)
-            } else if tx, ok := resource.(monkchain.Transaction); ok{
-                returnEvent.Resource = convertTx(&tx)
-            } else if txFail, ok := resource.(monkchain.TxFail); ok{
-                tx := convertTx(txFail.Tx)
-                tx.Error = txFail.Err.Error()
-                returnEvent.Resource = tx
-            } else{
-                logger.Errorln("Invalid event resource type", resource)
-            }
-            ch <- returnEvent
+			// cast resource to appropriate type
+			resource := eve.Resource
+			if block, ok := resource.(*monkchain.Block); ok {
+				returnEvent.Resource = convertBlock(block)
+			} else if tx, ok := resource.(monkchain.Transaction); ok {
+				returnEvent.Resource = convertTx(&tx)
+			} else if txFail, ok := resource.(monkchain.TxFail); ok {
+				tx := convertTx(txFail.Tx)
+				tx.Error = txFail.Err.Error()
+				returnEvent.Resource = tx
+			} else {
+				logger.Errorln("Invalid event resource type", resource)
+			}
+			ch <- returnEvent
 		}
 	}()
 	return ch
 }
 
-func (monk *Monk) UnSubscribe(name string){
-    if c, ok := monk.reactchans[name]; ok{
-        close(c)
-        delete(monk.reactchans, name)
-    }
-    if c, ok := monk.chans[name]; ok{
-        close(c)
-        delete(monk.chans, name)
-    }
+func (monk *Monk) UnSubscribe(name string) {
+	if c, ok := monk.reactchans[name]; ok {
+		close(c)
+		delete(monk.reactchans, name)
+	}
+	if c, ok := monk.chans[name]; ok {
+		close(c)
+		delete(monk.chans, name)
+	}
 }
-
 
 // Mine a block
 func (m *Monk) Commit() {
@@ -599,9 +598,9 @@ func (m *Monk) newThelonious() {
 
 	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
-    if err != nil{
-        log.Fatal(err)
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
 	m.keyManager = keyManager
 
 	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
@@ -640,7 +639,6 @@ func (monk *Monk) StartListening() {
 func (monk *Monk) StopListening() {
 	monk.thelonious.StopListening()
 }
-
 
 /*
    some key management stuff
@@ -735,10 +733,10 @@ func PackTxDataArgs(args ...string) string {
 }
 
 // convert thelonious block to modules block
-func convertBlock(block *monkchain.Block) *modules.Block{
-    if block == nil{
-        return nil
-    }
+func convertBlock(block *monkchain.Block) *modules.Block {
+	if block == nil {
+		return nil
+	}
 	b := &modules.Block{}
 	b.Coinbase = hex.EncodeToString(block.Coinbase)
 	b.Difficulty = block.Difficulty.String()
@@ -750,18 +748,18 @@ func convertBlock(block *monkchain.Block) *modules.Block{
 	b.Number = block.Number.String()
 	b.PrevHash = hex.EncodeToString(block.PrevHash)
 	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction,len(block.Transactions()))
-	for idx , tx := range block.Transactions() {
+	txs := make([]*modules.Transaction, len(block.Transactions()))
+	for idx, tx := range block.Transactions() {
 		txs[idx] = convertTx(tx)
 	}
 	b.Transactions = txs
 	b.TxRoot = hex.EncodeToString(block.TxSha)
 	b.UncleRoot = hex.EncodeToString(block.UncleSha)
-	b.Uncles = make([]string,len(block.Uncles))
+	b.Uncles = make([]string, len(block.Uncles))
 	for idx, u := range block.Uncles {
 		b.Uncles[idx] = hex.EncodeToString(u.Hash())
 	}
-    return b
+	return b
 }
 
 // convert thelonious tx to modules tx
@@ -771,10 +769,9 @@ func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
 	tx.Gas = monkTx.Gas.String()
 	tx.GasCost = monkTx.GasPrice.String()
 	tx.Hash = hex.EncodeToString(monkTx.Hash())
-	tx.Nonce = fmt.Sprintf("%d",monkTx.Nonce)
+	tx.Nonce = fmt.Sprintf("%d", monkTx.Nonce)
 	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
 	tx.Sender = hex.EncodeToString(monkTx.Sender())
 	tx.Value = monkTx.Value.String()
 	return tx
 }
-

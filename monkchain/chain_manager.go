@@ -43,8 +43,8 @@ func CalcDifficulty(block, parent *Block) *big.Int {
 
 type ChainManager struct {
 	//Thelonious NodeManager
-    processor BlockProcessor
-    protocol  GenDougModel
+	processor BlockProcessor
+	protocol  GenDougModel
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
 	genesisBlock *Block
 	// Last known total difficulty
@@ -64,10 +64,10 @@ type ChainManager struct {
 func NewChainManager(protocol GenDougModel) *ChainManager {
 	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
-    bc.workingTree = make(map[string]*link)
-    // Prepare the genesis block!
-    //bc.Thelonious.GenesisPointer(bc.genesisBlock)
-    bc.protocol = protocol
+	bc.workingTree = make(map[string]*link)
+	// Prepare the genesis block!
+	//bc.Thelonious.GenesisPointer(bc.genesisBlock)
+	bc.protocol = protocol
 
 	bc.setLastBlock()
 
@@ -201,8 +201,8 @@ func (bc *ChainManager) setLastBlock() {
 	} else {
 		bc.Reset()
 	}
-    // set the genDoug model (global var) for determining chain permissions
-    genDoug = bc.protocol //Thelonious.GenesisModel()
+	// set the genDoug model (global var) for determining chain permissions
+	genDoug = bc.protocol //Thelonious.GenesisModel()
 
 	//bc.SetTotalDifficulty(monkutil.Big("0"))
 
@@ -490,10 +490,10 @@ func (self *ChainManager) insertChain(chain *BlockChain) {
 		self.SetTotalDifficulty(link.td)
 		self.add(link.block)
 
-        // XXX: Post. Do we do this here? Prob better for caller ...
-        //self.Thelonious.Reactor().Post(NewBlockEvent{link.block})
-        //self.Thelonious.Reactor().Post(link.messages)
-    }
+		// XXX: Post. Do we do this here? Prob better for caller ...
+		//self.Thelonious.Reactor().Post(NewBlockEvent{link.block})
+		//self.Thelonious.Reactor().Post(link.messages)
+	}
 
 	// summarize
 	b, e := chain.Front(), chain.Back()
@@ -544,8 +544,6 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// Create array of blocks from new head back to branch point
 	// Deletes them from workingTree
 	// Uses memory links. Maybe we should use prev hashes?
-	fmt.Println("chain len:", self.CurrentBlock.Number)
-	fmt.Println("new chain ;en:", chain.Len())
 	bchain := &BlockChain{list.New()}
 	for l := chain.Back().Value.(*link); l != nil; l = l.parent {
 		bchain.PushFront(&link{l.block, nil, nil, nil})
@@ -580,10 +578,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 
 	// move old canonical into workingTree chain
 	bchain = &BlockChain{list.New()}
-	i := 0
 	for b := oldHead; bytes.Compare(b.Hash(), ancestorHash) != 0; b = self.GetBlock(b.PrevHash) {
-		fmt.Println(i)
-		i += 1
 		bchain.PushFront(&link{b, nil, nil, nil})
 		// TODO: remove from database
 	}

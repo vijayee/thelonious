@@ -291,7 +291,7 @@ func StopMining(ethereum *eth.Thelonious) bool {
 		miner.Stop()
 		logger.Infoln("Stopped mining")
 		ethereum.Mining = false
-        miner = nil
+		miner = nil
 		return true
 	}
 
@@ -318,20 +318,20 @@ func BlockDo(ethereum *eth.Thelonious, hash []byte) error {
 
 // If an address is empty, load er up
 // vestige of ye old key days
-func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager){
-    keys := keyMang.KeyRing()
-    masterPair := keys.GetKeyPair(0)
-    logger.Infoln("master has ", pipe.Balance(keys.GetKeyPair(keys.Len()-1).Address()) )
-    for i:=0; i<keys.Len();i++{
-        k := keys.GetKeyPair(i).Address()
-        val := pipe.Balance(k)
-        logger.Infoln("key ", i, " ", monkutil.Bytes2Hex(k), " ", val)
-        v := val.Int()
-        if v < 100 {
-            _, err := pipe.Transact(masterPair, k, monkutil.NewValue(monkutil.Big("10000000000000000000")), monkutil.NewValue(monkutil.Big("1000")), monkutil.NewValue(monkutil.Big("1000")), "")
-            if err != nil{
-                logger.Infoln("Error transfering funds to ", monkutil.Bytes2Hex(k))
-            }
-        }
-    }
+func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager) {
+	keys := keyMang.KeyRing()
+	masterPair := keys.GetKeyPair(0)
+	logger.Infoln("master has ", pipe.Balance(keys.GetKeyPair(keys.Len()-1).Address()))
+	for i := 0; i < keys.Len(); i++ {
+		k := keys.GetKeyPair(i).Address()
+		val := pipe.Balance(k)
+		logger.Infoln("key ", i, " ", monkutil.Bytes2Hex(k), " ", val)
+		v := val.Int()
+		if v < 100 {
+			_, err := pipe.Transact(masterPair, k, monkutil.NewValue(monkutil.Big("10000000000000000000")), monkutil.NewValue(monkutil.Big("1000")), monkutil.NewValue(monkutil.Big("1000")), "")
+			if err != nil {
+				logger.Infoln("Error transfering funds to ", monkutil.Bytes2Hex(k))
+			}
+		}
+	}
 }
