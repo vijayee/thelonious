@@ -3,6 +3,7 @@ package monk
 import (
 	"fmt"
 	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkchain"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -118,6 +119,23 @@ func TestTx(t *testing.T) {
 		//mod.Thelonious.WaitForShutdown()
 	}, 0)
 }
+
+func TestBadSig(t *testing.T) {
+	tester("bad sig", func(mod *MonkModule) {
+		mod.Init()
+		//addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
+		//amount := "567890"
+        tx := monkchain.NewTransactionMessage(monkutil.Hex2Bytes(mod.monk.ActiveAddress()), monkutil.Big("20000000"), monkutil.Big("2000000000000000000"), monkutil.Big("2000000000000000000"), []byte(""))
+        tx.Nonce = 0
+	    keys := mod.monk.fetchKeyPair()
+        tx.Sign(keys.PrivateKey)
+        fmt.Println("bad tx:")
+        fmt.Println(monkutil.Bytes2Hex(tx.RlpEncode()))
+        mod.monk.pipe.PushTx(tx)
+		mod.Start()
+	}, 4)
+}
+
 
 func TestManyTx(t *testing.T) {
 	tester("many tx", func(mod *MonkModule) {

@@ -214,7 +214,9 @@ func (bc *ChainManager) setLastBlock() {
 
 func (bc *ChainManager) Reset() {
 	// prepare genesis (calls sync)
-	bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	if bc.protocol != nil {
+		bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	}
 
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
@@ -231,7 +233,6 @@ func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
 
 // Add a block to the canonical chain and record addition information
 func (bc *ChainManager) add(block *Block) {
-	fmt.Println("adding block:", monkutil.Bytes2Hex(block.Hash()), block.Number)
 	bc.writeBlockInfo(block)
 
 	bc.mut.Lock()
