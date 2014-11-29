@@ -115,7 +115,7 @@ func (miner *Miner) receiveTx(tx *monkchain.Transaction){
 
 func (miner *Miner) receiveBlock(block *monkchain.Block){
     //logger.Infoln("Got new block via Reactor")
-    if bytes.Compare(miner.ethereum.ChainManager().CurrentBlock.Hash(), block.Hash()) == 0 {
+    if bytes.Compare(miner.ethereum.ChainManager().CurrentBlockHash(), block.Hash()) == 0 {
         // TODO: Perhaps continue mining to get some uncle rewards
         //logger.Infoln("New top block found resetting state")
 
@@ -138,7 +138,7 @@ func (miner *Miner) receiveBlock(block *monkchain.Block){
         //miner.block = miner.ethereum.ChainManager().NewBlock(miner.coinbase, miner.txs)
 
     } else {
-        if bytes.Compare(block.PrevHash, miner.ethereum.ChainManager().CurrentBlock.PrevHash) == 0 {
+        if bytes.Compare(block.PrevHash, miner.ethereum.ChainManager().CurrentBlockPrevHash()) == 0 {
             logger.Infoln("Adding uncle block")
             miner.uncles = append(miner.uncles, block)
         }

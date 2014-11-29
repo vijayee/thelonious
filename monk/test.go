@@ -73,7 +73,7 @@ func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
     } 
     mod.ReadConfig("eth-config.json")
     fmt.Println("log:", mod.Config.LogLevel)
-    mod.Config.Mining = false
+    mod.Config.Mining = true
     mod.Config.DbName = "tests/"+name
     /*
     // more trouble than it's worth for now

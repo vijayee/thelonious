@@ -1,13 +1,13 @@
 package eth
 
 import (
+	"bytes"
 	"container/list"
+	"fmt"
 	"math"
 	"math/big"
-    "bytes"
 	"sync"
 	"time"
-    "fmt"
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -41,7 +41,7 @@ type BlockPool struct {
 
 	ChainLength, BlocksProcessed int
 
-    peer *Peer
+	peer *Peer
 }
 
 func NewBlockPool(eth *Ethereum) *BlockPool {
@@ -58,6 +58,8 @@ func (self *BlockPool) Len() int {
 }
 
 func (self *BlockPool) Reset() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	self.pool = make(map[string]*block)
 	self.hashPool = nil
 }
@@ -74,6 +76,8 @@ func (self *BlockPool) HasCommonHash(hash []byte) bool {
 }
 
 func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	for _, item := range self.pool {
 		if item.block != nil {
 			blocks = append(blocks, item.block)
@@ -100,10 +104,10 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 
 	hash := string(b.Hash())
 
-    // Note this doesn't check the working tree
-    // Leave it to TestChain to ignore blocks already in forks
-    // Also, we can one day use the information on which/howmany peers
-    //  give us which blocks, in the td calculation. Hold on to your hats!
+	// Note this doesn't check the working tree
+	// Leave it to TestChain to ignore blocks already in forks
+	// Also, we can one day use the information on which/howmany peers
+	//  give us which blocks, in the td calculation. Hold on to your hats!
 	if self.pool[hash] == nil && !self.eth.ChainManager().HasBlock(b.Hash()) {
 		poollogger.Infof("Got unrequested block (%x...)\n", hash[0:4])
 
@@ -133,13 +137,13 @@ func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmo
 	blocks := self.Blocks()
 
 	monkchain.BlockBy(monkchain.Number).Sort(blocks)
-    fmt.Println("Len block pool in process canonical: ", len(blocks))
-    if len(blocks) > 0{
-        fmt.Println("first blocks num:", blocks[0].Number)
-        fmt.Println("last blocks num:", blocks[len(blocks) -1 ].Number)
-    } else{
-        fmt.Println("no blocks in pool!")
-    }
+	fmt.Println("Len block pool in process canonical: ", len(blocks))
+	if len(blocks) > 0 {
+		fmt.Println("first blocks num:", blocks[0].Number)
+		fmt.Println("last blocks num:", blocks[len(blocks)-1].Number)
+	} else {
+		fmt.Println("no blocks in pool!")
+	}
 	for _, block := range blocks {
 		if self.eth.ChainManager().HasBlock(block.PrevHash) {
 			procAmount++
@@ -148,8 +152,8 @@ func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmo
 
 			self.Remove(block.Hash())
 		} else {
-            fmt.Println("not processed as we don't have prevhash")
-        }
+			fmt.Println("not processed as we don't have prevhash")
+		}
 
 	}
 
@@ -161,7 +165,7 @@ func (self *BlockPool) DistributeHashes() {
 	defer self.mut.Unlock()
 
 	var (
-		peerLen = self.eth.peers.Len()
+		peerLen = self.eth.PeerCount()
 		amount  = 256 * peerLen
 		dist    = make(map[*Peer][][]byte)
 	)
@@ -213,7 +217,6 @@ func (self *BlockPool) DistributeHashes() {
 	}
 }
 
-
 func (self *BlockPool) Start() {
 	go self.downloadThread()
 	go self.chainThread()
@@ -234,17 +237,21 @@ out:
 			// Check if we're catching up. If not distribute the hashes to
 			// the peers and download the blockchain
 			self.fetchingHashes = false
+			self.eth.peerMut.Lock()
 			eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
 				if p.statusKnown && p.FetchingHashes() {
 					self.fetchingHashes = true
 				}
 			})
+			self.eth.peerMut.Unlock()
 
 			self.DistributeHashes()
 
+			self.mut.Lock()
 			if self.ChainLength < len(self.hashPool) {
 				self.ChainLength = len(self.hashPool)
 			}
+			self.mut.Unlock()
 		}
 	}
 }
@@ -276,9 +283,9 @@ out:
 				}
 			}
 
-            // Find first conescutive chain
+			// Find first conescutive chain
 			if len(blocks) > 0 {
-                // Find chain of blocks
+				// Find chain of blocks
 				if self.eth.ChainManager().HasBlock(blocks[0].PrevHash) {
 					for i, block := range blocks[1:] {
 						// NOTE: The Ith element in this loop refers to the previous block in
@@ -291,7 +298,7 @@ out:
 				} else {
 					blocks = nil
 				}
-			} 
+			}
 
 			// TODO figure out whether we were catching up
 			// If caught up and just a new block has been propagated:
@@ -300,29 +307,29 @@ out:
 			if len(blocks) > 0 {
 				chainManager := self.eth.ChainManager()
 
-                // sling blocks into a list
+				// sling blocks into a list
 				bchain := monkchain.NewChain(blocks)
-                // validate the chain
+				// validate the chain
 				_, err := chainManager.TestChain(bchain)
 
-                // If validation failed, we flush the pool
-                // and punish the peer
+				// If validation failed, we flush the pool
+				// and punish the peer
 				if err != nil && !monkchain.IsTDError(err) {
 					poollogger.Debugln(err)
 
 					self.Reset()
-                    //self.punishPeer()
+					//self.punishPeer()
 				} else {
-                    // Validation was successful
-                    // Sum-difficulties, insert chain
-                    // Possibly re-org 
+					// Validation was successful
+					// Sum-difficulties, insert chain
+					// Possibly re-org
 					chainManager.InsertChain(bchain)
-                    // Remove all blocks from pool
+					// Remove all blocks from pool
 					for _, block := range blocks {
 						self.Remove(block.Hash())
 					}
 				}
-            }
+			}
 
 			/* Do not propagate to the network on catchups
 			if amount == 1 {
@@ -333,18 +340,18 @@ out:
 	}
 }
 
-func (self *BlockPool) punishPeer(){
-                    /*
-                        TODO: fix this peer handling!
-					if self.peer != nil && self.peer.conn != nil {
-						poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
+func (self *BlockPool) punishPeer() {
+	/*
+	                        TODO: fix this peer handling!
+						if self.peer != nil && self.peer.conn != nil {
+							poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
 
-					// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
-					//self.eth.BlacklistPeer(self.peer)
-					//self.peer.StopWithReason(DiscBadPeer)
-                        self.peer.Stop()
-                        self.td = monkutil.Big0
-                        self.peer = nil
-					}*/
+						// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
+						//self.eth.BlacklistPeer(self.peer)
+						//self.peer.StopWithReason(DiscBadPeer)
+	                        self.peer.Stop()
+	                        self.td = monkutil.Big0
+	                        self.peer = nil
+						}*/
 
 }

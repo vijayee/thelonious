@@ -16,20 +16,20 @@ import (
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkreact"
 	"github.com/eris-ltd/thelonious/monkrpc"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkwire"
-	"github.com/eris-ltd/thelonious/monkdoug"
 )
 
 const (
 	seedTextFileUri string = "http://www.ethereum.org/servers.poc3.txt"
 	//seedNodeAddress        = "162.218.65.211:30303"
-    //seedNodeAddress        = "92.243.15.73:30303"
-    seedNodeAddress        = "localhost:30303"
+	//seedNodeAddress        = "92.243.15.73:30303"
+	seedNodeAddress = "localhost:30303"
 )
 
 var monklogger = monklog.NewLogger("SERV")
@@ -37,7 +37,10 @@ var monklogger = monklog.NewLogger("SERV")
 func eachPeer(peers *list.List, callback func(*Peer, *list.Element)) {
 	// Loop thru the peers and close them (if we had them)
 	for e := peers.Front(); e != nil; e = e.Next() {
+		p := e.Value.(*Peer)
+		p.mut.Lock()
 		callback(e.Value.(*Peer), e)
+		p.mut.Unlock()
 	}
 }
 
@@ -49,7 +52,7 @@ type Ethereum struct {
 	// Channel for shutting down the ethereum
 	shutdownChan chan bool
 	quit         chan bool
-    peerQuit     chan bool // shut down the peerHandler
+	peerQuit     chan bool // shut down the peerHandler
 
 	// DB interface
 	db monkutil.Database
@@ -66,13 +69,13 @@ type Ethereum struct {
 	peers *list.List
 	// Nonce
 	Nonce uint64
-    // Listening addr
-	Addr net.Addr
-	Port string
-	nat NAT
+	// Listening addr
+	Addr      net.Addr
+	Port      string
+	nat       NAT
 	listening bool
-    listener net.Listener
-    // 
+	listener  net.Listener
+	//
 	peerMut sync.Mutex
 	// Capabilities for outgoing peers
 	serverCaps Caps
@@ -93,10 +96,10 @@ type Ethereum struct {
 
 	filters map[int]*monkchain.Filter
 
-    // json based config object
-    genConfig *monkdoug.GenesisConfig
-    // model interface for validating actions
-    genModel monkchain.GenDougModel
+	// json based config object
+	genConfig *monkdoug.GenesisConfig
+	// model interface for validating actions
+	genModel monkchain.GenDougModel
 }
 
 func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Ethereum, error) {
@@ -130,7 +133,7 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-    genModel := ethereum.setGenesis(genConfig)
+	genModel := ethereum.setGenesis(genConfig)
 
 	ethereum.reactor = monkreact.New()
 
@@ -148,28 +151,28 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 
 // Deploy the genesis block from a preconfigured GenesisJSON object
 // if genConfig is nil, this function has no effect, and the genesis block is empty
-func (s *Ethereum) GenesisPointer(block *monkchain.Block){
-    if s.genConfig != nil{
-        s.genConfig.Deploy(block)
-    } else{
-        fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
-    }
+func (s *Ethereum) GenesisPointer(block *monkchain.Block) {
+	if s.genConfig != nil {
+		s.genConfig.Deploy(block)
+	} else {
+		fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
+	}
 }
 
-func (s *Ethereum) GenesisModel() monkchain.GenDougModel{
-   return s.genModel 
+func (s *Ethereum) GenesisModel() monkchain.GenDougModel {
+	return s.genModel
 }
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel{
-    if s.genConfig != nil{
-        fmt.Println("GenesisConfig already set")    
-        return nil
-    }
-    s.genConfig = genConfig
-    s.genModel = genConfig.Model()
-    return s.genModel
+func (s *Ethereum) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel {
+	if s.genConfig != nil {
+		fmt.Println("GenesisConfig already set")
+		return nil
+	}
+	s.genConfig = genConfig
+	s.genModel = genConfig.Model()
+	return s.genModel
 }
 
 func (s *Ethereum) Reactor() *monkreact.ReactorEngine {
@@ -209,10 +212,14 @@ func (s *Ethereum) IsMining() bool {
 	return s.Mining
 }
 func (s *Ethereum) PeerCount() int {
+	s.peerMut.Lock()
+	defer s.peerMut.Unlock()
 	return s.peers.Len()
 }
 func (s *Ethereum) IsUpToDate() bool {
 	upToDate := true
+	s.peerMut.Lock()
+	defer s.peerMut.Unlock()
 	eachPeer(s.peers, func(peer *Peer, e *list.Element) {
 		if atomic.LoadInt32(&peer.connected) == 1 {
 			if peer.catchingUp == true && peer.versionKnown {
@@ -223,6 +230,8 @@ func (s *Ethereum) IsUpToDate() bool {
 	return upToDate
 }
 func (s *Ethereum) PushPeer(peer *Peer) {
+	s.peerMut.Lock()
+	defer s.peerMut.Unlock()
 	s.peers.PushBack(peer)
 }
 func (s *Ethereum) IsListening() bool {
@@ -385,6 +394,8 @@ func (s *Ethereum) Peers() *list.List {
 }
 
 func (s *Ethereum) reapPeers() {
+	s.peerMut.Lock()
+	defer s.peerMut.Unlock()
 	eachPeer(s.peers, func(p *Peer, e *list.Element) {
 		if atomic.LoadInt32(&p.disconnect) == 1 || (p.inbound && (time.Now().Unix()-p.lastPong) > int64(5*time.Minute)) {
 			s.removePeerElement(e)
@@ -393,15 +404,16 @@ func (s *Ethereum) reapPeers() {
 }
 
 func (s *Ethereum) removePeerElement(e *list.Element) {
-	s.peerMut.Lock()
-	defer s.peerMut.Unlock()
-
+	// put lock on eachPeer and always call this from eachPeer
 	s.peers.Remove(e)
 
 	s.reactor.Post("peerList", s.peers)
 }
 
 func (s *Ethereum) RemovePeer(p *Peer) {
+	s.peerMut.Lock()
+	defer s.peerMut.Unlock()
+
 	eachPeer(s.peers, func(peer *Peer, e *list.Element) {
 		if peer == p {
 			s.removePeerElement(e)
@@ -424,7 +436,7 @@ func (s *Ethereum) ReapDeadPeerHandler() {
 func (s *Ethereum) Start(seed bool) {
 	s.reactor.Start()
 	s.blockPool.Start()
-    s.StartListening()
+	s.StartListening()
 
 	if s.nat != nil {
 		go s.upnpUpdateThread()
@@ -448,8 +460,8 @@ func (s *Ethereum) Seed() {
 			monklogger.Infoln("Connecting to previous peer ", ip)
 			s.ConnectToPeer(ip)
 		}
-    }
-    s.ConnectToPeer(seedNodeAddress)
+	}
+	s.ConnectToPeer(seedNodeAddress)
 	/* else {
 		monklogger.Debugln("Retrieving seed nodes")
 
@@ -495,51 +507,51 @@ func (s *Ethereum) Seed() {
 	}*/
 }
 
-func (s *Ethereum) StartListening(){
-    ln, err := net.Listen("tcp", ":"+s.Port)
+func (s *Ethereum) StartListening() {
+	ln, err := net.Listen("tcp", ":"+s.Port)
 	if err != nil {
 		monklogger.Warnf("Port %s in use. Connection listening disabled. Acting as client", s.Port)
 		s.listening = false
 	} else {
 		s.listening = true
-        // add listener to ethereum so we can close it later
-        s.listener = ln
+		// add listener to ethereum so we can close it later
+		s.listener = ln
 		// Starting accepting connections
 		monklogger.Infoln("Ready and accepting connections")
 		// Start the peer handler
-        go s.peerHandler(ln)
+		go s.peerHandler(ln)
 	}
 }
 
 // use to toggle listening
-func (s *Ethereum) StopListening(){
-    if s.listening{
-        s.peerQuit <- true
-        // does not kill already established peer go routines (just stops listening)
-        s.listener.Close()
-        s.listening = false
-    }
+func (s *Ethereum) StopListening() {
+	if s.listening {
+		s.peerQuit <- true
+		// does not kill already established peer go routines (just stops listening)
+		s.listener.Close()
+		s.listening = false
+	}
 }
 
 func (s *Ethereum) peerHandler(listener net.Listener) {
 out:
 	for {
-        select{
-        case <- s.quit:
-            break out
-        case <- s.peerQuit: // so we can quit the listener without quiting the whole node
-            break out
-        default:
-            // to stop, call s.listener.Close(). if a quit/peerQuit has been fired, itll catch and exit the loop
-            conn, err := listener.Accept()
-            if err != nil {
-                monklogger.Debugln(err)
-                continue
-            } 
-            go s.AddPeer(conn) 
-        }
+		select {
+		case <-s.quit:
+			break out
+		case <-s.peerQuit: // so we can quit the listener without quiting the whole node
+			break out
+		default:
+			// to stop, call s.listener.Close(). if a quit/peerQuit has been fired, itll catch and exit the loop
+			conn, err := listener.Accept()
+			if err != nil {
+				monklogger.Debugln(err)
+				continue
+			}
+			go s.AddPeer(conn)
+		}
 	}
-    //listener.Close()
+	//listener.Close()
 }
 
 func (s *Ethereum) Stop() {
@@ -562,10 +574,10 @@ func (s *Ethereum) Stop() {
 
 	close(s.quit)
 
-    if s.listening{
-        s.listener.Close() // release the listening port
-        s.listening = false
-    }
+	if s.listening {
+		s.listener.Close() // release the listening port
+		s.listening = false
+	}
 
 	if s.RpcServer != nil {
 		s.RpcServer.Stop()
