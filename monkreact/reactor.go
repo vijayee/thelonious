@@ -172,6 +172,8 @@ func (reactor *ReactorEngine) Post(event string, resource interface{}) {
 }
 
 func (reactor *ReactorEngine) dispatch(event Event) {
+	reactor.lock.Lock()
+	defer reactor.lock.Unlock()
 	name := event.Name
 	eventHandler := reactor.eventHandlers[name]
 	// if no subscriptions to this event type - no event handler created

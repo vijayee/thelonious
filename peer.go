@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -158,6 +159,8 @@ type Peer struct {
 	lastRequestedBlock *monkchain.Block
 
 	protocolCaps *monkutil.Value
+
+	mut sync.RWMutex
 }
 
 func NewPeer(conn net.Conn, ethereum *Ethereum, inbound bool) *Peer {
@@ -259,6 +262,11 @@ func (p *Peer) Version() string {
 func (p *Peer) Connected() *int32 {
 	return &p.connected
 }
+func (p *Peer) StatusKnown() bool {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	return p.statusKnown
+}
 
 // Setters
 func (p *Peer) SetVersion(version string) {
@@ -320,7 +328,7 @@ out:
 		select {
 		// Main message queue. All outbound messages are processed through here
 		case msg := <-p.outputQueue:
-			if !p.statusKnown {
+			if !p.StatusKnown() {
 				switch msg.Type {
 				case monkwire.MsgGetTxsTy, monkwire.MsgTxTy, monkwire.MsgGetBlockHashesTy, monkwire.MsgBlockHashesTy, monkwire.MsgGetBlocksTy, monkwire.MsgBlockTy:
 					break skip
@@ -328,7 +336,7 @@ out:
 			}
 
 			p.writeMessage(msg)
-			p.lastSend = time.Now()
+			p.setLastSend()
 
 		// Ping timer
 		case <-pingTimer.C:
@@ -341,7 +349,7 @@ out:
 				}
 			*/
 			p.writeMessage(monkwire.NewMessage(monkwire.MsgPingTy, ""))
-			p.pingStartTime = time.Now()
+			p.setPingStartTime()
 
 		// Service timer takes care of peer broadcasting, transaction
 		// posting or block posting
@@ -422,8 +430,8 @@ func (p *Peer) HandleInbound() {
 				// If we received a pong back from a peer we set the
 				// last pong so the peer handler knows this peer is still
 				// active.
-				p.lastPong = time.Now().Unix()
-				p.pingTime = time.Since(p.pingStartTime)
+				p.setLastPong()
+				p.setPingTime()
 			case monkwire.MsgTxTy:
 				// If the message was a transaction queue the transaction
 				// in the TxPool where it will undergo validation and
@@ -496,7 +504,7 @@ func (p *Peer) HandleInbound() {
 					p.QueueMessage(monkwire.NewMessage(monkwire.MsgBlockTy, blocks))
 
 				case monkwire.MsgBlockHashesTy:
-					p.catchingUp = true
+					p.setCatchingUp(true)
 
 					blockPool := p.ethereum.blockPool
 
@@ -520,11 +528,11 @@ func (p *Peer) HandleInbound() {
 						p.FetchHashes()
 					} else {
 						peerlogger.Infof("Found common hash (%x...)\n", p.lastReceivedHash[0:4])
-						p.doneFetchingHashes = true
+						p.setDoneFetchingHashes(true)
 					}
 
 				case monkwire.MsgBlockTy:
-					p.catchingUp = true
+					p.setCatchingUp(true)
 
 					blockPool := p.ethereum.blockPool
 
@@ -535,7 +543,7 @@ func (p *Peer) HandleInbound() {
 
 						blockPool.Add(block, p)
 
-						p.lastBlockReceived = time.Now()
+						p.setLastBlockReceived()
 					}
 				}
 			}
@@ -580,12 +588,14 @@ out:
 		select {
 		case <-serviceTimer.C:
 			if self.IsCap("eth") {
+				self.mut.Lock()
 				var (
 					sinceBlock = time.Since(self.lastBlockReceived)
 				)
+				self.mut.Unlock()
 
 				if sinceBlock > 5*time.Second {
-					self.catchingUp = false
+					self.setCatchingUp(false)
 				}
 			}
 		case <-self.quit:
@@ -624,8 +634,50 @@ func (p *Peer) Start() {
 	// Wait a few seconds for startup and then ask for an initial ping
 	time.Sleep(2 * time.Second)
 	p.writeMessage(monkwire.NewMessage(monkwire.MsgPingTy, ""))
-	p.pingStartTime = time.Now()
+	p.setPingStartTime()
 
+}
+
+func (p *Peer) setPingStartTime() {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.pingStartTime = time.Now()
+}
+
+func (p *Peer) setLastBlockReceived() {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.lastBlockReceived = time.Now()
+}
+
+func (p *Peer) setCatchingUp(b bool) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.catchingUp = b
+}
+
+func (p *Peer) setLastPong() {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.lastPong = time.Now().Unix()
+}
+
+func (p *Peer) setLastSend() {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.lastSend = time.Now()
+}
+
+func (p *Peer) setPingTime() {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.pingTime = time.Since(p.pingStartTime)
+}
+
+func (p *Peer) setDoneFetchingHashes(b bool) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.doneFetchingHashes = b
 }
 
 func (p *Peer) Stop() {
@@ -700,12 +752,14 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 		return
 	}
 
+	self.mut.Lock()
 	// Get the td and last hash
 	self.td = td
 	self.bestHash = bestHash
 	self.lastReceivedHash = bestHash
 
 	self.statusKnown = true
+	self.mut.Unlock()
 
 	// Compare the total TD with the blockchain TD. If remote is higher
 	// fetch hashes from highest TD node.
@@ -789,7 +843,10 @@ func (p *Peer) handleHandshake(msg *monkwire.Msg) {
 	p.ethereum.PushPeer(p)
 	p.ethereum.reactor.Post("peerList", p.ethereum.Peers())
 
+	p.mut.Lock()
 	p.protocolCaps = caps
+	p.mut.Unlock()
+
 	capsIt := caps.NewIterator()
 	var capsStrs []string
 	for capsIt.Next() {
@@ -808,7 +865,10 @@ func (p *Peer) handleHandshake(msg *monkwire.Msg) {
 }
 
 func (self *Peer) IsCap(cap string) bool {
+	self.mut.Lock()
 	capsIt := self.protocolCaps.NewIterator()
+	self.mut.Unlock()
+
 	for capsIt.Next() {
 		if capsIt.Value().Str() == cap {
 			return true
