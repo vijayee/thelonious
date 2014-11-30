@@ -229,6 +229,9 @@ func (pool *TxPool) Flush() []*Transaction {
 
 	// Recreate a new list all together
 	// XXX Is this the fastest way?
+	pool.mutex.Lock()
+	defer pool.mutex.Unlock()
+
 	pool.pool = list.New()
 
 	return txList
