@@ -2,6 +2,7 @@ package monkstate
 
 import (
 	"math/big"
+	"sync"
 
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monktrie"
@@ -22,6 +23,8 @@ type State struct {
 	stateObjects map[string]*StateObject
 
 	manifest *Manifest
+
+	mut sync.Mutex // for locking the cache
 }
 
 // Create a new state from a given trie
@@ -81,6 +84,9 @@ func (self *State) DeleteStateObject(stateObject *StateObject) {
 
 // Retrieve a state object given my the address. Nil if not found
 func (self *State) GetStateObject(addr []byte) *StateObject {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+
 	addr = monkutil.Address(addr)
 
 	stateObject := self.stateObjects[string(addr)]
@@ -111,6 +117,9 @@ func (self *State) GetOrNewStateObject(addr []byte) *StateObject {
 
 // Create a state object whether it exist in the trie or not
 func (self *State) NewStateObject(addr []byte) *StateObject {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+
 	addr = monkutil.Address(addr)
 
 	statelogger.Debugf("(+) %x\n", addr)
@@ -137,6 +146,8 @@ func (s *State) Cmp(other *State) bool {
 func (self *State) Copy() *State {
 	if self.Trie != nil {
 		state := New(self.Trie.Copy())
+	    self.mut.Lock()
+		defer self.mut.Unlock()
 		for k, stateObject := range self.stateObjects {
 			state.stateObjects[k] = stateObject.Copy()
 		}
@@ -151,7 +162,8 @@ func (self *State) Set(state *State) {
 	if state == nil {
 		panic("Tried setting 'state' to nil through 'Set'")
 	}
-
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	self.Trie = state.Trie
 	self.stateObjects = state.stateObjects
 }
@@ -163,6 +175,9 @@ func (s *State) Root() interface{} {
 // Resets the trie and all siblings
 func (s *State) Reset() {
 	s.Trie.Undo()
+
+	s.mut.Lock()
+	defer s.mut.Unlock()
 
 	// Reset all nested states
 	for _, stateObject := range s.stateObjects {
@@ -179,6 +194,8 @@ func (s *State) Reset() {
 
 // Syncs the trie and all siblings
 func (s *State) Sync() {
+	s.mut.Lock()
+	defer s.mut.Unlock()
 	// Sync all nested states
 	for _, stateObject := range s.stateObjects {
 		//s.UpdateStateObject(stateObject)
@@ -199,6 +216,8 @@ func (self *State) Empty() {
 }
 
 func (self *State) Update() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	for _, stateObject := range self.stateObjects {
 		if stateObject.remove {
 			self.DeleteStateObject(stateObject)
@@ -224,6 +243,8 @@ func (self *State) Manifest() *Manifest {
 
 // Debug stuff
 func (self *State) CreateOutputForDiff() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	for _, stateObject := range self.stateObjects {
 		stateObject.CreateOutputForDiff()
 	}
