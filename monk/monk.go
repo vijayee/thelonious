@@ -1,6 +1,7 @@
 package monk
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"os/user"
 	"strconv"
 	"time"
-	"encoding/hex"
 
 	"github.com/eris-ltd/decerver-interfaces/api"
 	"github.com/eris-ltd/decerver-interfaces/core"
@@ -18,13 +18,13 @@ import (
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
-	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkreact"
+	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkdoug"
 )
 
 var (
@@ -33,13 +33,13 @@ var (
 )
 
 //Logging
-var logger *monklog.Logger = monklog.NewLogger("EthChain(decerver)")
+var logger *monklog.Logger = monklog.NewLogger("MonkChain(decerver)")
 
 // implements decerver-interfaces Module
 type MonkModule struct {
-	monk *Monk
-    Config *ChainConfig
-    GenesisConfig *monkdoug.GenesisConfig
+	monk          *Monk
+	Config        *ChainConfig
+	GenesisConfig *monkdoug.GenesisConfig
 
 	wsAPIServiceFactory api.WsAPIServiceFactory
 	httpAPIService      interface{}
@@ -51,34 +51,34 @@ type MonkModule struct {
 // as such, it does not have "administrative" methods
 type Monk struct {
 	config     *ChainConfig
-    genConfig  *monkdoug.GenesisConfig
-	ethereum   *eth.Ethereum
+	genConfig  *monkdoug.GenesisConfig
+	thelonious *thelonious.Thelonious
 	pipe       *monkpipe.Pipe
 	keyManager *monkcrypto.KeyManager
 	reactor    *monkreact.ReactorEngine
 	started    bool
 	chans      map[string]chan events.Event
-    ethchans   map[string]chan monkreact.Event
+	reactchans map[string]chan monkreact.Event
 }
 
 /*
    First, the functions to satisfy Module
 */
 
-// Create a new MonkModule and internal Monk, with default config. 
-// Accepts an etheruem instance to yield a new
+// Create a new MonkModule and internal Monk, with default config.
+// Accepts an thelonious instance to yield a new
 // interface into the same chain.
-// It will not initialize an ethereum object for you,
+// It will not initialize a thelonious object for you,
 // giving you a chance to adjust configs before calling `Init()`
-func NewMonk(ethereum *eth.Ethereum) *MonkModule {
+func NewMonk(th *thelonious.Thelonious) *MonkModule {
 	mm := new(MonkModule)
 	m := new(Monk)
 	// Here we load default config and leave it to caller
 	// to read a config file to overwrite
 	mm.Config = DefaultConfig
-    m.config = mm.Config
-	if ethereum != nil {
-		m.ethereum = ethereum
+	m.config = mm.Config
+	if th != nil {
+		m.thelonious = th
 	}
 
 	m.started = false
@@ -92,7 +92,7 @@ func (mod *MonkModule) Register(fileIO core.FileIO, registry api.ApiRegistry, ru
 }
 
 // initialize an monkchain
-// it may or may not already have an ethereum instance
+// it may or may not already have a thelonious instance
 // basically gives you a pipe, local keyMang, and reactor
 func (mod *MonkModule) Init() error {
 	m := mod.monk
@@ -100,45 +100,45 @@ func (mod *MonkModule) Init() error {
 	if m.config == nil {
 		m.config = DefaultConfig
 	}
-    if mod.GenesisConfig == nil{
-        mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
-    }
-    m.genConfig = mod.GenesisConfig
+	if mod.GenesisConfig == nil {
+		mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
+	}
+	m.genConfig = mod.GenesisConfig
 
-    monkdoug.Adversary = mod.Config.Adversary
+	monkdoug.Adversary = mod.Config.Adversary
 
-	// if no ethereum instance
-	if m.ethereum == nil {
-		m.ethConfig()
-		m.newEthereum()
+	// if no thelonious instance
+	if m.thelonious == nil {
+		m.thConfig()
+		m.newThelonious()
 	}
 
 	// public interface
-	pipe := monkpipe.New(m.ethereum)
+	pipe := monkpipe.New(m.thelonious)
 	// load keys from file. genesis block keys. convenient for testing
 
 	m.pipe = pipe
-	m.keyManager = m.ethereum.KeyManager()
-	m.reactor = m.ethereum.Reactor()
+	m.keyManager = m.thelonious.KeyManager()
+	m.reactor = m.thelonious.Reactor()
 
 	// subscribe to the new block
 	m.chans = make(map[string]chan events.Event)
-	m.ethchans = make(map[string]chan monkreact.Event)
+	m.reactchans = make(map[string]chan monkreact.Event)
 	m.Subscribe("newBlock", "newBlock", "")
 
-	log.Println(m.ethereum.Port)
+	log.Println(m.thelonious.Port)
 
 	return nil
 }
 
-// start the ethereum node
+// start the thelonious node
 func (mod *MonkModule) Start() error {
 	m := mod.monk
-	m.ethereum.Start(true) // peer seed
+	m.thelonious.Start(true) // peer seed
 	m.started = true
 
 	if m.config.Mining {
-		StartMining(m.ethereum)
+		StartMining(m.thelonious)
 	}
 	return nil
 }
@@ -195,11 +195,11 @@ func (mod *MonkModule) IsScript(target string) bool {
 	return mod.monk.IsScript(target)
 }
 
-func (mod *MonkModule) Tx(addr, amt string) (string, error){
+func (mod *MonkModule) Tx(addr, amt string) (string, error) {
 	return mod.monk.Tx(addr, amt)
 }
 
-func (mod *MonkModule) Msg(addr string, data []string) (string, error){
+func (mod *MonkModule) Msg(addr string, data []string) (string, error) {
 	return mod.monk.Msg(addr, data)
 }
 
@@ -207,12 +207,12 @@ func (mod *MonkModule) Script(file, lang string) (string, error) {
 	return mod.monk.Script(file, lang)
 }
 
-func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event{
-    return mod.monk.Subscribe(name, event, target)
+func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event {
+	return mod.monk.Subscribe(name, event, target)
 }
 
-func (mod *MonkModule) UnSubscribe(name string){
-    mod.monk.UnSubscribe(name)
+func (mod *MonkModule) UnSubscribe(name string) {
+	mod.monk.UnSubscribe(name)
 }
 
 func (mod *MonkModule) Commit() {
@@ -256,25 +256,25 @@ func (mod *MonkModule) AddressCount() int {
 }
 
 /*
-   Non-interface functions that otherwise prove useful 
+   Non-interface functions that otherwise prove useful
     in standalone applications, testing, and debuging
 */
 
 // Load genesis json file (so calling pkg need not import monkdoug)
-func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig{
-    g := monkdoug.LoadGenesis(file)
-    return g
+func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig {
+	g := monkdoug.LoadGenesis(file)
+	return g
 }
 
 // Set the genesis json object. This can only be done once
-func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig){
-    // reset the permission model struct (since config may have changed)
-    genJson.SetModel(monkdoug.NewPermModel(genJson))
-    mod.GenesisConfig = genJson
+func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig) {
+	// reset the permission model struct (since config may have changed)
+	genJson.SetModel(monkdoug.NewPermModel(genJson))
+	mod.GenesisConfig = genJson
 }
 
-func (mod *MonkModule) MonkState() *monkstate.State{
-   return mod.monk.pipe.World().State() 
+func (mod *MonkModule) MonkState() *monkstate.State {
+	return mod.monk.pipe.World().State()
 }
 
 /*
@@ -361,16 +361,16 @@ func (monk *Monk) StorageAt(contract_addr string, storage_addr string) string {
 }
 
 func (monk *Monk) BlockCount() int {
-	return int(monk.ethereum.ChainManager().LastBlockNumber)
+	return int(monk.thelonious.ChainManager().LastBlockNumber)
 }
 
 func (monk *Monk) LatestBlock() string {
-	return monkutil.Bytes2Hex(monk.ethereum.ChainManager().LastBlockHash)
+	return monkutil.Bytes2Hex(monk.thelonious.ChainManager().LastBlockHash)
 }
 
 func (monk *Monk) Block(hash string) *modules.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
-	block := monk.ethereum.ChainManager().GetBlock(hashBytes)
+	block := monk.thelonious.ChainManager().GetBlock(hashBytes)
 	return convertBlock(block)
 }
 
@@ -418,9 +418,9 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 
 func (monk *Monk) Script(file, lang string) (string, error) {
 	var script string
-    if lang == "lll-literal"{
-        script = CompileLLL(file, true)
-    }
+	if lang == "lll-literal" {
+		script = CompileLLL(file, true)
+	}
 	if lang == "lll" {
 		script = CompileLLL(file, false) // if lll, compile and pass along
 	} else if lang == "mutan" {
@@ -445,61 +445,60 @@ func (monk *Monk) Script(file, lang string) (string, error) {
 
 // returns a chanel that will fire when address is updated
 func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
-	eth_ch := make(chan monkreact.Event, 1)
+	th_ch := make(chan monkreact.Event, 1)
 	if target != "" {
 		addr := string(monkutil.Hex2Bytes(target))
-		monk.reactor.Subscribe("object:"+addr, eth_ch)
+		monk.reactor.Subscribe("object:"+addr, th_ch)
 	} else {
-		monk.reactor.Subscribe(event, eth_ch)
+		monk.reactor.Subscribe(event, th_ch)
 	}
 
-    ch := make(chan events.Event) 
+	ch := make(chan events.Event)
 	monk.chans[name] = ch
-    monk.ethchans[name] = eth_ch
+	monk.reactchans[name] = th_ch
 
 	// fire up a goroutine and broadcast module specific chan on our main chan
 	go func() {
 		for {
-			eve, more := <-eth_ch
-            if !more{
-                break
-            }
-            returnEvent := events.Event{
+			eve, more := <-th_ch
+			if !more {
+				break
+			}
+			returnEvent := events.Event{
 				Event:     event,
 				Target:    target,
 				Source:    "monk",
 				TimeStamp: time.Now(),
 			}
-            // cast resource to appropriate type
-            resource := eve.Resource
-            if block, ok := resource.(*monkchain.Block); ok{
-                returnEvent.Resource = convertBlock(block)
-            } else if tx, ok := resource.(monkchain.Transaction); ok{
-                returnEvent.Resource = convertTx(&tx)
-            } else if txFail, ok := resource.(monkchain.TxFail); ok{
-                tx := convertTx(txFail.Tx)
-                tx.Error = txFail.Err.Error()
-                returnEvent.Resource = tx
-            } else{
-                logger.Errorln("Invalid event resource type", resource)
-            }
-            ch <- returnEvent
+			// cast resource to appropriate type
+			resource := eve.Resource
+			if block, ok := resource.(*monkchain.Block); ok {
+				returnEvent.Resource = convertBlock(block)
+			} else if tx, ok := resource.(monkchain.Transaction); ok {
+				returnEvent.Resource = convertTx(&tx)
+			} else if txFail, ok := resource.(monkchain.TxFail); ok {
+				tx := convertTx(txFail.Tx)
+				tx.Error = txFail.Err.Error()
+				returnEvent.Resource = tx
+			} else {
+				logger.Errorln("Invalid event resource type", resource)
+			}
+			ch <- returnEvent
 		}
 	}()
 	return ch
 }
 
-func (monk *Monk) UnSubscribe(name string){
-    if c, ok := monk.ethchans[name]; ok{
-        close(c)
-        delete(monk.ethchans, name)
-    }
-    if c, ok := monk.chans[name]; ok{
-        close(c)
-        delete(monk.chans, name)
-    }
+func (monk *Monk) UnSubscribe(name string) {
+	if c, ok := monk.reactchans[name]; ok {
+		close(c)
+		delete(monk.reactchans, name)
+	}
+	if c, ok := monk.chans[name]; ok {
+		close(c)
+		delete(monk.chans, name)
+	}
 }
-
 
 // Mine a block
 func (m *Monk) Commit() {
@@ -521,7 +520,7 @@ func (m *Monk) AutoCommit(toggle bool) {
 }
 
 func (m *Monk) IsAutocommit() bool {
-	return m.ethereum.IsMining()
+	return m.thelonious.IsMining()
 }
 
 /*
@@ -591,32 +590,32 @@ func (monk *Monk) AddressCount() int {
    Helper functions
 */
 
-// create a new ethereum instance
-// expects ethConfig to already have been called!
-// init db, nat/upnp, ethereum struct, reactorEngine, txPool, blockChain, stateManager
-func (m *Monk) newEthereum() {
+// create a new thelonious instance
+// expects thConfig to already have been called!
+// init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
+func (m *Monk) newThelonious() {
 	db := NewDatabase(m.config.DbName)
 
 	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
-    if err != nil{
-        log.Fatal(err)
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
 	m.keyManager = keyManager
 
 	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
 
-	// create the ethereum obj
-	ethereum, err := eth.New(db, clientIdentity, m.keyManager, eth.CapDefault, false, m.genConfig)
+	// create the thelonious obj
+	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, m.genConfig)
 
 	if err != nil {
 		log.Fatal("Could not start node: %s\n", err)
 	}
 
-	ethereum.Port = strconv.Itoa(m.config.Port)
-	ethereum.MaxPeers = m.config.MaxPeers
+	th.Port = strconv.Itoa(m.config.Port)
+	th.MaxPeers = m.config.MaxPeers
 
-	m.ethereum = ethereum
+	m.thelonious = th
 }
 
 // returns hex addr of gendoug
@@ -626,21 +625,20 @@ func (monk *Monk) GenDoug() string {
 }*/
 
 func (monk *Monk) StartMining() bool {
-	return StartMining(monk.ethereum)
+	return StartMining(monk.thelonious)
 }
 
 func (monk *Monk) StopMining() bool {
-	return StopMining(monk.ethereum)
+	return StopMining(monk.thelonious)
 }
 
 func (monk *Monk) StartListening() {
-	monk.ethereum.StartListening()
+	monk.thelonious.StartListening()
 }
 
 func (monk *Monk) StopListening() {
-	monk.ethereum.StopListening()
+	monk.thelonious.StopListening()
 }
-
 
 /*
    some key management stuff
@@ -669,8 +667,8 @@ func (monk *Monk) Stop() {
 	}
 	monk.StopMining()
 	fmt.Println("stopped mining")
-	monk.ethereum.Stop()
-	fmt.Println("stopped ethereum")
+	monk.thelonious.Stop()
+	fmt.Println("stopped thelonious")
 	monk = &Monk{config: monk.config}
 	monklog.Reset()
 }
@@ -734,11 +732,11 @@ func PackTxDataArgs(args ...string) string {
 	// return ret
 }
 
-// convert ethereum block to modules block
-func convertBlock(block *monkchain.Block) *modules.Block{
-    if block == nil{
-        return nil
-    }
+// convert thelonious block to modules block
+func convertBlock(block *monkchain.Block) *modules.Block {
+	if block == nil {
+		return nil
+	}
 	b := &modules.Block{}
 	b.Coinbase = hex.EncodeToString(block.Coinbase)
 	b.Difficulty = block.Difficulty.String()
@@ -750,31 +748,30 @@ func convertBlock(block *monkchain.Block) *modules.Block{
 	b.Number = block.Number.String()
 	b.PrevHash = hex.EncodeToString(block.PrevHash)
 	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction,len(block.Transactions()))
-	for idx , tx := range block.Transactions() {
+	txs := make([]*modules.Transaction, len(block.Transactions()))
+	for idx, tx := range block.Transactions() {
 		txs[idx] = convertTx(tx)
 	}
 	b.Transactions = txs
 	b.TxRoot = hex.EncodeToString(block.TxSha)
 	b.UncleRoot = hex.EncodeToString(block.UncleSha)
-	b.Uncles = make([]string,len(block.Uncles))
+	b.Uncles = make([]string, len(block.Uncles))
 	for idx, u := range block.Uncles {
 		b.Uncles[idx] = hex.EncodeToString(u.Hash())
 	}
-    return b
+	return b
 }
 
-// convert ethereum tx to modules tx
+// convert thelonious tx to modules tx
 func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
 	tx := &modules.Transaction{}
 	tx.ContractCreation = monkTx.CreatesContract()
 	tx.Gas = monkTx.Gas.String()
 	tx.GasCost = monkTx.GasPrice.String()
 	tx.Hash = hex.EncodeToString(monkTx.Hash())
-	tx.Nonce = fmt.Sprintf("%d",monkTx.Nonce)
+	tx.Nonce = fmt.Sprintf("%d", monkTx.Nonce)
 	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
 	tx.Sender = hex.EncodeToString(monkTx.Sender())
 	tx.Value = monkTx.Value.String()
 	return tx
 }
-

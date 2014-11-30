@@ -10,7 +10,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkutil"
 )
 
-// The connection object allows you to set up a connection to the Ethereum network.
+// The connection object allows you to set up a connection to the Thelonious network.
 // The Connection object takes care of all encoding and sending objects properly over
 // the network.
 type Connection struct {
@@ -19,7 +19,7 @@ type Connection struct {
 	pendingMessages Messages
 }
 
-// Create a new connection to the Ethereum network
+// Create a new connection to the Thelonious network
 func New(conn net.Conn) *Connection {
 	return &Connection{conn: conn, nTimeout: 500}
 }
@@ -37,7 +37,7 @@ func (self *Connection) Read() *Msg {
 
 }
 
-// Write to the Ethereum network specifying the type of the message and
+// Write to the Thelonious network specifying the type of the message and
 // the data. Data can be of type RlpEncodable or []interface{}. Returns
 // nil or if something went wrong an error.
 func (self *Connection) Write(typ MsgType, v ...interface{}) error {

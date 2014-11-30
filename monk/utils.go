@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
-	"github.com/eris-ltd/thelonious"
+	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkdb"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -138,7 +138,7 @@ func NewClientIdentity(clientIdentifier, version, customIdentifier string) *monk
 }
 
 /*
-func NewEthereum(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Ethereum {
+func NewThelonious(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Thelonious {
 	ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, usePnp)
 	if err != nil {
 		logger.Fatalln("eth start err:", err)
@@ -148,7 +148,7 @@ func NewEthereum(db monkutil.Database, clientIdentity monkwire.ClientIdentity, k
 	return ethereum
 }*/
 
-func StartEthereum(ethereum *eth.Ethereum, UseSeed bool) {
+func StartThelonious(ethereum *eth.Thelonious, UseSeed bool) {
 	logger.Infof("Starting %s", ethereum.ClientIdentity())
 	ethereum.Start(UseSeed)
 	RegisterInterrupt(func(sig os.Signal) {
@@ -157,7 +157,7 @@ func StartEthereum(ethereum *eth.Ethereum, UseSeed bool) {
 	})
 }
 
-func ShowGenesis(ethereum *eth.Ethereum) {
+func ShowGenesis(ethereum *eth.Thelonious) {
 	logger.Infoln(ethereum.ChainManager().Genesis())
 	exit(nil)
 }
@@ -231,7 +231,7 @@ func KeyTasks(keyManager *monkcrypto.KeyManager, KeyRing string, GenAddr bool, S
 	}
 }
 
-func StartRpc(ethereum *eth.Ethereum, RpcPort int) {
+func StartRpc(ethereum *eth.Thelonious, RpcPort int) {
 	var err error
 	ethereum.RpcServer, err = monkrpc.NewJsonRpcServer(monkpipe.NewJSPipe(ethereum), RpcPort)
 	if err != nil {
@@ -247,7 +247,7 @@ func GetMiner() *monkminer.Miner {
 	return miner
 }
 
-func StartMining(ethereum *eth.Ethereum) bool {
+func StartMining(ethereum *eth.Thelonious) bool {
 
 	if !ethereum.Mining {
 		ethereum.Mining = true
@@ -286,12 +286,12 @@ func FormatTransactionData(data string) []byte {
 	return d
 }
 
-func StopMining(ethereum *eth.Ethereum) bool {
+func StopMining(ethereum *eth.Thelonious) bool {
 	if ethereum.Mining && miner != nil {
 		miner.Stop()
 		logger.Infoln("Stopped mining")
 		ethereum.Mining = false
-        miner = nil
+		miner = nil
 		return true
 	}
 
@@ -299,7 +299,7 @@ func StopMining(ethereum *eth.Ethereum) bool {
 }
 
 // Replay block
-func BlockDo(ethereum *eth.Ethereum, hash []byte) error {
+func BlockDo(ethereum *eth.Thelonious, hash []byte) error {
 	block := ethereum.ChainManager().GetBlock(hash)
 	if block == nil {
 		return fmt.Errorf("unknown block %x", hash)
@@ -318,20 +318,20 @@ func BlockDo(ethereum *eth.Ethereum, hash []byte) error {
 
 // If an address is empty, load er up
 // vestige of ye old key days
-func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager){
-    keys := keyMang.KeyRing()
-    masterPair := keys.GetKeyPair(0)
-    logger.Infoln("master has ", pipe.Balance(keys.GetKeyPair(keys.Len()-1).Address()) )
-    for i:=0; i<keys.Len();i++{
-        k := keys.GetKeyPair(i).Address()
-        val := pipe.Balance(k)
-        logger.Infoln("key ", i, " ", monkutil.Bytes2Hex(k), " ", val)
-        v := val.Int()
-        if v < 100 {
-            _, err := pipe.Transact(masterPair, k, monkutil.NewValue(monkutil.Big("10000000000000000000")), monkutil.NewValue(monkutil.Big("1000")), monkutil.NewValue(monkutil.Big("1000")), "")
-            if err != nil{
-                logger.Infoln("Error transfering funds to ", monkutil.Bytes2Hex(k))
-            }
-        }
-    }
+func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager) {
+	keys := keyMang.KeyRing()
+	masterPair := keys.GetKeyPair(0)
+	logger.Infoln("master has ", pipe.Balance(keys.GetKeyPair(keys.Len()-1).Address()))
+	for i := 0; i < keys.Len(); i++ {
+		k := keys.GetKeyPair(i).Address()
+		val := pipe.Balance(k)
+		logger.Infoln("key ", i, " ", monkutil.Bytes2Hex(k), " ", val)
+		v := val.Int()
+		if v < 100 {
+			_, err := pipe.Transact(masterPair, k, monkutil.NewValue(monkutil.Big("10000000000000000000")), monkutil.NewValue(monkutil.Big("1000")), monkutil.NewValue(monkutil.Big("1000")), "")
+			if err != nil {
+				logger.Infoln("Error transfering funds to ", monkutil.Bytes2Hex(k))
+			}
+		}
+	}
 }

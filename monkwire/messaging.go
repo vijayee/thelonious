@@ -1,4 +1,4 @@
-// Package monkwire provides low level access to the Ethereum network and allows
+// Package monkwire provides low level access to the Thelonious network and allows
 // you to broadcast data over the network.
 package monkwire
 

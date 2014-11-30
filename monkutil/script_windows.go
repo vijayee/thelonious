@@ -13,7 +13,7 @@ import (
 // General compile function
 func Compile(script string, silent bool) (ret []byte, err error) {
 	if len(script) > 2 {
-		compiler := mutan.NewCompiler(backend.NewEthereumBackend())
+		compiler := mutan.NewCompiler(backend.NewTheloniousBackend())
 		compiler.Silent = silent
 		byteCode, errors := compiler.Compile(strings.NewReader(script))
 		if len(errors) > 0 {

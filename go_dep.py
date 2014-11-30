@@ -21,7 +21,9 @@ def replace_all(path='.', old="github.com/ethereum", new="github.com/project-dou
 mods = ["ethchain", "ethstate", "ethvm", "ethwire", "ethtrie", "ethutil", "ethdb", "ethlog", "ethminer", "ethcrypto", "ethpipe", "ethreact", "ethrpc", "ethtest"]
 
 
-for m in mods:
+#for m in mods:
     #replace_all(old="github.com/eris-ltd/thelonious/"+m, new="github.com/eris-ltd/thelonious/monk"+m[3:])
-    replace_all(old=m, new="monk"+m[3:])
+    #replace_all(old=m, new="monk"+m[3:])
+
+replace_all(old="EthManager", new="NodeManager")
 

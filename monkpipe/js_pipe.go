@@ -15,7 +15,7 @@ type JSPipe struct {
 	*Pipe
 }
 
-func NewJSPipe(eth monkchain.EthManager) *JSPipe {
+func NewJSPipe(eth monkchain.NodeManager) *JSPipe {
 	return &JSPipe{New(eth)}
 }
 

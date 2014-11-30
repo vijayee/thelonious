@@ -35,7 +35,7 @@ type Peer interface {
 	Caps() *monkutil.Value
 }
 
-type EthManager interface {
+type NodeManager interface {
 	BlockManager() *BlockManager
 	ChainManager() *ChainManager
 	TxPool() *TxPool
@@ -48,18 +48,18 @@ type EthManager interface {
 	KeyManager() *monkcrypto.KeyManager
 	ClientIdentity() monkwire.ClientIdentity
 	Db() monkutil.Database
-    GenesisPointer(block *Block) // deploy the genesis block
-    GenesisModel() GenDougModel // return the genesis model
+	GenesisPointer(block *Block) // deploy the genesis block
+	GenesisModel() GenDougModel  // return the genesis model
 }
 
 // Model defining the protocol
-type GenDougModel interface{
-    Deploy(block *Block) // deploy the genesis block
-    StartMining(coinbase []byte, parent *Block) bool
-    Difficulty(block, parent *Block) *big.Int
-    ValidatePerm(addr []byte, role string, state *monkstate.State) error
-    ValidateBlock(block *Block, bc *ChainManager) error
-    ValidateTx(tx *Transaction, state *monkstate.State) error
+type GenDougModel interface {
+	Deploy(block *Block) // deploy the genesis block
+	StartMining(coinbase []byte, parent *Block) bool
+	Difficulty(block, parent *Block) *big.Int
+	ValidatePerm(addr []byte, role string, state *monkstate.State) error
+	ValidateBlock(block *Block, bc *ChainManager) error
+	ValidateTx(tx *Transaction, state *monkstate.State) error
 }
 
 // Private global genDoug variable for checking permissions on arbitrary
@@ -67,8 +67,8 @@ type GenDougModel interface{
 var genDoug GenDougModel
 
 // Public function so we can validate permissions using the genDoug from outside this package
-func DougValidatePerm(addr []byte, role string, state *monkstate.State) error{
-    return genDoug.ValidatePerm(addr, role, state)
+func DougValidatePerm(addr []byte, role string, state *monkstate.State) error {
+	return genDoug.ValidatePerm(addr, role, state)
 }
 
 type BlockManager struct {
@@ -80,8 +80,8 @@ type BlockManager struct {
 	mem map[string]*big.Int
 	// Proof of work used for validating
 	Pow PoW
-	// The ethereum manager interface
-	eth EthManager
+	// The thelonious manager interface
+	th NodeManager
 	// The managed states
 	// Transiently state. The trans state isn't ever saved, validated and
 	// it could be used for setting account nonces without effecting
@@ -97,21 +97,21 @@ type BlockManager struct {
 	lastAttemptedBlock *Block
 }
 
-func NewBlockManager(ethereum EthManager) *BlockManager {
+func NewBlockManager(thelonious NodeManager) *BlockManager {
 	sm := &BlockManager{
-		mem:      make(map[string]*big.Int),
-		Pow:      &EasyPow{},
-		eth: ethereum,
-		bc:       ethereum.ChainManager(),
+		mem: make(map[string]*big.Int),
+		Pow: &EasyPow{},
+		th:  thelonious,
+		bc:  thelonious.ChainManager(),
 	}
-	sm.transState = ethereum.ChainManager().CurrentBlock.State().Copy()
-	sm.miningState = ethereum.ChainManager().CurrentBlock.State().Copy()
+	sm.transState = thelonious.ChainManager().CurrentBlock.State().Copy()
+	sm.miningState = thelonious.ChainManager().CurrentBlock.State().Copy()
 
 	return sm
 }
 
 func (sm *BlockManager) CurrentState() *monkstate.State {
-	return sm.eth.ChainManager().CurrentBlock.State()
+	return sm.th.ChainManager().CurrentBlock.State()
 }
 
 func (sm *BlockManager) TransState() *monkstate.State {
@@ -123,12 +123,12 @@ func (sm *BlockManager) MiningState() *monkstate.State {
 }
 
 func (sm *BlockManager) NewMiningState() *monkstate.State {
-	sm.miningState = sm.eth.ChainManager().CurrentBlock.State().Copy()
+	sm.miningState = sm.th.ChainManager().CurrentBlock.State().Copy()
 
 	return sm.miningState
 }
 
-func (sm *BlockManager) ChainManager() *ChainManager{
+func (sm *BlockManager) ChainManager() *ChainManager {
 	return sm.bc
 }
 
@@ -145,42 +145,42 @@ done:
 		txGas := new(big.Int).Set(tx.Gas)
 
 		cb := state.GetStateObject(coinbase.Address())
-        // TODO: deal with this
+		// TODO: deal with this
 		st := NewStateTransitionEris(cb, tx, state, block, self.bc.Genesis()) // ERIS
 		err = st.TransitionState()
 		if err != nil {
 			statelogger.Infoln(err)
 			switch {
 			case IsNonceErr(err):
-                self.eth.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
+				self.th.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 				err = nil // ignore error
 				continue
-            case IsGasLimitTxErr(err):
-                self.eth.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
+			case IsGasLimitTxErr(err):
+				self.th.Reactor().Post("newTx:post:fail", &TxFail{tx, err})
 				err = nil // ignore error
 				continue
 			case IsGasLimitErr(err):
 				unhandled = txs[i:]
-                for _, t := range unhandled{
-                    self.eth.Reactor().Post("newTx:post:fail", &TxFail{t, err})
-                }
+				for _, t := range unhandled {
+					self.th.Reactor().Post("newTx:post:fail", &TxFail{t, err})
+				}
 				break done
 			default:
 				statelogger.Infoln("this tx registered an error and may have failed:", err)
 				err = nil
-                // TODO: should this have a tx:fail ?
+				// TODO: should this have a tx:fail ?
 				//return nil, nil, nil, err
 			}
 		}
 
-        if st.msg != nil{
-            // if msg is nil, an error should have triggered above
-            // publish return value
-            self.eth.Reactor().Post("tx:"+string(tx.Hash())+":return", st.msg.Output)
-        }
+		if st.msg != nil {
+			// if msg is nil, an error should have triggered above
+			// publish return value
+			self.th.Reactor().Post("tx:"+string(tx.Hash())+":return", st.msg.Output)
+		}
 
 		// Notify all subscribers
-		self.eth.Reactor().Post("newTx:post", tx)
+		self.th.Reactor().Post("newTx:post", tx)
 
 		// Update the state with pending changes
 		state.Update()
@@ -230,14 +230,14 @@ func (sm *BlockManager) Process(block *Block, dontReact bool) (td *big.Int, err 
 	parent := sm.bc.GetBlock(block.PrevHash)
 
 	return sm.ProcessWithParent(block, parent)
-} 
+}
 
-func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, err error){
+func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, err error) {
 	sm.lastAttemptedBlock = block
 
 	var (
 		//parent = sm.bc.GetBlock(block.PrevHash)
-		state  = parent.State().Copy()
+		state = parent.State().Copy()
 	)
 
 	// Defer the Undo on the Trie. If the block processing happened
@@ -279,33 +279,33 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 	}
 
 	// Calculate the new total difficulty and sync back to the db
-	if td, ok := sm.CalculateTD(block); ok{
+	if td, ok := sm.CalculateTD(block); ok {
 		// Sync the current block's state to the database and cancelling out the deferred Undo
 		state.Sync()
 
 		// Add the block to the chain
 		// sm.bc.Add(block)
-        
+
 		//if dontReact == false {
-			sm.eth.Reactor().Post("newBlock", block)
-			state.Manifest().Reset()
+		sm.th.Reactor().Post("newBlock", block)
+		state.Manifest().Reset()
 		//}
 
 		statelogger.Infof("Processed block #%d (%x...)\n", block.Number, block.Hash()[0:4])
 
 		sm.transState = state.Copy()
-        /*
-		// Create a bloom bin for this block
-		filter := sm.createBloomFilter(state)
-		// Persist the data
-		fk := append([]byte("bloom"), block.Hash()...)
-		sm.Ethereum.Db().Put(fk, filter.Bin())
-        */
-		//sm.Ethereum.TxPool().RemoveInvalid(state)
-		sm.eth.TxPool().RemoveSet(block.Transactions())
-        return td, nil
+		/*
+			// Create a bloom bin for this block
+			filter := sm.createBloomFilter(state)
+			// Persist the data
+			fk := append([]byte("bloom"), block.Hash()...)
+			sm.Thelonious.Db().Put(fk, filter.Bin())
+		*/
+		//sm.Thelonious.TxPool().RemoveInvalid(state)
+		sm.th.TxPool().RemoveSet(block.Transactions())
+		return td, nil
 	} else {
-        // TODO: error here?
+		// TODO: error here?
 		return td, nil //nil, fmt.Errorf("total diff failed")
 	}
 
@@ -327,11 +327,11 @@ func (sm *BlockManager) ApplyDiff(state *monkstate.State, parent, block *Block) 
 
 // TODO: this is a sham...
 func (sm *BlockManager) CalculateTD(block *Block) (*big.Int, bool) {
-    td, err := sm.bc.CalcTotalDiff(block)
-    if err != nil{
-        fmt.Println(err)
-        return nil, false
-    }
+	td, err := sm.bc.CalcTotalDiff(block)
+	if err != nil {
+		fmt.Println(err)
+		return nil, false
+	}
 	// The new TD will only be accepted if the new difficulty is
 	// is greater than the previous.
 	if td.Cmp(sm.bc.TD) > 0 {
@@ -348,8 +348,8 @@ func (sm *BlockManager) CalculateTD(block *Block) (*big.Int, bool) {
 // an uncle or anything that isn't on the current block chain.
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *BlockManager) ValidateBlock(block *Block) error {
-    // all validation is done through the genDoug
-    return genDoug.ValidateBlock(block, sm.bc)
+	// all validation is done through the genDoug
+	return genDoug.ValidateBlock(block, sm.bc)
 }
 
 func (sm *BlockManager) AccumelateRewards(state *monkstate.State, block, parent *Block) error {
@@ -389,7 +389,7 @@ func (sm *BlockManager) AccumelateRewards(state *monkstate.State, block, parent 
 
 	// Get the account associated with the coinbase
 	account := state.GetAccount(block.Coinbase)
-	// Reward amount of ether to the coinbase address
+	// Reward amount of junk to the coinbase address
 	account.AddAmount(reward)
 
 	return nil
@@ -408,7 +408,7 @@ func (sm *BlockManager) createBloomFilter(state *monkstate.State) *BloomFilter {
 		bloomf.Set(msg.From)
 	}
 
-	sm.eth.Reactor().Post("messages", state.Manifest().Messages)
+	sm.th.Reactor().Post("messages", state.Manifest().Messages)
 
 	return bloomf
 }

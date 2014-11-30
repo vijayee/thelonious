@@ -9,10 +9,10 @@ import (
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkdb"
-	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkstate"
-	"github.com/eris-ltd/thelonious/monkwire"
 	"github.com/eris-ltd/thelonious/monkreact"
+	"github.com/eris-ltd/thelonious/monkstate"
+	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 func init() {
@@ -28,42 +28,41 @@ func initDB() {
 type fakePow struct{}
 
 func (f fakePow) Search(block *Block, stop chan monkreact.Event) []byte { return nil }
-func (f fakePow) Verify(hash []byte, diff *big.Int, nonce []byte) bool   { return true }
-func (f fakePow) GetHashrate() int64                                     { return 0 }
-func (f fakePow) Turbo(bool)                                             {}
+func (f fakePow) Verify(hash []byte, diff *big.Int, nonce []byte) bool  { return true }
+func (f fakePow) GetHashrate() int64                                    { return 0 }
+func (f fakePow) Turbo(bool)                                            {}
 
 // We need this guy because ProcessWithParent clears txs from the pool
 type fakeEth struct{}
 
-func (e *fakeEth) BlockManager() *BlockManager                        { return nil }
-func (e *fakeEth) ChainManager() *ChainManager                        { return nil }
-func (e *fakeEth) TxPool() *TxPool                                    { return &TxPool{} }
+func (e *fakeEth) BlockManager() *BlockManager                            { return nil }
+func (e *fakeEth) ChainManager() *ChainManager                            { return nil }
+func (e *fakeEth) TxPool() *TxPool                                        { return &TxPool{} }
 func (e *fakeEth) Broadcast(msgType monkwire.MsgType, data []interface{}) {}
-func (e *fakeEth) Reactor() *monkreact.ReactorEngine { return monkreact.New()}
-func (e *fakeEth) PeerCount() int                                     { return 0 }
-func (e *fakeEth) IsMining() bool                                     { return false }
-func (e *fakeEth) IsListening() bool                                  { return false }
-func (e *fakeEth) Peers() *list.List                                  { return nil }
+func (e *fakeEth) Reactor() *monkreact.ReactorEngine                      { return monkreact.New() }
+func (e *fakeEth) PeerCount() int                                         { return 0 }
+func (e *fakeEth) IsMining() bool                                         { return false }
+func (e *fakeEth) IsListening() bool                                      { return false }
+func (e *fakeEth) Peers() *list.List                                      { return nil }
 func (e *fakeEth) KeyManager() *monkcrypto.KeyManager                     { return nil }
 func (e *fakeEth) ClientIdentity() monkwire.ClientIdentity                { return nil }
-func (e *fakeEth) Db() monkutil.Database                               { return nil }
-func (e *fakeEth) GenesisPointer(block *Block) {}
-func (e *fakeEth) GenesisModel() GenDougModel  {return nil}
+func (e *fakeEth) Db() monkutil.Database                                  { return nil }
+func (e *fakeEth) GenesisPointer(block *Block)                            {}
+func (e *fakeEth) GenesisModel() GenDougModel                             { return nil }
 
 type fakeDoug struct{}
 
-func (d *fakeDoug) Deploy(block *Block) {}
-func (d *fakeDoug) StartMining(coinbase []byte, parent *Block) bool { return false }
-func (d *fakeDoug) Difficulty(block, parent *Block) *big.Int { return nil }
-func (d *fakeDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) error {return nil}
-func (d *fakeDoug) ValidateBlock(block *Block, bc *ChainManager) error {return nil} 
-func (d *fakeDoug) ValidateTx(tx *Transaction, state *monkstate.State) error {return nil}
+func (d *fakeDoug) Deploy(block *Block)                                                 {}
+func (d *fakeDoug) StartMining(coinbase []byte, parent *Block) bool                     { return false }
+func (d *fakeDoug) Difficulty(block, parent *Block) *big.Int                            { return nil }
+func (d *fakeDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) error { return nil }
+func (d *fakeDoug) ValidateBlock(block *Block, bc *ChainManager) error                  { return nil }
+func (d *fakeDoug) ValidateTx(tx *Transaction, state *monkstate.State) error            { return nil }
 
 var (
-    FakeEth = &fakeEth{}
-    FakeDoug = &fakeDoug{}
+	FakeEth  = &fakeEth{}
+	FakeDoug = &fakeDoug{}
 )
-
 
 func newBlockFromParent(addr []byte, parent *Block) *Block {
 	block := CreateBlock(
@@ -88,7 +87,7 @@ func makeblock(bman *BlockManager, parent *Block, i int) *Block {
 	cbase.SetGasPool(block.CalcGasLimit(parent))
 	receipts, txs, _, _ := bman.ProcessTransactions(cbase, block.State(), block, block, Transactions{})
 	//block.SetTransactions(txs)
-    block.SetTxHash(receipts)
+	block.SetTxHash(receipts)
 	block.SetReceipts(receipts, txs)
 	bman.AccumelateRewards(block.State(), block, parent)
 	block.State().Update()
@@ -135,10 +134,10 @@ func newCanonical(n int) (*BlockManager, error) {
 // new chain manager without setLastBlock
 func newChainManager(protocol GenDougModel) *ChainManager {
 	bc := &ChainManager{}
-    bc.protocol = protocol
+	bc.protocol = protocol
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
 	bc.Reset()
-    genDoug = bc.protocol 
+	genDoug = bc.protocol
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
 	return bc
 }
