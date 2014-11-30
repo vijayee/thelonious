@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
@@ -72,8 +71,6 @@ func DougValidatePerm(addr []byte, role string, state *monkstate.State) error {
 }
 
 type BlockManager struct {
-	// Mutex for locking the block processor. Blocks can only be handled one at a time
-	mutex sync.Mutex
 	// Canonical block chain
 	bc *ChainManager
 	// non-persistent key/value memory storage
@@ -213,23 +210,6 @@ done:
 	parent.GasUsed = totalUsedGas
 
 	return receipts, handled, unhandled, err
-}
-
-func (sm *BlockManager) Process(block *Block, dontReact bool) (td *big.Int, err error) {
-	// Processing a blocks may never happen simultaneously
-	sm.mutex.Lock()
-	defer sm.mutex.Unlock()
-
-	if sm.bc.HasBlock(block.Hash()) {
-		return nil, nil
-	}
-
-	if !sm.bc.HasBlock(block.PrevHash) {
-		return nil, ParentError(block.PrevHash)
-	}
-	parent := sm.bc.GetBlock(block.PrevHash)
-
-	return sm.ProcessWithParent(block, parent)
 }
 
 func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, err error) {
