@@ -31,6 +31,24 @@ func (t *Test) TestRun() {
 	}, 0)
 }
 
+// run a node under load
+func (t *Test) TestRunLoad() {
+	t.tester("basic", func(mod *MonkModule) {
+		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
+		fmt.Println("mining addresS", mod.monk.ActiveAddress())
+		mod.Start()
+        go func(){
+            tick := time.Tick(1000 * time.Millisecond)
+            addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
+            amount := "567890"
+            for _ = range tick{
+                mod.Tx(addr, amount)
+            }
+        }()
+		mod.monk.thelonious.WaitForShutdown()
+	}, 0)
+}
+
 func (t *Test) TestState() {
 	t.tester("state", func(mod *MonkModule) {
 		state := mod.State()
