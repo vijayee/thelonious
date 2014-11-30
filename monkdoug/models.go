@@ -30,31 +30,13 @@ type Location struct {
    and for validating blocks and transactions.
    They allow for arbitrary extensions of consensus
 */
-type PermModel interface {
-	// Set some permissions and values in gendoug. requires valid keypair
-	SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt)
-	SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt)
 
-	// Client behaviour functions
-	StartMining(coinbase []byte, parent *monkchain.Block) bool
-
-	// generic validation functions for arbitrary consensus models
-	// satisfies monkchain.GenDougModel
-	Deploy(block *monkchain.Block)
-	Difficulty(block, parent *monkchain.Block) *big.Int
-	ValidatePerm(addr []byte, perm string, state *monkstate.State) error
-	ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error
-	ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error
-}
-
-/*
-   The yes model grants all permissions
-*/
+// The yes model grants all permissions
 type YesModel struct {
 	g *GenesisConfig
 }
 
-func NewYesModel(g *GenesisConfig) PermModel {
+func NewYesModel(g *GenesisConfig) monkchain.Protocol {
 	return &YesModel{g}
 }
 
@@ -62,15 +44,7 @@ func (m *YesModel) Deploy(block *monkchain.Block) {
 	m.g.Deploy(block)
 }
 
-func (m *YesModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt) {
-	return nil, nil
-}
-
-func (m *YesModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
-	return nil, nil
-}
-
-func (m *YesModel) StartMining(coinbase []byte, parent *monkchain.Block) bool {
+func (m *YesModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	return true
 }
 
@@ -90,14 +64,12 @@ func (m *YesModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State)
 	return nil
 }
 
-/*
-   The no model grants no permissions
-*/
+// The no model grants no permissions
 type NoModel struct {
 	g *GenesisConfig
 }
 
-func NewNoModel(g *GenesisConfig) PermModel {
+func NewNoModel(g *GenesisConfig) monkchain.Protocol {
 	return &NoModel{g}
 }
 
@@ -105,15 +77,7 @@ func (m *NoModel) Deploy(block *monkchain.Block) {
 	m.g.Deploy(block)
 }
 
-func (m *NoModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt) {
-	return nil, nil
-}
-
-func (m *NoModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
-	return nil, nil
-}
-
-func (m *NoModel) StartMining(coinbase []byte, parent *monkchain.Block) bool {
+func (m *NoModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	// we tell it to start mining even though we know it will fail
 	// because this model is mostly just used for testing...
 	return true
@@ -135,10 +99,42 @@ func (m *NoModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 	return fmt.Errorf("No!")
 }
 
-/*
-   The stdlib model grants permissions based on the state of the gendoug
-   It depends on the eris-std-lib for its storage model
-*/
+// The VM Model runs all processing through the EVM
+type VmModel struct{
+	g *GenesisConfig
+    doug []byte    
+}
+
+func NewVmModel(g *GenesisConfig) monkchain.Protocol {
+	return &NewVmModel{g, g.byteAddr}
+}
+
+func (m *VmModel) Deploy(block *Block){
+    m.g.Deploy(block)
+}
+
+func (m *VmModel) Participate(coinbase []byte, parent *Block) bool{
+
+}
+
+func (m *VmModel) Difficulty(block, parent *Block) *big.Int{
+
+}
+
+func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
+
+}
+
+func (m *VmModel) ValidateBlock(block *Block, bc *ChainManager) error{
+
+}
+
+func (m *VmModel) ValidateTx(tx *Transaction, state *monkstate.State) error{
+
+}
+
+// The stdlib model grants permissions based on the state of the gendoug
+// It depends on the eris-std-lib for its storage model
 type StdLibModel struct {
 	base *big.Int
 	doug []byte
@@ -146,7 +142,7 @@ type StdLibModel struct {
 	pow  monkchain.PoW
 }
 
-func NewStdLibModel(g *GenesisConfig) PermModel {
+func NewStdLibModel(g *GenesisConfig) monkchain.Protocol {
 	return &StdLibModel{
 		base: new(big.Int),
 		doug: g.byteAddr,
@@ -159,27 +155,15 @@ func (m *StdLibModel) Deploy(block *monkchain.Block) {
 	m.g.Deploy(block)
 }
 
-func (m *StdLibModel) PermLocator(addr []byte, perm string, state *monkstate.State) (*Location, error) {
-	// locator for perm w.r.t the address
-	locator := vars.GetLinkedListElement(m.doug, "permnames", perm, state)
-	locatorBig := monkutil.BigD(locator)
-
-	return &Location{m.doug, locatorBig, nil}, nil
-}
-
 func (m *StdLibModel) GetPermission(addr []byte, perm string, state *monkstate.State) *monkutil.Value {
 	public := vars.GetSingle(m.doug, "public:"+perm, state)
 	// A stand-in for a one day more sophisticated system
 	if len(public) > 0 {
 		return monkutil.NewValue(1)
 	}
-	loc, err := m.PermLocator(addr, perm, state)
-	if err != nil {
-		fmt.Println("Sorrry tough guy, perm locator failed", err)
-	}
-
-	locInt := loc.row.Uint64()
-
+	locator := vars.GetLinkedListElement(m.doug, "permnames", perm, state)
+	locatorBig := monkutil.BigD(locator)
+	locInt := locatorBig.Uint64()
 	permStr := vars.GetKeyedArrayElement(m.doug, "perms", monkutil.Bytes2Hex(addr), int(locInt), state)
 	return monkutil.NewValue(permStr)
 }
@@ -189,29 +173,9 @@ func (m *StdLibModel) HasPermission(addr []byte, perm string, state *monkstate.S
 	return permBig.Int64() > 0
 }
 
-func (m *StdLibModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt) {
-
-	txs := monkchain.Transactions{}
-	receipts := []*monkchain.Receipt{}
-
-	for perm, val := range permissions {
-		data := monkutil.PackTxDataArgs2("setperm", perm, "0x"+monkutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
-		tx, rec := MakeApplyTx("", m.doug, data, keys, block)
-		txs = append(txs, tx)
-		receipts = append(receipts, rec)
-	}
-	return txs, receipts
-}
-
-func (m *StdLibModel) SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
-	data := monkutil.PackTxDataArgs2(args...)
-	tx, rec := MakeApplyTx("", addr, data, keys, block)
-	return tx, rec
-}
-
 // Save energy in the round robin by not mining until close to your turn
 // or too much time has gone by
-func (m *StdLibModel) StartMining(coinbase []byte, parent *monkchain.Block) bool {
+func (m *StdLibModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	if Adversary != 0 {
 		return true
 	}
@@ -273,7 +237,6 @@ func (m *StdLibModel) ValidatePerm(addr []byte, role string, state *monkstate.St
 	if Adversary != 0 {
 		return nil
 	}
-
 	if m.HasPermission(addr, role, state) {
 		return nil
 	}
@@ -361,7 +324,7 @@ type EthModel struct {
 	g   *GenesisConfig
 }
 
-func NewEthModel(g *GenesisConfig) PermModel {
+func NewEthModel(g *GenesisConfig) monkchain.Protocol {
 	return &EthModel{&monkchain.EasyPow{}, g}
 }
 
@@ -369,15 +332,7 @@ func (m *EthModel) Deploy(block *monkchain.Block) {
 	m.g.Deploy(block)
 }
 
-func (m *EthModel) SetPermissions(addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt) {
-	return nil, nil
-}
-
-func (m *EthModel) SetValue(addr []byte, data []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
-	return nil, nil
-}
-
-func (m *EthModel) StartMining(coinbase []byte, parent *monkchain.Block) bool {
+func (m *EthModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	return true
 }
 

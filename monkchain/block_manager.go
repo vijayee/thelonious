@@ -48,23 +48,31 @@ type NodeManager interface {
 	KeyManager() *monkcrypto.KeyManager
 	ClientIdentity() monkwire.ClientIdentity
 	Db() monkutil.Database
-	GenesisPointer(block *Block) // deploy the genesis block
-	GenesisModel() GenDougModel  // return the genesis model
+	Protocol() Protocol
 }
 
-// Model defining the protocol
-type GenDougModel interface {
-	Deploy(block *Block) // deploy the genesis block
-	StartMining(coinbase []byte, parent *Block) bool
+type CheckPoint interface {
+}
+
+// Model defining the consensus
+type Protocol interface {
+	// deploy genesis block containing protocol rules
+	Deploy(block *Block)
+	// determine whether to attempt participating in consensus
+	Participate(coinbase []byte, parent *Block) bool
+	// required difficulty of a block
 	Difficulty(block, parent *Block) *big.Int
+	// determine if an address has a permission
 	ValidatePerm(addr []byte, role string, state *monkstate.State) error
+	// validate a block
 	ValidateBlock(block *Block, bc *ChainManager) error
+	// validate a tx
 	ValidateTx(tx *Transaction, state *monkstate.State) error
 }
 
 // Private global genDoug variable for checking permissions on arbitrary
 // chain related actions. Set by setLastBlock when we boot up the blockchain
-var genDoug GenDougModel
+var genDoug Protocol
 
 // Public function so we can validate permissions using the genDoug from outside this package
 func DougValidatePerm(addr []byte, role string, state *monkstate.State) error {
@@ -355,7 +363,7 @@ func (sm *BlockManager) CalculateTD(block *Block) (*big.Int, bool) {
 // Validation validates easy over difficult (dagger takes longer time = difficult)
 func (sm *BlockManager) ValidateBlock(block *Block) error {
 	// all validation is done through the genDoug
-	return genDoug.ValidateBlock(block, sm.bc)
+	return sm.bc.protocol.ValidateBlock(block, sm.bc)
 }
 
 func (sm *BlockManager) AccumelateRewards(state *monkstate.State, block, parent *Block) error {

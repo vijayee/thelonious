@@ -62,8 +62,7 @@ func (e *fakeEth) Peers() *list.List                                      { retu
 func (e *fakeEth) KeyManager() *monkcrypto.KeyManager                     { return nil }
 func (e *fakeEth) ClientIdentity() monkwire.ClientIdentity                { return nil }
 func (e *fakeEth) Db() monkutil.Database                                  { return nil }
-func (e *fakeEth) GenesisPointer(block *Block)                            {}
-func (e *fakeEth) GenesisModel() GenDougModel                             { return nil }
+func (e *fakeEth) Protocol() Protocol                                     { return nil }
 
 type fakeDoug struct{}
 

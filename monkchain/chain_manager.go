@@ -44,7 +44,7 @@ func CalcDifficulty(block, parent *Block) *big.Int {
 type ChainManager struct {
 	//Thelonious NodeManager
 	processor BlockProcessor
-	protocol  GenDougModel
+	protocol  Protocol
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
 	genesisBlock *Block
 	// Last known total difficulty
@@ -62,12 +62,10 @@ type ChainManager struct {
 	chainMut sync.Mutex // for TestChain/InsertChain
 }
 
-func NewChainManager(protocol GenDougModel) *ChainManager {
+func NewChainManager(protocol Protocol) *ChainManager {
 	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
 	bc.workingTree = make(map[string]*link)
-	// Prepare the genesis block!
-	//bc.Thelonious.GenesisPointer(bc.genesisBlock)
 	bc.protocol = protocol
 
 	bc.setLastBlock()
@@ -215,7 +213,7 @@ func (bc *ChainManager) setLastBlock() {
 
 func (bc *ChainManager) Reset() {
 	// prepare genesis (calls sync)
-	//bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	bc.protocol.Deploy(bc.genesisBlock) 
 
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
@@ -529,6 +527,7 @@ func (self *ChainManager) insertChain(chain *BlockChain) {
 // This function assumes you've done your checking. No validity checking is done at this stage anymore
 // This will either extend canonical or cause a reorg.
 func (self *ChainManager) InsertChain(chain *BlockChain) {
+
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)

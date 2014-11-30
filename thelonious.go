@@ -99,7 +99,7 @@ type Thelonious struct {
 	// json based config object
 	genConfig *monkdoug.GenesisConfig
 	// model interface for validating actions
-	genModel monkchain.GenDougModel
+	protocol monkchain.Protocol
 }
 
 func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Thelonious, error) {
@@ -133,13 +133,13 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-	genModel := th.setGenesis(genConfig)
+	protocol := th.setGenesis(genConfig)
 
 	th.reactor = monkreact.New()
 
 	th.blockPool = NewBlockPool(th)
 	th.txPool = monkchain.NewTxPool(th)
-	th.blockChain = monkchain.NewChainManager(genModel)
+	th.blockChain = monkchain.NewChainManager(protocol)
 	th.blockManager = monkchain.NewBlockManager(th)
 	th.blockChain.SetProcessor(th.blockManager)
 
@@ -149,23 +149,13 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 	return th, nil
 }
 
-// Deploy the genesis block from a preconfigured GenesisJSON object
-// if genConfig is nil, this function has no effect, and the genesis block is empty
-func (s *Thelonious) GenesisPointer(block *monkchain.Block) {
-	if s.genConfig != nil {
-		s.genConfig.Deploy(block)
-	} else {
-		fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
-	}
-}
-
-func (s *Thelonious) GenesisModel() monkchain.GenDougModel {
-	return s.genModel
+func (s *Thelonious) Protocol() monkchain.Protocol {
+	return s.protocol
 }
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel {
+func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.Protocol {
 	if s.genConfig != nil {
 		fmt.Println("GenesisConfig already set")
 		return nil
@@ -174,8 +164,8 @@ func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.Gen
 		genConfig.SetModel(monkdoug.NewPermModel(genConfig))
 	}
 	s.genConfig = genConfig
-	s.genModel = genConfig.Model()
-	return s.genModel
+	s.protocol = genConfig.Model()
+	return s.protocol
 }
 
 func (s *Thelonious) Reactor() *monkreact.ReactorEngine {

@@ -129,15 +129,13 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 	MakeApplyTx(codePath, genAddr, nil, keys, block)
 
 	// set the global vars
-	g.model.SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-	g.model.SetValue(genAddr, []string{"setvar", "difficulty", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
-	g.model.SetValue(genAddr, []string{"setvar", "public:mine", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
-	g.model.SetValue(genAddr, []string{"setvar", "public:create", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
-	g.model.SetValue(genAddr, []string{"setvar", "public:tx", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
-	g.model.SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
-	g.model.SetValue(genAddr, []string{"setvar", "blocktime", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
-
-	fmt.Println("done genesis. setting perms...")
+	SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
+	SetValue(genAddr, []string{"setvar", "difficulty", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
+	SetValue(genAddr, []string{"setvar", "public:mine", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
+	SetValue(genAddr, []string{"setvar", "public:create", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
+	SetValue(genAddr, []string{"setvar", "public:tx", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
+	SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
+	SetValue(genAddr, []string{"setvar", "blocktime", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
 
 	// set balances and permissions
 	for _, account := range g.Accounts {
@@ -145,9 +143,9 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 		AddAccount(account.byteAddr, account.Balance, block)
 		if g.model != nil {
 			// issue txs to set perms according to the model
-			g.model.SetPermissions(account.byteAddr, account.Permissions, block, keys)
+			SetPermissions(genAddr, account.byteAddr, account.Permissions, block, keys)
 			if account.Permissions["mine"] != 0 {
-				g.model.SetValue(g.byteAddr, []string{"addminer", account.Name, "0x" + account.Address, "0x" + strconv.Itoa(account.Stake)}, keys, block)
+				SetValue(g.byteAddr, []string{"addminer", account.Name, "0x" + account.Address, "0x" + strconv.Itoa(account.Stake)}, keys, block)
 			}
 			fmt.Println("setting perms for", account.Address)
 		}

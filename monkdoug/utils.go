@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monkdb"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monktrie"
 	"github.com/eris-ltd/thelonious/monkutil"
@@ -142,4 +143,46 @@ func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject) {
 	obj.EachStorage(func(k string, v *monkutil.Value) {
 		fmt.Println(monkutil.Bytes2Hex([]byte(k)), monkutil.Bytes2Hex(v.Bytes()))
 	})
+}
+
+// Run data through evm code and return value
+func EvmCall(code, data []byte, dump bool) []byte {
+	gas := "1000000000000000"
+	price := "10000000"
+
+	stateObject := state.NewStateObject([]byte("evmuser"))
+	closure := vm.NewClosure(nil, stateObject, stateObject, code, ethutil.Big(gas), ethutil.Big(price))
+
+	env := monkchain.NewEnv()
+	ret, _, e := closure.Call(vm.New(env, vm.DebugVmTy), data)
+
+	logger.Flush()
+	if e != nil {
+		perr(e)
+	}
+
+	if dump {
+		fmt.Println(string(env.state.Dump()))
+	}
+
+	return ret
+}
+
+func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
+	data := monkutil.PackTxDataArgs2(args...)
+	tx, rec := MakeApplyTx("", addr, data, keys, block)
+	return tx, rec
+}
+
+func SetPermissions(genAddr, addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt) {
+	txs := monkchain.Transactions{}
+	receipts := []*monkchain.Receipt{}
+
+	for perm, val := range permissions {
+		data := monkutil.PackTxDataArgs2("setperm", perm, "0x"+monkutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
+		tx, rec := MakeApplyTx("", genAddr, data, keys, block)
+		txs = append(txs, tx)
+		receipts = append(receipts, rec)
+	}
+	return txs, receipts
 }
