@@ -173,7 +173,7 @@ func (t *Test) TestBlockNum() {
 	t.tester("block num", func(mod *MonkModule) {
 		curchain := mod.monk.thelonious.ChainManager()
 		block := curchain.CurrentBlock()
-		fmt.Println(curchain.LastBlockNumber)
+		fmt.Println(curchain.CurrentBlockNumber())
 		fmt.Println(block.Number)
 		fmt.Println(curchain.Genesis().Number)
 		os.Exit(0)

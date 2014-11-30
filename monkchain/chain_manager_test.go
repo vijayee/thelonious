@@ -98,7 +98,7 @@ func makeblock(bman *BlockManager, parent *Block, i int) *Block {
 // Runs ProcessWithParent to get proper state roots
 func makechain(bman *BlockManager, parent *Block, max int) *BlockChain {
 	bman.bc.currentBlock = parent
-	bman.bc.LastBlockHash = parent.Hash()
+	bman.bc.currentBlockHash = parent.Hash()
 	blocks := make(Blocks, max)
 	var td *big.Int
 	for i := 0; i < max; i++ {

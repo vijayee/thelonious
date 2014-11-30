@@ -361,11 +361,11 @@ func (monk *Monk) StorageAt(contract_addr string, storage_addr string) string {
 }
 
 func (monk *Monk) BlockCount() int {
-	return int(monk.thelonious.ChainManager().LastBlockNumber)
+	return int(monk.thelonious.ChainManager().CurrentBlockNumber())
 }
 
 func (monk *Monk) LatestBlock() string {
-	return monkutil.Bytes2Hex(monk.thelonious.ChainManager().LastBlockHash)
+	return monkutil.Bytes2Hex(monk.thelonious.ChainManager().CurrentBlockHash())
 }
 
 func (monk *Monk) Block(hash string) *modules.Block {
