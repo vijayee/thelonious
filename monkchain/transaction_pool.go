@@ -82,10 +82,8 @@ func NewTxPool(thelonious NodeManager) *TxPool {
 }
 
 // Blocking function. Don't use directly. Use QueueTransaction instead
+// Caller should hold the lock!
 func (pool *TxPool) addTransaction(tx *Transaction) {
-	pool.mutex.Lock()
-	defer pool.mutex.Unlock()
-
 	pool.pool.PushBack(tx)
 
 	// Broadcast the transaction to the rest of the peers
@@ -137,36 +135,46 @@ out:
 	for {
 		select {
 		case tx := <-pool.queueChan:
-			hash := tx.Hash()
-			foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
-				return bytes.Compare(tx.Hash(), hash) == 0
-			})
-
-			if foundTx != nil {
-				break
-			}
-
-			// Validate the transaction
-			err := pool.ValidateTransaction(tx)
-			if err != nil {
-				txplogger.Debugln("Validating Tx failed", err)
-				pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
-			} else {
-				// Call blocking version.
-				pool.addTransaction(tx)
-
-				tmp := make([]byte, 4)
-				copy(tmp, tx.Recipient)
-
-				txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
-
-				// Notify the subscribers
-				pool.Thelonious.Reactor().Post("newTx:pre", tx)
-			}
+            if pool.queueTransaction(tx){
+                continue
+            }
 		case <-pool.quit:
 			break out
 		}
 	}
+}
+
+func (pool *TxPool) queueTransaction(tx *Transaction) bool{
+	pool.mutex.Lock()
+	defer pool.mutex.Unlock()
+
+    hash := tx.Hash()
+    foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
+        return bytes.Compare(tx.Hash(), hash) == 0
+    })
+
+    if foundTx != nil {
+        return true
+    }
+
+    // Validate the transaction
+    err := pool.ValidateTransaction(tx)
+    if err != nil {
+        txplogger.Debugln("Validating Tx failed", err)
+        pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
+    } else {
+        // Call blocking version.
+        pool.addTransaction(tx)
+
+        tmp := make([]byte, 4)
+        copy(tmp, tx.Recipient)
+
+        txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
+
+        // Notify the subscribers
+        pool.Thelonious.Reactor().Post("newTx:pre", tx)
+    }
+    return false
 }
 
 func (pool *TxPool) QueueTransaction(tx *Transaction) {
