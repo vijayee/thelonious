@@ -53,7 +53,7 @@ func (self *Pipe) Execute(addr []byte, data []byte, value, gas, price *monkutil.
 func (self *Pipe) ExecuteObject(object *Object, data []byte, value, gas, price *monkutil.Value) ([]byte, error) {
 	var (
 		initiator = monkstate.NewStateObject(self.obj.KeyManager().KeyPair().Address())
-		block     = self.blockChain.CurrentBlock
+		block     = self.blockChain.CurrentBlock()
 	)
 
 	self.Vm.State = self.World().State().Copy()

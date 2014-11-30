@@ -719,7 +719,7 @@ func (self *Peer) pushStatus() {
 		uint32(ProtocolVersion),
 		uint32(NetVersion),
 		self.thelonious.ChainManager().TD,
-		self.thelonious.ChainManager().CurrentBlock.Hash(),
+		self.thelonious.ChainManager().CurrentBlock().Hash(),
 		self.thelonious.ChainManager().Genesis().Hash(),
 	})
 

@@ -22,7 +22,7 @@ func TestTraverseGenesis(t *testing.T) {
 		mod.Start()
 		callback("traverse_to_genesis", mod, func() {
 			curchain := mod.monk.thelonious.ChainManager()
-			curblock := curchain.CurrentBlock
+			curblock := curchain.CurrentBlock()
 			gen_tr := traverse_to_genesis(curchain, curblock)
 			gen := curchain.Genesis()
 			if !check_recovered(gen.String(), gen_tr.String()) {

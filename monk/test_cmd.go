@@ -161,7 +161,7 @@ func (t *Test) TestValidate() {
 func (t *Test) TestGenesisAccounts() {
 	t.tester("genesis contract", func(mod *MonkModule) {
 		curchain := mod.monk.thelonious.ChainManager()
-		block := curchain.CurrentBlock
+		block := curchain.CurrentBlock()
 		PrettyPrintBlockAccounts(block)
 		os.Exit(0)
 	}, 0)
@@ -172,7 +172,7 @@ func (t *Test) TestBlockNum() {
 
 	t.tester("block num", func(mod *MonkModule) {
 		curchain := mod.monk.thelonious.ChainManager()
-		block := curchain.CurrentBlock
+		block := curchain.CurrentBlock()
 		fmt.Println(curchain.LastBlockNumber)
 		fmt.Println(block.Number)
 		fmt.Println(curchain.Genesis().Number)

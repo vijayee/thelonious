@@ -52,7 +52,7 @@ type ChainManager struct {
 
 	// Our canonical chain
 	LastBlockNumber uint64
-	CurrentBlock    *Block
+	currentBlock    *Block
 	LastBlockHash   []byte
 
 	workingTree  map[string]*link
@@ -88,8 +88,8 @@ func (bc *ChainManager) NewBlock(coinbase []byte) *Block {
 	var root interface{}
 	hash := ZeroHash256
 
-	if bc.CurrentBlock != nil {
-		root = bc.CurrentBlock.state.Trie.Root
+	if bc.currentBlock != nil {
+		root = bc.currentBlock.state.Trie.Root
 		hash = bc.LastBlockHash
 	}
 
@@ -104,10 +104,10 @@ func (bc *ChainManager) NewBlock(coinbase []byte) *Block {
 	// TODO: How do we feel about this
 	block.MinGasPrice = big.NewInt(10000000000000)
 
-	parent := bc.CurrentBlock
+	parent := bc.currentBlock
 	if parent != nil {
 		block.Difficulty = genDoug.Difficulty(block, parent)
-		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, monkutil.Big1)
+		block.Number = new(big.Int).Add(bc.currentBlock.Number, monkutil.Big1)
 		block.GasLimit = monkutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 
 	}
@@ -123,7 +123,7 @@ func (bc *ChainManager) HasBlock(hash []byte) bool {
 
 // TODO: At one point we might want to save a block by prevHash in the db to optimise this...
 func (bc *ChainManager) HasBlockWithPrevHash(hash []byte) bool {
-	block := bc.CurrentBlock
+	block := bc.currentBlock
 
 	for ; block != nil; block = bc.GetBlock(block.PrevHash) {
 		if bytes.Compare(hash, block.PrevHash) == 0 {
@@ -196,7 +196,7 @@ func (bc *ChainManager) setLastBlock() {
 	fmt.Println("length lastblock data:", len(data))
 	if len(data) != 0 {
 		block := NewBlockFromBytes(data)
-		bc.CurrentBlock = block
+		bc.currentBlock = block
 		bc.LastBlockHash = block.Hash()
 		bc.LastBlockNumber = block.Number.Uint64()
 	} else {
@@ -210,7 +210,7 @@ func (bc *ChainManager) setLastBlock() {
 	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
 
-	chainlogger.Infof("Last block (#%d) %x\n", bc.LastBlockNumber, bc.CurrentBlock.Hash())
+	chainlogger.Infof("Last block (#%d) %x\n", bc.LastBlockNumber, bc.currentBlock.Hash())
 }
 
 func (bc *ChainManager) Reset() {
@@ -220,9 +220,9 @@ func (bc *ChainManager) Reset() {
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 	//bc.Ethereum.Db().Put(fk, make([]byte, 255))
-	bc.CurrentBlock = bc.genesisBlock
-	bc.LastBlockHash = bc.CurrentBlock.Hash()
-	bc.LastBlockNumber = bc.CurrentBlock.Number.Uint64()
+	bc.currentBlock = bc.genesisBlock
+	bc.LastBlockHash = bc.currentBlock.Hash()
+	bc.LastBlockNumber = bc.currentBlock.Number.Uint64()
 }
 
 func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
@@ -236,7 +236,7 @@ func (bc *ChainManager) add(block *Block) {
 	bc.writeBlockInfo(block)
 
 	bc.mut.Lock()
-	bc.CurrentBlock = block
+	bc.currentBlock = block
 	bc.LastBlockHash = block.Hash()
 	bc.mut.Unlock()
 
@@ -245,22 +245,22 @@ func (bc *ChainManager) add(block *Block) {
 	monkutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
 }
 
-func (bc *ChainManager) GetCurrentBlock() *Block{
+func (bc *ChainManager) CurrentBlock() *Block{
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-	return bc.CurrentBlock
+	return bc.currentBlock
 }
 
 func (bc *ChainManager) CurrentBlockHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-	return bc.CurrentBlock.Hash()
+	return bc.currentBlock.Hash()
 }
 
 func (bc *ChainManager) CurrentBlockPrevHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-	return bc.CurrentBlock.PrevHash
+	return bc.currentBlock.PrevHash
 }
 
 func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {
@@ -325,7 +325,7 @@ func (self *ChainManager) GetBlockCanonical(hash []byte) *Block {
 }
 
 func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
-	block := self.CurrentBlock
+	block := self.currentBlock
 	for ; block != nil; block = self.GetBlock(block.PrevHash) {
 		if block.Number.Uint64() == num {
 			break
@@ -340,7 +340,7 @@ func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
 }
 
 func (self *ChainManager) GetBlockBack(num uint64) *Block {
-	block := self.CurrentBlock
+	block := self.currentBlock
 
 	for ; num != 0 && block != nil; num-- {
 		block = self.GetBlock(block.PrevHash)
@@ -394,7 +394,7 @@ func (bc *ChainManager) writeBlockInfo(block *Block) {
 }
 
 func (bc *ChainManager) Stop() {
-	if bc.CurrentBlock != nil {
+	if bc.currentBlock != nil {
 		chainlogger.Infoln("Stopped")
 	}
 }
@@ -447,7 +447,7 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 	parent, fork = self.detectFork(chain)
 	if fork {
 		if _, ok := self.workingTree[string(parent.Hash())]; !ok {
-			chainlogger.Infof("New fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, self.CurrentBlock.Hash(), self.CurrentBlock.Number)
+			chainlogger.Infof("New fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, self.currentBlock.Hash(), self.currentBlock.Number)
 		} else {
 			chainlogger.Infoln("Extending a fork...")
 		}
@@ -525,7 +525,7 @@ func (self *ChainManager) InsertChain(chain *BlockChain) {
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)
-		head         = self.CurrentBlock
+		head         = self.currentBlock
 	)
 
 	// Check if parent is top block on canonical
@@ -575,7 +575,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 
 	// revert the blockchain
 	chainlogger.Infof("Reverting blockchain to block %x at height %d, a reversion of %d blocks", ancestorHash, ancestor.Number, new(big.Int).Sub(oldHead.Number, ancestor.Number))
-	self.CurrentBlock = ancestor
+	self.currentBlock = ancestor
 	self.LastBlockHash = ancestorHash
 
 	// process the new chain on top
@@ -584,7 +584,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	_, err := self.TestChain(bchain)
 	if err != nil {
 		chainlogger.Infoln("Reorg failed as new chain failed processing. This shouldn't have happened and may mean trouble")
-		self.CurrentBlock = oldHead
+		self.currentBlock = oldHead
 		self.LastBlockHash = oldHeadHash
 		return
 	}
@@ -751,7 +751,7 @@ func (self *ChainManager) detectFork(chain *BlockChain) (*Block, bool) {
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)
-		head         = self.CurrentBlock
+		head         = self.currentBlock
 	)
 	if branchParent == nil {
 		return nil, false

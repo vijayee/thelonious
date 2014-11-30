@@ -104,14 +104,14 @@ func NewBlockManager(thelonious NodeManager) *BlockManager {
 		th:  thelonious,
 		bc:  thelonious.ChainManager(),
 	}
-	sm.transState = thelonious.ChainManager().CurrentBlock.State().Copy()
-	sm.miningState = thelonious.ChainManager().CurrentBlock.State().Copy()
+	sm.transState = thelonious.ChainManager().CurrentBlock().State().Copy()
+	sm.miningState = thelonious.ChainManager().CurrentBlock().State().Copy()
 
 	return sm
 }
 
 func (sm *BlockManager) CurrentState() *monkstate.State {
-	return sm.th.ChainManager().GetCurrentBlock().State()
+	return sm.th.ChainManager().CurrentBlock().State()
 }
 
 func (sm *BlockManager) TransState() *monkstate.State {
@@ -129,7 +129,7 @@ func (sm *BlockManager) MiningState() *monkstate.State {
 func (sm *BlockManager) NewMiningState() *monkstate.State {
     sm.mutex.Lock()
     defer sm.mutex.Unlock()
-	sm.miningState = sm.th.ChainManager().CurrentBlock.State().Copy()
+	sm.miningState = sm.th.ChainManager().CurrentBlock().State().Copy()
 
 	return sm.miningState
 }

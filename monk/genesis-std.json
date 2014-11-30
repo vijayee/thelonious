@@ -4,7 +4,7 @@
     "doug":"Genesis DOUG/gendoug-v2.lll",
     "model":"std",
     "consensus":"", 
-    "difficulty":12,
+    "difficulty":8,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,

@@ -28,7 +28,7 @@ func (self *JSPipe) BlockByHash(strHash string) *JSBlock {
 
 func (self *JSPipe) BlockByNumber(num int32) *JSBlock {
 	if num == -1 {
-		return NewJSBlock(self.obj.ChainManager().CurrentBlock)
+		return NewJSBlock(self.obj.ChainManager().CurrentBlock())
 	}
 
 	return NewJSBlock(self.obj.ChainManager().GetBlockByNumber(uint64(num)))

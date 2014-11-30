@@ -97,7 +97,7 @@ func makeblock(bman *BlockManager, parent *Block, i int) *Block {
 // Make a chain with real blocks
 // Runs ProcessWithParent to get proper state roots
 func makechain(bman *BlockManager, parent *Block, max int) *BlockChain {
-	bman.bc.CurrentBlock = parent
+	bman.bc.currentBlock = parent
 	bman.bc.LastBlockHash = parent.Hash()
 	blocks := make(Blocks, max)
 	var td *big.Int
@@ -118,9 +118,9 @@ func makechain(bman *BlockManager, parent *Block, max int) *BlockChain {
 // Make a new canonical chain by running TestChain and InsertChain
 // on result of makechain
 func newCanonical(n int) (*BlockManager, error) {
-	bman := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman.bc.SetProcessor(bman)
-	parent := bman.bc.CurrentBlock
+	parent := bman.bc.CurrentBlock()
 	lchain := makechain(bman, parent, 5)
 
 	_, err := bman.bc.TestChain(lchain)
@@ -151,9 +151,9 @@ func TestExtendCanonical(t *testing.T) {
 	}
 
 	// make second chain starting from end of first chain
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
-	parent := bman.bc.CurrentBlock
+	parent := bman.bc.CurrentBlock()
 	chainB := makechain(bman2, parent, 3)
 
 	// test second chain against first
@@ -176,9 +176,9 @@ func TestShorterFork(t *testing.T) {
 	}
 
 	// make second, shorter chain, starting from genesis
-	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock
+	parent := bman2.bc.CurrentBlock()
 	chainB := makechain(bman2, parent, 3)
 
 	// test second chain against first
@@ -201,9 +201,9 @@ func TestLongerFork(t *testing.T) {
 	}
 
 	// make second, longer chain, starting from genesis
-	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock
+	parent := bman2.bc.CurrentBlock()
 	chainB := makechain(bman2, parent, 10)
 
 	td, err := bman.bc.TestChain(chainB)
@@ -223,9 +223,9 @@ func TestEqualFork(t *testing.T) {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock
+	parent := bman2.bc.CurrentBlock()
 
 	chainB := makechain(bman2, parent, 5)
 
@@ -246,9 +246,9 @@ func TestBrokenChain(t *testing.T) {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock
+	parent := bman2.bc.CurrentBlock()
 
 	chainB := makechain(bman2, parent, 5)
 	chainB.Remove(chainB.Front())
@@ -268,9 +268,9 @@ func BenchmarkChainTesting(b *testing.B) {
 		b.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, eth: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock
+	parent := bman2.bc.CurrentBlock()
 
 	chain := makechain(bman2, parent, chainlen)
 
