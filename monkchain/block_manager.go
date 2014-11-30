@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"time"
+    "sync"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -71,6 +72,8 @@ func DougValidatePerm(addr []byte, role string, state *monkstate.State) error {
 }
 
 type BlockManager struct {
+    // Mutex for state not kept by chain manager
+    mutex sync.Mutex
 	// Canonical block chain
 	bc *ChainManager
 	// non-persistent key/value memory storage
@@ -112,14 +115,20 @@ func (sm *BlockManager) CurrentState() *monkstate.State {
 }
 
 func (sm *BlockManager) TransState() *monkstate.State {
+    sm.mutex.Lock()
+    defer sm.mutex.Unlock()
 	return sm.transState
 }
 
 func (sm *BlockManager) MiningState() *monkstate.State {
+    sm.mutex.Lock()
+    defer sm.mutex.Unlock()
 	return sm.miningState
 }
 
 func (sm *BlockManager) NewMiningState() *monkstate.State {
+    sm.mutex.Lock()
+    defer sm.mutex.Unlock()
 	sm.miningState = sm.th.ChainManager().CurrentBlock.State().Copy()
 
 	return sm.miningState
@@ -130,6 +139,8 @@ func (sm *BlockManager) ChainManager() *ChainManager {
 }
 
 func (self *BlockManager) ProcessTransactions(coinbase *monkstate.StateObject, state *monkstate.State, block, parent *Block, txs Transactions) (Receipts, Transactions, Transactions, error) {
+    self.mutex.Lock()
+    defer self.mutex.Unlock()
 	var (
 		receipts           Receipts
 		handled, unhandled Transactions
@@ -212,6 +223,9 @@ done:
 	return receipts, handled, unhandled, err
 }
 
+// Not thread safe
+// Should only be called from TestChain
+//  which holds the ChainManager's lock
 func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, err error) {
 	sm.lastAttemptedBlock = block
 
