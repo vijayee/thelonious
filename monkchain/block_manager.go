@@ -111,7 +111,7 @@ func NewBlockManager(thelonious NodeManager) *BlockManager {
 }
 
 func (sm *BlockManager) CurrentState() *monkstate.State {
-	return sm.th.ChainManager().CurrentBlock.State()
+	return sm.th.ChainManager().GetCurrentBlock().State()
 }
 
 func (sm *BlockManager) TransState() *monkstate.State {

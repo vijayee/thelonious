@@ -49,6 +49,26 @@ func (t *Test) TestRunLoad() {
 	}, 0)
 }
 
+// run a node under load
+func (t *Test) TestRunEvent() {
+	t.tester("basic", func(mod *MonkModule) {
+		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
+		fmt.Println("mining addresS", mod.ActiveAddress())
+		mod.Start()
+        ch := mod.Subscribe("testchannel","newBlock","")
+        ctr := 0
+        for evt := range ch {
+            if ctr > 50 {
+                return
+            }
+            fmt.Println("Received: " + evt.Event)
+            mod.State()
+            ctr++
+        }
+		mod.monk.thelonious.WaitForShutdown()
+	}, 0)
+}
+
 func (t *Test) TestState() {
 	t.tester("state", func(mod *MonkModule) {
 		state := mod.State()

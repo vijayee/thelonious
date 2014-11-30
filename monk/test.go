@@ -41,6 +41,8 @@ func (t *Test) Run() {
 		t.TestRun()
 	case "load":
 		t.TestRunLoad()
+	case "event":
+		t.TestRunEvent()
 	case "genesis":
 		t.TestGenesisAccounts()
 	case "validate":

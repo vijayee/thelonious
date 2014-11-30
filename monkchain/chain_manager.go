@@ -245,6 +245,12 @@ func (bc *ChainManager) add(block *Block) {
 	monkutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
 }
 
+func (bc *ChainManager) GetCurrentBlock() *Block{
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.CurrentBlock
+}
+
 func (bc *ChainManager) CurrentBlockHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
