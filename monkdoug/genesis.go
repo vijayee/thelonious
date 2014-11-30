@@ -97,11 +97,6 @@ func LoadGenesis(file string) *GenesisConfig {
 // Converts the GenesisConfiginfo into a populated and functional doug contract in the genesis block
 // if NoGenDoug, simply bankroll the accounts
 func (g *GenesisConfig) Deploy(block *monkchain.Block) {
-	defer func() {
-		block.State().Update()
-		block.State().Sync()
-	}()
-
 	block.Difficulty = monkutil.BigPow(2, g.Difficulty)
 
 	if g.NoGenDoug {
@@ -153,6 +148,9 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 		}
 	}
 	block.Sign(keys.PrivateKey)
+
+    block.State().Update()
+    block.State().Sync()
 }
 
 // set balance of an account (does not commit)

@@ -58,7 +58,8 @@ type ChainManager struct {
 	workingTree  map[string]*link
 	workingChain *BlockChain
 
-	mut sync.Mutex
+	mut sync.Mutex // for simple data
+    chainMut sync.Mutex // for TestChain/InsertChain
 }
 
 func NewChainManager(protocol GenDougModel) *ChainManager {
@@ -428,8 +429,11 @@ func NewChain(blocks Blocks) *BlockChain {
 // TODO: Note this will sync new states (we may not want that, but it shouldn't
 //  get in the way, it's just storage we dont need to keep around. Also, if there's a fork attack, we can study it later :) )
 func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) {
+    self.chainMut.Lock()
+    defer self.chainMut.Unlock()
+
 	self.workingChain = chain
-	defer func() { self.workingChain = nil }()
+    defer func(){ self.workingChain = nil }()
 
 	var parent *Block
 	var fork bool
@@ -478,7 +482,8 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 		err = &TDError{td, self.TD}
 		return
 	}
-	return td, nil
+
+	return
 }
 
 func (self *ChainManager) insertChain(chain *BlockChain) {
@@ -508,6 +513,9 @@ func (self *ChainManager) insertChain(chain *BlockChain) {
 // This function assumes you've done your checking. No validity checking is done at this stage anymore
 // This will either extend canonical or cause a reorg.
 func (self *ChainManager) InsertChain(chain *BlockChain) {
+    self.chainMut.Lock()
+    defer self.chainMut.Unlock()
+
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)
