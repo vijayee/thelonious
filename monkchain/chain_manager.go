@@ -499,6 +499,9 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 }
 
 func (self *ChainManager) insertChain(chain *BlockChain) {
+    self.chainMut.Lock()
+    defer self.chainMut.Unlock()
+
 	// We are lengthening canonical!
 	// for each block, set the new difficulty, add to chain
 	for e := chain.Front(); e != nil; e = e.Next() {
@@ -525,9 +528,6 @@ func (self *ChainManager) insertChain(chain *BlockChain) {
 // This function assumes you've done your checking. No validity checking is done at this stage anymore
 // This will either extend canonical or cause a reorg.
 func (self *ChainManager) InsertChain(chain *BlockChain) {
-    self.chainMut.Lock()
-    defer self.chainMut.Unlock()
-
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)
@@ -559,11 +559,11 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// Find branch point
 	// Pop them off the top of canonical into a chain
 	//  add the chain to working tree
-	// Pop the new canonical chain out of workingTree and into database
-
+	// Pop the new canonical chain out of workingTree and into databas
 	// Create array of blocks from new head back to branch point
 	// Deletes them from workingTree
 	// Uses memory links. Maybe we should use prev hashes?
+    chainlogger.Debugln("Popping blocks off working tree")
 	bchain := &BlockChain{list.New()}
 	for l := chain.Back().Value.(*link); l != nil; l = l.parent {
 		bchain.PushFront(&link{l.block, nil, nil, nil})
@@ -590,6 +590,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// process the new chain on top
 	// we've already done this
 	// but we're also paranoid
+    chainlogger.Infof("Testing new chain (redundant, we know...)")
 	_, err := self.TestChain(bchain)
 	if err != nil {
 		chainlogger.Infoln("Reorg failed as new chain failed processing. This shouldn't have happened and may mean trouble")
@@ -599,6 +600,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
         self.mut.Unlock()
 		return
 	}
+    chainlogger.Infof("Inserting chain")
 	self.InsertChain(bchain)
 
 	// move old canonical into workingTree chain
