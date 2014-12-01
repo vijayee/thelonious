@@ -12,7 +12,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
-	//"github.com/eris-ltd/thelonious/monkwire"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 var poollogger = monklog.NewLogger("BPOOL")
@@ -116,7 +116,7 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 
 		if !self.eth.ChainManager().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
 			poollogger.Infof("Unknown block, requesting parent (%x...)\n", b.PrevHash[0:4])
-			//peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
+			peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
 		}
 	} else if self.pool[hash] != nil {
 		self.pool[hash].block = b
