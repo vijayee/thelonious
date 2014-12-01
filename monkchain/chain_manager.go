@@ -445,7 +445,7 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
     defer self.chainMut.Unlock()
 
 	self.workingChain = chain
-    defer func(){ self.workingChain = nil }()
+    defer func(cm *ChainManager){ cm.workingChain = nil }(self)
 
 	var parent *Block
 	var fork bool

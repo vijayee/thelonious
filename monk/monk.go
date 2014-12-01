@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/eris-ltd/decerver-interfaces/api"
 	"github.com/eris-ltd/decerver-interfaces/core"
 	"github.com/eris-ltd/decerver-interfaces/events"
 	"github.com/eris-ltd/decerver-interfaces/modules"
@@ -40,10 +39,6 @@ type MonkModule struct {
 	monk          *Monk
 	Config        *ChainConfig
 	GenesisConfig *monkdoug.GenesisConfig
-
-	wsAPIServiceFactory api.WsAPIServiceFactory
-	httpAPIService      interface{}
-	eventReg            events.EventRegistry
 }
 
 // implements decerver-interfaces Blockchain
@@ -87,7 +82,7 @@ func NewMonk(th *thelonious.Thelonious) *MonkModule {
 }
 
 // register the module with the decerver javascript vm
-func (mod *MonkModule) Register(fileIO core.FileIO, registry api.ApiRegistry, runtime core.Runtime, eReg events.EventRegistry) error {
+func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error{
 	return nil
 }
 
