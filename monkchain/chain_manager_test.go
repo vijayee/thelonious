@@ -80,7 +80,7 @@ func newBlockFromParent(addr []byte, parent *Block) *Block {
 }
 
 // Actually make a block by simulating what miner would do
-func makeblock(bman *BlockManager, parent *Block, i int) *Block {
+func makeBlock(bman *BlockManager, parent *Block, i int) *Block {
 	addr := monkutil.LeftPadBytes([]byte{byte(i)}, 20)
 	block := newBlockFromParent(addr, parent)
 	cbase := block.State().GetOrNewStateObject(addr)
@@ -96,13 +96,13 @@ func makeblock(bman *BlockManager, parent *Block, i int) *Block {
 
 // Make a chain with real blocks
 // Runs ProcessWithParent to get proper state roots
-func makechain(bman *BlockManager, parent *Block, max int) *BlockChain {
+func makeChain(bman *BlockManager, parent *Block, max int) *BlockChain {
 	bman.bc.currentBlock = parent
 	bman.bc.currentBlockHash = parent.Hash()
 	blocks := make(Blocks, max)
 	var td *big.Int
 	for i := 0; i < max; i++ {
-		block := makeblock(bman, parent, i)
+		block := makeBlock(bman, parent, i)
 		// add the parent and its difficulty to the working chain
 		// so ProcessWithParent can access it
 		bman.bc.workingChain = NewChain(Blocks{parent})
@@ -116,12 +116,12 @@ func makechain(bman *BlockManager, parent *Block, max int) *BlockChain {
 }
 
 // Make a new canonical chain by running TestChain and InsertChain
-// on result of makechain
+// on result of makeChain
 func newCanonical(n int) (*BlockManager, error) {
 	bman := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman.bc.SetProcessor(bman)
 	parent := bman.bc.CurrentBlock()
-	lchain := makechain(bman, parent, 5)
+	lchain := makeChain(bman, parent, n)
 
 	_, err := bman.bc.TestChain(lchain)
 	if err != nil {
@@ -131,15 +131,41 @@ func newCanonical(n int) (*BlockManager, error) {
 	return bman, nil
 }
 
-// new chain manager without setLastBlock
-func newChainManager(protocol GenDougModel) *ChainManager {
+// Create a new chain manager starting from given block
+// Effectively a fork factory
+func newChainManager(block *Block, protocol GenDougModel) *ChainManager {
 	bc := &ChainManager{}
 	bc.protocol = protocol
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
-	bc.Reset()
 	genDoug = bc.protocol
-	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
+	if block == nil {
+		bc.Reset()
+        bc.TD = monkutil.Big("0")
+	} else {
+		bc.currentBlock = block
+		bc.SetTotalDifficulty(monkutil.Big("0"))
+        bc.TD = block.BlockInfo().TD
+	}
 	return bc
+}
+
+// Test fork of length N starting from block i
+func testFork(t *testing.T, bman *BlockManager, i, N int, f func(td1, td2 *big.Int)) {
+	var b *Block = nil
+	if i > 0 {
+		b = bman.bc.GetBlockByNumber(uint64(i))
+	}
+	bman2 := &BlockManager{bc: newChainManager(b, FakeDoug), Pow: fakePow{}, th: &fakeEth{}}
+	bman2.bc.SetProcessor(bman2)
+	parent := bman2.bc.CurrentBlock()
+	chainB := makeChain(bman2, parent, N)
+	// test second chain against first
+	td2, err := bman.bc.TestChain(chainB)
+	if err != nil && !IsTDError(err) {
+		t.Error("expected chainB not to give errors:", err)
+	}
+	// Compare difficulties
+	f(bman.bc.TD, td2)
 }
 
 func TestExtendCanonical(t *testing.T) {
@@ -150,98 +176,95 @@ func TestExtendCanonical(t *testing.T) {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	// make second chain starting from end of first chain
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
-	bman2.bc.SetProcessor(bman2)
-	parent := bman.bc.CurrentBlock()
-	chainB := makechain(bman2, parent, 3)
-
-	// test second chain against first
-	td2, err := bman.bc.TestChain(chainB)
-	if err != nil && !IsTDError(err) {
-		t.Error("expected chainB not to give errors:", err)
+	f := func(td1, td2 *big.Int) {
+		if td2.Cmp(td1) <= 0 {
+			t.Error("expected chainB to have higher difficulty. Got", td2, "expected more than", td1)
+		}
 	}
 
-	if td2.Cmp(bman.bc.TD) <= 0 {
-		t.Error("expected chainB to have higher difficulty. Got", td2, "expected more than", bman.bc.TD)
-	}
+	// Start fork from current height (5)
+	testFork(t, bman, 5, 1, f)
+	testFork(t, bman, 5, 2, f)
+	testFork(t, bman, 5, 5, f)
+	testFork(t, bman, 5, 10, f)
+
 }
 
 func TestShorterFork(t *testing.T) {
 	initDB()
 	// make first chain starting from genesis
-	bman, err := newCanonical(5)
+	bman, err := newCanonical(10)
 	if err != nil {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	// make second, shorter chain, starting from genesis
-	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
-	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock()
-	chainB := makechain(bman2, parent, 3)
-
-	// test second chain against first
-	td2, err := bman.bc.TestChain(chainB)
-	if err != nil && !IsTDError(err) {
-		t.Error("expected chainB not to give errors:", err)
+	f := func(td1, td2 *big.Int) {
+		if td2.Cmp(td1) >= 0 {
+			t.Error("expected chainB to have lower difficulty. Got", td2, "expected less than", td1)
+		}
 	}
 
-	if td2.Cmp(bman.bc.TD) >= 0 {
-		t.Error("expected chainB to have lower difficulty. Got", td2, "expected less than", bman.bc.TD)
-	}
+	// Sum of numbers must be less than 10
+	// for this to be a shorter fork
+	testFork(t, bman, 0, 3, f)
+	testFork(t, bman, 0, 7, f)
+	testFork(t, bman, 1, 3, f)
+	testFork(t, bman, 1, 7, f)
+	testFork(t, bman, 5, 3, f)
+	testFork(t, bman, 5, 4, f)
+
 }
 
 func TestLongerFork(t *testing.T) {
 	initDB()
 	// make first chain starting from genesis
-	bman, err := newCanonical(5)
+	bman, err := newCanonical(10)
 	if err != nil {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	// make second, longer chain, starting from genesis
-	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
-	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock()
-	chainB := makechain(bman2, parent, 10)
-
-	td, err := bman.bc.TestChain(chainB)
-	if err != nil {
-		t.Error("expected chainB not to give errors:", err)
+	f := func(td1, td2 *big.Int) {
+		if td2.Cmp(td1) <= 0 {
+			t.Error("expected chainB to have higher difficulty. Got", td2, "expected more than", td1)
+		}
 	}
 
-	if td.Cmp(bman.bc.TD) <= 0 {
-		t.Error("expected chainB to have higher difficulty. Got", td, "expected more than", bman.bc.TD)
-	}
+	// Sum of numbers must be greater than 10
+	// for this to be a longer fork
+	testFork(t, bman, 0, 11, f)
+	testFork(t, bman, 0, 15, f)
+	testFork(t, bman, 1, 10, f)
+	testFork(t, bman, 1, 12, f)
+	testFork(t, bman, 5, 6, f)
+	testFork(t, bman, 5, 8, f)
 }
 
 func TestEqualFork(t *testing.T) {
 	initDB()
-	bman, err := newCanonical(5)
+	bman, err := newCanonical(10)
 	if err != nil {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: newChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
-	bman2.bc.SetProcessor(bman2)
-	parent := bman2.bc.CurrentBlock()
-
-	chainB := makechain(bman2, parent, 5)
-
-	td, err := bman.bc.TestChain(chainB)
-	if err != nil && !IsTDError(err) {
-		t.Error("expected chainB not to give errors:", err)
+	f := func(td1, td2 *big.Int) {
+		if td2.Cmp(td1) != 0 {
+			t.Error("expected chainB to have equal difficulty. Got", td2, "expected less than", td1)
+		}
 	}
 
-	if td.Cmp(bman.bc.TD) != 0 {
-		t.Error("expected chainB to have equal difficulty. Got", td, "expected less than", bman.bc.TD)
-	}
+	// Sum of numbers must be equal to 10
+	// for this to be an equal fork
+	testFork(t, bman, 0, 10, f)
+	testFork(t, bman, 1, 9, f)
+	testFork(t, bman, 2, 8, f)
+	testFork(t, bman, 5, 5, f)
+	testFork(t, bman, 6, 4, f)
+	testFork(t, bman, 9, 1, f)
 }
 
 func TestBrokenChain(t *testing.T) {
 	initDB()
-	bman, err := newCanonical(5)
+	bman, err := newCanonical(10)
 	if err != nil {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
@@ -250,7 +273,7 @@ func TestBrokenChain(t *testing.T) {
 	bman2.bc.SetProcessor(bman2)
 	parent := bman2.bc.CurrentBlock()
 
-	chainB := makechain(bman2, parent, 5)
+	chainB := makeChain(bman2, parent, 5)
 	chainB.Remove(chainB.Front())
 
 	_, err = bman.bc.TestChain(chainB)
@@ -272,7 +295,7 @@ func BenchmarkChainTesting(b *testing.B) {
 	bman2.bc.SetProcessor(bman2)
 	parent := bman2.bc.CurrentBlock()
 
-	chain := makechain(bman2, parent, chainlen)
+	chain := makeChain(bman2, parent, chainlen)
 
 	stime := time.Now()
 	bman.bc.TestChain(chain)
