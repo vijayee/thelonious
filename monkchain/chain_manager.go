@@ -52,14 +52,14 @@ type ChainManager struct {
 
 	// Our canonical chain
 	currentBlockNumber uint64
-	currentBlock    *Block
+	currentBlock       *Block
 	currentBlockHash   []byte
 
 	workingTree  map[string]*link
 	workingChain *BlockChain
 
-	mut sync.Mutex // for current state (block, hash, num)
-    chainMut sync.Mutex // for TestChain/InsertChain
+	mut      sync.Mutex // for current state (block, hash, num)
+	chainMut sync.Mutex // for TestChain/InsertChain
 }
 
 func NewChainManager(protocol GenDougModel) *ChainManager {
@@ -189,7 +189,7 @@ func AddTestNetFunds(block *Block) {
 */
 
 func (bc *ChainManager) setLastBlock() {
-	bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	bc.protocol.Deploy(bc.genesisBlock)
 
 	// check for last block. if none exists, fire up a genesis
 	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))
@@ -215,7 +215,7 @@ func (bc *ChainManager) setLastBlock() {
 
 func (bc *ChainManager) Reset() {
 	// prepare genesis (calls sync)
-	bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	//bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
 
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
@@ -244,7 +244,7 @@ func (bc *ChainManager) add(block *Block) {
 	monkutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
 }
 
-func (bc *ChainManager) CurrentBlock() *Block{
+func (bc *ChainManager) CurrentBlock() *Block {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
 	return bc.currentBlock
@@ -253,13 +253,13 @@ func (bc *ChainManager) CurrentBlock() *Block{
 func (bc *ChainManager) CurrentBlockHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-    return bc.currentBlockHash
+	return bc.currentBlockHash
 }
 
-func (bc *ChainManager) CurrentBlockNumber() uint64{
+func (bc *ChainManager) CurrentBlockNumber() uint64 {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-    return bc.currentBlockNumber
+	return bc.currentBlockNumber
 }
 
 func (bc *ChainManager) CurrentBlockPrevHash() []byte {
@@ -306,9 +306,6 @@ func (self *ChainManager) GetBlockWorking(hash []byte) *Block {
 		return l.block
 	}
 
-	if l, ok := self.workingTree[string(hash)]; ok {
-		return l.block
-	}
 	if self.workingChain != nil {
 		for e := self.workingChain.Front(); e != nil; e = e.Next() {
 			if bytes.Compare(e.Value.(*link).block.Hash(), hash) == 0 {
@@ -441,17 +438,18 @@ func NewChain(blocks Blocks) *BlockChain {
 // TODO: Note this will sync new states (we may not want that, but it shouldn't
 //  get in the way, it's just storage we dont need to keep around. Also, if there's a fork attack, we can study it later :) )
 func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) {
-    self.chainMut.Lock()
-    defer self.chainMut.Unlock()
+	self.chainMut.Lock()
+	defer self.chainMut.Unlock()
 
 	self.workingChain = chain
-    defer func(cm *ChainManager){ cm.workingChain = nil }(self)
+	defer func(cm *ChainManager) { cm.workingChain = nil }(self)
 
 	var parent *Block
 	var fork bool
 
 	parent, fork = self.detectFork(chain)
 	if fork {
+		fmt.Println("Fork!")
 		if _, ok := self.workingTree[string(parent.Hash())]; !ok {
 			chainlogger.Infof("New fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, self.CurrentBlockHash(), self.CurrentBlockNumber())
 		} else {
@@ -463,6 +461,7 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 	for e := chain.Front(); e != nil; e = e.Next() {
 		l := e.Value.(*link)
 		block := l.block
+
 		// parent may be on canonical or a fork on workingTree
 		parent := self.GetBlock(block.PrevHash)
 
@@ -479,6 +478,8 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 			chainlogger.Debugln(block)
 			err = fmt.Errorf("incoming chain failed %v\n", err)
 			return
+		} else {
+			chainlogger.Debugf("Block #%v passed (%x...)\n", block.Number, block.Hash()[0:4])
 		}
 
 		l.td = td
@@ -499,8 +500,8 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 }
 
 func (self *ChainManager) insertChain(chain *BlockChain) {
-    self.chainMut.Lock()
-    defer self.chainMut.Unlock()
+	self.chainMut.Lock()
+	defer self.chainMut.Unlock()
 
 	// We are lengthening canonical!
 	// for each block, set the new difficulty, add to chain
@@ -563,7 +564,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// Create array of blocks from new head back to branch point
 	// Deletes them from workingTree
 	// Uses memory links. Maybe we should use prev hashes?
-    chainlogger.Debugln("Popping blocks off working tree")
+	chainlogger.Debugln("Popping blocks off working tree")
 	bchain := &BlockChain{list.New()}
 	for l := chain.Back().Value.(*link); l != nil; l = l.parent {
 		bchain.PushFront(&link{l.block, nil, nil, nil})
@@ -582,25 +583,25 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// revert the blockchain
 	chainlogger.Infof("Reverting blockchain to block %x at height %d, a reversion of %d blocks", ancestorHash, ancestor.Number, new(big.Int).Sub(oldHead.Number, ancestor.Number))
 
-    self.mut.Lock()
+	self.mut.Lock()
 	self.currentBlock = ancestor
 	self.currentBlockHash = ancestorHash
-    self.mut.Unlock()
+	self.mut.Unlock()
 
 	// process the new chain on top
 	// we've already done this
 	// but we're also paranoid
-    chainlogger.Infof("Testing new chain (redundant, we know...)")
+	chainlogger.Infof("Testing new chain (redundant, we know...)")
 	_, err := self.TestChain(bchain)
 	if err != nil {
 		chainlogger.Infoln("Reorg failed as new chain failed processing. This shouldn't have happened and may mean trouble")
-        self.mut.Lock()
+		self.mut.Lock()
 		self.currentBlock = oldHead
 		self.currentBlockHash = oldHeadHash
-        self.mut.Unlock()
+		self.mut.Unlock()
 		return
 	}
-    chainlogger.Infof("Inserting chain")
+	chainlogger.Infof("Inserting chain")
 	self.InsertChain(bchain)
 
 	// move old canonical into workingTree chain
@@ -613,7 +614,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// again, we have already processed, since its fucking canonical
 	// but this is easy for now, gives an extra check
 	_, err = self.TestChain(bchain)
-	if err != nil {
+	if err != nil && !IsTDError(err) {
 		chainlogger.Infoln("Adding the old canonical chain to the workingTree failed. This shouldn't happen, and may imply that Jesus has returned")
 		return
 	}
@@ -766,6 +767,7 @@ func (self *ChainManager) detectFork(chain *BlockChain) (*Block, bool) {
 		branchParent = self.GetBlock(oldest.PrevHash)
 		head         = self.CurrentBlock()
 	)
+
 	if branchParent == nil {
 		return nil, false
 	}
@@ -773,5 +775,6 @@ func (self *ChainManager) detectFork(chain *BlockChain) (*Block, bool) {
 	if bytes.Compare(head.Hash(), branchParent.Hash()) == 0 {
 		return branchParent, false
 	}
+
 	return branchParent, true
 }

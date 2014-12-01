@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sync"
 	"time"
-    "sync"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -72,8 +72,8 @@ func DougValidatePerm(addr []byte, role string, state *monkstate.State) error {
 }
 
 type BlockManager struct {
-    // Mutex for state not kept by chain manager
-    mutex sync.Mutex
+	// Mutex for state not kept by chain manager
+	mutex sync.Mutex
 	// Canonical block chain
 	bc *ChainManager
 	// non-persistent key/value memory storage
@@ -83,9 +83,12 @@ type BlockManager struct {
 	// The thelonious manager interface
 	th NodeManager
 	// The managed states
+	// Official state. Tracks the highest TD block
+	// after the block is synced
+	state *monkstate.State
 	// Transiently state. The trans state isn't ever saved, validated and
-	// it could be used for setting account nonces without effecting
-	// the main states.
+	// is used to keep track between block processing
+	// It should only be non-nil in a loop over
 	transState *monkstate.State
 	// Mining state. The mining state is used purely and solely by the mining
 	// operation.
@@ -104,8 +107,9 @@ func NewBlockManager(thelonious NodeManager) *BlockManager {
 		th:  thelonious,
 		bc:  thelonious.ChainManager(),
 	}
-	sm.transState = thelonious.ChainManager().CurrentBlock().State().Copy()
+	sm.state = thelonious.ChainManager().CurrentBlock().State().Copy()
 	sm.miningState = thelonious.ChainManager().CurrentBlock().State().Copy()
+	sm.transState = nil
 
 	return sm
 }
@@ -115,20 +119,20 @@ func (sm *BlockManager) CurrentState() *monkstate.State {
 }
 
 func (sm *BlockManager) TransState() *monkstate.State {
-    sm.mutex.Lock()
-    defer sm.mutex.Unlock()
-	return sm.transState
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+	return sm.state
 }
 
 func (sm *BlockManager) MiningState() *monkstate.State {
-    sm.mutex.Lock()
-    defer sm.mutex.Unlock()
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
 	return sm.miningState
 }
 
 func (sm *BlockManager) NewMiningState() *monkstate.State {
-    sm.mutex.Lock()
-    defer sm.mutex.Unlock()
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
 	sm.miningState = sm.th.ChainManager().CurrentBlock().State().Copy()
 
 	return sm.miningState
@@ -139,8 +143,8 @@ func (sm *BlockManager) ChainManager() *ChainManager {
 }
 
 func (self *BlockManager) ProcessTransactions(coinbase *monkstate.StateObject, state *monkstate.State, block, parent *Block, txs Transactions) (Receipts, Transactions, Transactions, error) {
-    self.mutex.Lock()
-    defer self.mutex.Unlock()
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
 	var (
 		receipts           Receipts
 		handled, unhandled Transactions
@@ -227,42 +231,52 @@ done:
 // Should only be called from TestChain
 //  which holds the ChainManager's lock
 func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, err error) {
-	sm.lastAttemptedBlock = block
 
-	var (
-		//parent = sm.bc.GetBlock(block.PrevHash)
+	// is this a new run or are we already working on a chain?
+	var state *monkstate.State
+	if sm.transState != nil && bytes.Compare(sm.lastAttemptedBlock.Hash(), parent.Hash()) == 0 {
+		state = sm.transState
+	} else {
 		state = parent.State().Copy()
-	)
+	}
+
+	sm.lastAttemptedBlock = block
 
 	// Defer the Undo on the Trie. If the block processing happened
 	// we don't want to undo but since undo only happens on dirty
 	// nodes this won't happen because Commit would have been called
 	// before that.
-	defer state.Reset()
+	defer func() {
+		if err != nil {
+			sm.transState = nil
+		}
+	}()
 
 	if monkutil.Config.Diff && monkutil.Config.DiffType == "all" {
 		fmt.Printf("## %x %x ##\n", block.Hash(), block.Number)
 	}
 
-	receipts, err := sm.ApplyDiff(state, parent, block)
+	var receipts Receipts
+	receipts, err = sm.ApplyDiff(state, parent, block)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	txSha := CreateTxSha(receipts)
 	if bytes.Compare(txSha, block.TxSha) != 0 {
-		return nil, fmt.Errorf("Error validating tx sha. Received %x, got %x", block.TxSha, txSha)
+		err = fmt.Errorf("Error validating tx sha. Received %x, got %x", block.TxSha, txSha)
+		return
 	}
 
 	// Block validation
 	if err = sm.ValidateBlock(block); err != nil {
 		statelogger.Errorln("Error validating block:", err)
-		return nil, err
+		return
 	}
 
 	if err = sm.AccumelateRewards(state, block, parent); err != nil {
 		statelogger.Errorln("Error accumulating reward", err)
-		return nil, err
+		return
 	}
 
 	state.Update()
@@ -273,12 +287,10 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 	}
 
 	// Calculate the new total difficulty and sync back to the db
-	if td, ok := sm.CalculateTD(block); ok {
+	var ok bool
+	if td, ok = sm.CalculateTD(block); ok {
 		// Sync the current block's state to the database and cancelling out the deferred Undo
 		state.Sync()
-
-		// Add the block to the chain
-		// sm.bc.Add(block)
 
 		//if dontReact == false {
 		sm.th.Reactor().Post("newBlock", block)
@@ -286,8 +298,8 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 		//}
 
 		statelogger.Infof("Processed block #%d (%x...)\n", block.Number, block.Hash()[0:4])
-
-		sm.transState = state.Copy()
+		sm.transState = nil
+		sm.state = state.Copy()
 		/*
 			// Create a bloom bin for this block
 			filter := sm.createBloomFilter(state)
@@ -297,13 +309,13 @@ func (sm *BlockManager) ProcessWithParent(block, parent *Block) (td *big.Int, er
 		*/
 		//sm.Thelonious.TxPool().RemoveInvalid(state)
 		sm.th.TxPool().RemoveSet(block.Transactions())
-		return td, nil
+		return
 	} else {
-		// TODO: error here?
-		return td, nil //nil, fmt.Errorf("total diff failed")
+		sm.transState = state
+		return
 	}
 
-	//return nil
+	return nil, nil
 }
 
 func (sm *BlockManager) ApplyDiff(state *monkstate.State, parent, block *Block) (receipts Receipts, err error) {
@@ -380,7 +392,6 @@ func (sm *BlockManager) AccumelateRewards(state *monkstate.State, block, parent 
 
 		reward.Add(reward, new(big.Int).Div(BlockReward, big.NewInt(32)))
 	}
-
 	// Get the account associated with the coinbase
 	account := state.GetAccount(block.Coinbase)
 	// Reward amount of junk to the coinbase address
@@ -426,4 +437,20 @@ func (sm *BlockManager) GetMessages(block *Block) (messages []*monkstate.Message
 	sm.AccumelateRewards(state, block, parent)
 
 	return state.Manifest().Messages, nil
+}
+
+func printTrie(state *monkstate.State) {
+	//	s := monkutil.NewValue(st).Bytes()
+	//	sta, _ := monkutil.Config.Db.Get(s)
+	it := state.Trie.NewIterator()
+	it.Each(func(k string, n *monkutil.Value) {
+		addr := monkutil.Address([]byte(k))
+		obj := state.GetAccount(addr)
+		PrettyPrintAccount(obj)
+	})
+}
+
+func PrettyPrintAccount(obj *monkstate.StateObject) {
+	fmt.Println("Address", monkutil.Bytes2Hex(obj.Address())) //monkutil.Bytes2Hex([]byte(addr)))
+	fmt.Println("\tBalance", obj.Balance)
 }
