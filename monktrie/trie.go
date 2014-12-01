@@ -53,6 +53,7 @@ func (n *Node) Copy() *Node {
 }
 
 type Cache struct {
+	mut      sync.RWMutex
 	nodes   map[string]*Node
 	db      monkutil.Database
 	IsDirty bool
@@ -82,6 +83,9 @@ func (cache *Cache) Put(v interface{}) interface{} {
 }
 
 func (cache *Cache) Get(key []byte) *monkutil.Value {
+	cache.mut.Lock()
+	defer cache.mut.Unlock()
+
 	// First check if the key is the cache
 	if cache.nodes[string(key)] != nil {
 		return cache.nodes[string(key)].Value
@@ -105,6 +109,8 @@ func (cache *Cache) Get(key []byte) *monkutil.Value {
 }
 
 func (cache *Cache) Delete(key []byte) {
+	cache.mut.Lock()
+	defer cache.mut.Unlock()
 	delete(cache.nodes, string(key))
 
 	cache.db.Delete(key)
