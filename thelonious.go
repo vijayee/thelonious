@@ -415,8 +415,6 @@ func (s *Thelonious) removePeerElement(e *list.Element) {
 }
 
 func (s *Thelonious) RemovePeer(p *Peer) {
-	s.peerMut.Lock()
-	defer s.peerMut.Unlock()
 	eachPeer(s.peers, func(peer *Peer, e *list.Element) {
 		if peer == p {
 			s.removePeerElement(e)
