@@ -378,11 +378,13 @@ func (self *Block) Signature(key []byte) []byte {
 	return sig
 }
 
-func (self *Block) Sign(privk []byte) {
+func (self *Block) Sign(privk []byte) []byte{
 	sig := self.Signature(privk)
+    sig[64] += 27
 	self.r = sig[:32]
 	self.s = sig[32:64]
-	self.v = sig[64] + 27
+	self.v = sig[64]
+    return sig
 }
 
 func (self *Block) PublicKey() []byte {

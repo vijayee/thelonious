@@ -28,14 +28,14 @@ var (
 
 // create a new tx from a script, with dummy keypair
 // creates tx but does not sign!
-func NewContract(scriptFile string) *monkchain.Transaction {
+func NewContract(scriptFile string) (*monkchain.Transaction, error) {
 	// if mutan, load the script. else, pass file name
 	var s string
 	if scriptFile[len(scriptFile)-3:] == ".mu" {
 		r, err := ioutil.ReadFile(scriptFile)
 		if err != nil {
 			fmt.Println("could not load contract!", scriptFile, err)
-			os.Exit(0)
+            return nil, err
 		}
 		s = string(r)
 	} else {
@@ -44,13 +44,13 @@ func NewContract(scriptFile string) *monkchain.Transaction {
 	script, err := monkutil.Compile(string(s), false)
 	if err != nil {
 		fmt.Println("failed compile", err)
-		os.Exit(0)
+        return nil, err
 	}
 
 	// create tx
 	tx := monkchain.NewContractCreationTx(monkutil.Big("543"), monkutil.Big("10000"), monkutil.Big("10000"), script)
 
-	return tx
+	return tx, nil
 }
 
 // apply tx to genesis block
@@ -107,10 +107,15 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
 
 // make and apply an administrative tx (simplified vm processing)
 // addr is typically gendoug
-func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
+// TODO: if addr is empty or invalid, use proper contract addr
+func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt, error) {
 	var tx *monkchain.Transaction
+    var err error
 	if codePath != "" {
-		tx = NewContract(codePath)
+		tx, err = NewContract(codePath)
+        if err != nil{
+            return nil, nil, err
+        }
 	} else {
 		tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
 	}
@@ -122,7 +127,7 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, b
 	receipts := append(block.Receipts(), receipt)
 	block.SetReceipts(receipts, txs)
 
-	return tx, receipt
+	return tx, receipt, nil
 }
 
 func String2Big(s string) *big.Int {
@@ -147,22 +152,24 @@ func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject) {
 }
 
 // Run data through evm code and return value
-func EvmCall(code, data []byte, state *monkstate.State, dump bool) []byte {
+func EvmCall(code, data, addr []byte, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
 	gas := "1000000000000000"
 	price := "10000000"
 
-	stateObject := state.NewStateObject([]byte("evmuser"))
+    stateObject := state.GetStateObject(addr)
 	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
-	env := monkchain.NewEnv(state, nil, nil)
-	ret, _, e := closure.Call(monkvm.New(env), data)
+	env := monkchain.NewEnv(state, tx, block)
+    vm := monkvm.New(env)
+    vm.Verbose = true
+	ret, _, e := closure.Call(vm, data)
 
     if e != nil{
         fmt.Println("vm error!", e)
     }
 
 	/*if dump {
-		fmt.Println(string(env.state.Dump()))
+		fmt.Println(string(env.State().Dump()))
 	}*/
 
 	return ret
@@ -170,7 +177,7 @@ func EvmCall(code, data []byte, state *monkstate.State, dump bool) []byte {
 
 func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
 	data := monkutil.PackTxDataArgs2(args...)
-	tx, rec := MakeApplyTx("", addr, data, keys, block)
+	tx, rec, _ := MakeApplyTx("", addr, data, keys, block)
 	return tx, rec
 }
 
@@ -180,7 +187,7 @@ func SetPermissions(genAddr, addr []byte, permissions map[string]int, block *mon
 
 	for perm, val := range permissions {
 		data := monkutil.PackTxDataArgs2("setperm", perm, "0x"+monkutil.Bytes2Hex(addr), "0x"+strconv.Itoa(val))
-		tx, rec := MakeApplyTx("", genAddr, data, keys, block)
+		tx, rec, _ := MakeApplyTx("", genAddr, data, keys, block)
 		txs = append(txs, tx)
 		receipts = append(receipts, rec)
 	}

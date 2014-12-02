@@ -173,7 +173,6 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		}
 
 		addStepGasUsage(GasStep)
-
 		var newMemSize *big.Int = monkutil.Big0
 		switch op {
 		case STOP:

@@ -3,6 +3,8 @@
     "no-gendoug":false,
     "doug":"Genesis DOUG/gendoug-v2.lll",
     "model":"vm",
+    "unique":false,
+    "private-key":"",
     "consensus":"", 
     "difficulty":15,
     "public:mine":0,
@@ -10,6 +12,13 @@
     "public:tx":0,
     "maxgastx":"0xfffffffffffffffffffffffff",
     "blocktime":5,
+    "vm":{
+        "block-verify":"",
+        "tx-verify":"Protocol/tx.lll",
+        "permission-verify":"", 
+        "compute-difficulty":"",
+        "compute-participate":""
+    },
     "accounts":
         [
             {
