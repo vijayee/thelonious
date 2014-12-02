@@ -13,7 +13,7 @@
     "maxgastx":"0xfffffffffffffffffffffffff",
     "blocktime":5,
     "vm":{
-        "suite-name":"",
+        "suite-name":"std",
         "block-verify":{
             "code-path":"",
             "doug":false

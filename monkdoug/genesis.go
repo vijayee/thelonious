@@ -112,14 +112,14 @@ type VmConsensus struct {
 	// Path to lll participate contract
 	// Determine if a coinbase should participate in consensus
 	ComputeParticipate SysCall `json:"compute-participate"`
-	// TODO: Participate/Pledge contract
+	// Participate/Pledge contract
 	Participate SysCall `json:"participate"`
 	// Contract to run at the beginning of a block
 	PreCall SysCall `json:"precall"`
 	// Contract to run at the end of a block
 	PostCall SysCall `json:"postcall"`
 	// Other contracts for arbitrary functionality
-	Other []Syscall `json:"other"`
+	Other []SysCall `json:"other"`
 }
 
 func (g *GenesisConfig) Model() monkchain.Protocol {
@@ -157,8 +157,6 @@ func LoadGenesis(file string) *GenesisConfig {
 
 	// set doug model
 	g.model = NewPermModel(g)
-
-	fmt.Println(g)
 
 	return g
 }
@@ -254,7 +252,8 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 		gvm := reflect.ValueOf(g.Vm).Elem()
 		svm := reflect.ValueOf(suite).Elem()
 		typeOf := gvm.Type()
-		for i := 1; i < gvm.NumField(); i++ {
+        // First is suite name, last is list of SysCalls (deal with later)
+		for i := 1; i < gvm.NumField()-1; i++ {
 			def := true
 			f := gvm.Field(i)
 			name := typeOf.Field(i).Name
@@ -262,15 +261,19 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 			tag := typeOf.Field(i).Tag.Get("json")
 			useDoug := false
 			// value of f is a SysCall struct
-			val := f.FieldByName("CodePath").String()
+			v := f.FieldByName("CodePath")
+            val := v.String()
 			// if val exists, overwrite suite defaults with config values
-			if val != "" {
+			if val != "" { //v.IsValid(){
+                val = v.String()
 				def = false
 			} else if suite != nil {
 				// field is set by suite
 				c := svm.FieldByName(name)
-				val = c.FieldByName("CodePath").String()
-				if val != "" {
+				v := c.FieldByName("CodePath")
+                val = v.String()
+				if val != "" { //v.IsValid() {
+                    val = v.String()
 					f = c
 					def = false
 				}
@@ -301,6 +304,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 			}
 
 		}
+        //TODO handle final element in Vm struct (list of SysCalls)
 	}
 
 	// This is the chainID (65 bytes)
@@ -367,7 +371,7 @@ var suites = map[string]*VmConsensus{
 	"std": &VmConsensus{
 		SuiteName:          "std",
 		PermissionVerify:   SysCall{"", true, "", nil},
-		BlockVerify:        SysCall{"", true, "", nil},
+		BlockVerify:        SysCall{"Protocol/block-verify.lll", true, "", nil},
 		TxVerify:           SysCall{"", true, "", nil},
 		ComputeDifficulty:  SysCall{"", true, "", nil},
 		ComputeParticipate: SysCall{"", true, "", nil},
