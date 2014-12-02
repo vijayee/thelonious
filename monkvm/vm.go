@@ -1041,21 +1041,28 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 
 		err = fmt.Errorf("Insufficient funds to transfer value. Req %v, has %v", self.value, object.Balance)
 	} else {
-		stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
-		self.object = stateObject
+        naddr := monkutil.BigD(self.address).Uint64()
+        if p := Precompiled[naddr]; p!=nil{
+            if self.gas.Cmp(p.Gas) >= 0 {                                          
+                ret = p.Call(self.input)
+                self.vm.Printf("NATIVE_FUNC(%x) => %x", naddr, ret)                
+            }
+        } else {
+            stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
+            self.object = stateObject
 
-		caller.Object().SubAmount(self.value)
-		stateObject.AddAmount(self.value)
+            caller.Object().SubAmount(self.value)
+            stateObject.AddAmount(self.value)
 
-		// Retrieve the executing code
-		code := self.vm.env.State().GetCode(codeAddr)
+            // Retrieve the executing code
+            code := self.vm.env.State().GetCode(codeAddr)
 
-		// Create a new callable closure
-		c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
-		// Executer the closure and get the return value (if any)
-		ret, _, err = c.Call(self.vm, self.input)
-
-		msg.Output = ret
+            // Create a new callable closure
+            c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
+            // Executer the closure and get the return value (if any)
+            ret, _, err = c.Call(self.vm, self.input)
+        }
+        msg.Output = ret
 
 		return ret, err
 	}
