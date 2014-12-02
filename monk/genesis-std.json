@@ -13,11 +13,27 @@
     "maxgastx":"0xfffffffffffffffffffffffff",
     "blocktime":5,
     "vm":{
-        "block-verify":"",
-        "tx-verify":"Protocol/tx.lll",
-        "permission-verify":"", 
-        "compute-difficulty":"",
-        "compute-participate":""
+        "suite-name":"",
+        "block-verify":{
+            "code-path":"",
+            "doug":false
+        },
+        "tx-verify":{
+            "code-path":"Protocol/tx.lll",
+            "doug":false
+        },
+        "permission-verify":{
+            "code-path":"",
+            "doug":false
+        },
+        "compute-difficulty":{
+            "code-path":"",
+            "doug":false
+        },
+        "compute-participate":{
+            "code-path":"",
+            "doug":false
+        }
     },
     "accounts":
         [

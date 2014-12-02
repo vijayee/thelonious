@@ -12,7 +12,7 @@ import (
 	"os"
 	"path"
 	"strconv"
-    //"reflect"
+    "reflect"
 )
 
 /*
@@ -65,7 +65,7 @@ type GenesisConfig struct {
 	BlockTime    int    `json:"blocktime"`
     
     // Paths to lll consensus contracts (if ModelName = vm)
-    Vm VmConsensus `json:"vm"`
+    Vm *VmConsensus `json:"vm"`
 
 	// Accounts (permissions and stake)
 	Accounts []*Account `json:"accounts"`
@@ -83,20 +83,43 @@ type GenesisConfig struct {
     chainId string
 }
 
+// A protocol level call executed through the vm
+type SysCall struct{
+    // Path to lll code for this function
+    CodePath string `json:"code-path"`
+    // Should we use doug's state or our own
+    // TODO: this the kind of thing that may require us
+    // to have the genesis.json and not just the genesis block!
+    // Phase it out!
+    Doug    bool    `json:"doug"`
+    // Addr of this contract
+    Addr    string  `json:"addr"`
+    byteAddr []byte
+}
+
 type VmConsensus struct{
+    // Name of a suite of contracts
+    SuiteName   string  `json:"suite-name"`
     // Path to lll permission verify contract
-    PermissionVerify string `json:"permission-verify"`
+    PermissionVerify SysCall `json:"permission-verify"`
     // Path to lll block verify contract 
-    BlockVerify string  `json:"block-verify"` 
+    BlockVerify SysCall `json:"block-verify"` 
     // Path to lll tx verify contract 
-    TxVerify    string  `json:"tx-verify"` 
+    TxVerify SysCall `json:"tx-verify"` 
     // Path to lll compute difficulty contract
     // Calculate difficulty for block from parent (and storage)
-    ComputeDifficulty string  `json:"compute-difficulty"` 
+    ComputeDifficulty SysCall `json:"compute-difficulty"` 
     // Path to lll participate contract 
     // Determine if a coinbase should participate in consensus
-    ComputeParticipate string  `json:"compute-participate"` 
+    ComputeParticipate SysCall `json:"compute-participate"` 
     // TODO: Participate/Pledge contract
+    Participate SysCall `json:"participate"`
+    // Contract to run at the beginning of a block
+    PreCall SysCall `json:"precall"`
+    // Contract to run at the end of a block
+    PostCall SysCall `json:"postcall"`
+    // Other contracts for arbitrary functionality
+    Other []Syscall `json:"other"`
 }
 
 func (g *GenesisConfig) Model() monkchain.Protocol{
@@ -217,35 +240,72 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 	}
 
     // set verification contracts for "vm" consensus
-    /*if g.ModelName == "vm"{
-        m := g.model.(*VmModel)
-        // loop through Vm fields
+    if g.ModelName == "vm"{
+        if g.Vm == nil{
+            log.Fatal("Model=vm requires non-nil VmConsensus obj")
+        }
+
+        suite := suites[g.Vm.SuiteName]
+
+        // loop through g.Vm fields
         // deploy the non-nil ones
-        s := reflect.ValueOf(&g.Vm).Elem()
-        typeOf := s.Type()
-        for i := 0; i < s.NumField(); i++ {
-            f := s.Field(i)
+        // fall back to suite (if set) or nothing (default)
+        m := g.model.(*VmModel)
+        gvm := reflect.ValueOf(g.Vm).Elem()
+        svm := reflect.ValueOf(suite).Elem()
+        typeOf := gvm.Type()
+        for i := 1; i < gvm.NumField(); i++ {
+            def := true
+            f := gvm.Field(i)
             name := typeOf.Field(i).Name
-            val := f.String()
-            fmt.Println(name, val)
+            addr := monkutil.LeftPadBytes([]byte(name), 20)
+            tag := typeOf.Field(i).Tag.Get("json")
+            useDoug := false
+            // value of f is a SysCall struct
+            val := f.FieldByName("CodePath").String()
+            // if val exists, overwrite suite defaults with config values
             if val != ""{
+                def = false
+           } else if suite != nil{
+                // field is set by suite
+                c := svm.FieldByName(name)
+                val = c.FieldByName("CodePath").String()
+                if val != ""{
+                    f = c
+                    def = false
+                }
+           }
+           if !def{
+                if a := f.FieldByName("Addr").String(); a != ""{
+                    if len(a) > 20 && len(monkutil.UserHex2Bytes(a)) == 20{
+                        addr = monkutil.UserHex2Bytes(a)
+                    } else{
+                        addr = monkutil.LeftPadBytes([]byte(a), 20)
+                    }
+                }
+                if a := f.FieldByName("Doug").String(); a != ""{
+                    useDoug = true
+                }
                 codePath := path.Join(g.contractPath, val)
-                fmt.Println("\t", codePath, typeOf.Field(i).Tag.Get("json"))
-                addr := monkutil.LeftPadBytes([]byte(name), 20)
-                tag := typeOf.Field(i).Tag.Get("json")
                 _, _, err := MakeApplyTx(codePath, addr, nil, keys, block)
                 if err == nil{
-                    m.contract[tag] = addr
+                    s := SysCall{
+                        Addr: monkutil.Bytes2Hex(addr),
+                        byteAddr: addr,
+                        Doug: useDoug,
+                        CodePath: codePath,
+                    }
+                    m.contract[tag] = s
                 }
                 SetValue(genAddr, []string{"setvar", tag, "0x"+monkutil.Bytes2Hex(addr)}, keys, block)
-           } 
+            }
+
         }
-    }*/
+    }
     
     // This is the chainID (65 bytes)
 	chainId := block.Sign(keys.PrivateKey)
     g.chainId = monkutil.Bytes2Hex(chainId)
-
 }
 
 // set balance of an account (does not commit)
@@ -300,4 +360,19 @@ var DefaultGenesis = GenesisConfig{
 			Balance:  "1000000000000000000000000000000000000",
 		},
 	},
+}
+
+// Contract suites for vm based protocol
+var suites = map[string]*VmConsensus{
+    "std":&VmConsensus{
+        SuiteName:"std",
+        PermissionVerify:SysCall{"", true, "", nil},
+        BlockVerify:SysCall{"", true, "", nil},
+        TxVerify:SysCall{"", true, "", nil},
+        ComputeDifficulty:SysCall{"", true, "", nil},
+        ComputeParticipate:SysCall{"", true, "", nil},
+        Participate:SysCall{"", true, "", nil},
+        PreCall:SysCall{"", true, "", nil},
+        PostCall:SysCall{"", true, "", nil},
+    },
 }

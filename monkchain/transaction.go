@@ -127,6 +127,13 @@ func (tx *Transaction) Sign(privk []byte) error {
 	return nil
 }
 
+func (tx *Transaction) GetSig() []byte{
+    if tx.r != nil && tx.s != nil{
+        return append(tx.r, append(tx.s, tx.v)...)     
+    }
+    return nil
+}
+
 func (tx *Transaction) RlpData() interface{} {
 	data := []interface{}{tx.Nonce, tx.GasPrice, tx.Gas, tx.Recipient, tx.Value, tx.Data}
 

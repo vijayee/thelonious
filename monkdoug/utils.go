@@ -152,11 +152,10 @@ func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject) {
 }
 
 // Run data through evm code and return value
-func EvmCall(code, data, addr []byte, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
+func EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
 	gas := "1000000000000000"
 	price := "10000000"
 
-    stateObject := state.GetStateObject(addr)
 	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
 	env := monkchain.NewEnv(state, tx, block)

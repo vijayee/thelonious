@@ -387,6 +387,13 @@ func (self *Block) Sign(privk []byte) []byte{
     return sig
 }
 
+func (self *Block) GetSig() []byte{
+    if self.r != nil && self.s != nil{
+        return append(self.r, append(self.s, self.v)...)
+    }
+    return nil
+}
+
 func (self *Block) PublicKey() []byte {
 	hash := self.Hash()
 
