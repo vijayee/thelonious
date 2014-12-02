@@ -51,14 +51,14 @@ type GenesisConfig struct {
 	// Accounts (permissions and stake)
 	Accounts []*Account `json:"accounts"`
 
-	model PermModel
+	model monkchain.Protocol
 }
 
-func (g *GenesisConfig) Model() PermModel {
+func (g *GenesisConfig) Model() monkchain.Protocol{
 	return g.model
 }
 
-func (g *GenesisConfig) SetModel(m PermModel) {
+func (g *GenesisConfig) SetModel(m monkchain.Protocol) {
 	g.model = m
 }
 
@@ -162,7 +162,7 @@ func AddAccount(addr []byte, balance string, block *monkchain.Block) {
 
 // return a new permissions model
 // TODO: cleaner differentiation between consensus and storage access models
-func NewPermModel(g *GenesisConfig) (model PermModel) {
+func NewPermModel(g *GenesisConfig) (model monkchain.Protocol) {
 	modelName := g.ModelName
 	if g.NoGenDoug {
 		modelName = "default"
@@ -177,6 +177,8 @@ func NewPermModel(g *GenesisConfig) (model PermModel) {
 	case "std":
 		// gendoug-v2
 		model = NewStdLibModel(g)
+    case "vm":
+        model = NewVmModel(g)
 	case "yes":
 		// everyone allowed
 		model = NewYesModel(g)

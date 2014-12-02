@@ -4,26 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 	//"log"
 	vars "github.com/eris-ltd/eris-std-lib/go-tests"
 	"github.com/eris-ltd/thelonious/monkchain"
-	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
 )
 
 var Adversary = 0
-
-// location struct (where is a permission?)
-// the model must specify how to extract the permission from the location
-// TODO: deprecate
-type Location struct {
-	addr []byte   // contract addr
-	row  *big.Int // storage location
-	pos  *big.Int // nibble/bit/byte indicator
-}
 
 /*
    Permission models are used for setting up the genesis block
@@ -106,31 +95,38 @@ type VmModel struct{
 }
 
 func NewVmModel(g *GenesisConfig) monkchain.Protocol {
-	return &NewVmModel{g, g.byteAddr}
+	return &VmModel{g, g.byteAddr}
 }
 
-func (m *VmModel) Deploy(block *Block){
+func (m *VmModel) Deploy(block *monkchain.Block){
     m.g.Deploy(block)
 }
 
-func (m *VmModel) Participate(coinbase []byte, parent *Block) bool{
-
+func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool{
+    return true
 }
 
-func (m *VmModel) Difficulty(block, parent *Block) *big.Int{
+func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int{
+	return monkutil.BigPow(2, m.g.Difficulty)
 
 }
 
 func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
-
+    doug := state.GetStateObject(m.doug) 
+    data := monkutil.PackTxDataArgs2("checkperm", role, monkutil.Bytes2Hex(addr))
+    ret := EvmCall(doug.Code, data, state, true)
+    if monkutil.BigD(ret).Int64() > 0{
+        return nil
+    }
+    return fmt.Errorf("Permission error")
 }
 
-func (m *VmModel) ValidateBlock(block *Block, bc *ChainManager) error{
-
+func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error{
+    return m.ValidatePerm(block.Coinbase, "mine", block.State())
 }
 
-func (m *VmModel) ValidateTx(tx *Transaction, state *monkstate.State) error{
-
+func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
+    return m.ValidatePerm(tx.Sender(), "transact", block.State())
 }
 
 // The stdlib model grants permissions based on the state of the gendoug

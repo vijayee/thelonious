@@ -176,7 +176,7 @@ func (self *Miner) mineNewBlock() {
 	}
 
 	// check if we should even bother mining (potential energy savings)
-	if !self.thelonious.GenesisModel().StartMining(self.coinbase, parent) {
+	if !self.thelonious.Protocol().Participate(self.coinbase, parent) {
 		return
 	}
 

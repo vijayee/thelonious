@@ -1,10 +1,10 @@
 {
     "address":"0000000000THISISDOUG",
-    "no-gendoug":true,
+    "no-gendoug":false,
     "doug":"Genesis DOUG/gendoug-v2.lll",
-    "model":"std",
+    "model":"vm",
     "consensus":"", 
-    "difficulty":8,
+    "difficulty":15,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,
@@ -31,7 +31,7 @@
                 "permissions":
                     {
                         "transact":1,
-                        "mine":1,
+                        "mine":0,
                         "create":1
                     },
                 "stake":3
@@ -43,7 +43,7 @@
                 "permissions":
                     {
                         "transact":1,
-                        "mine":1,
+                        "mine":0,
                         "create":1
                     },
                 "stake":3
@@ -55,7 +55,7 @@
                 "permissions":
                     {
                         "transact":1,
-                        "mine":1,
+                        "mine":0,
                         "create":1
                     },
                 "stake":3

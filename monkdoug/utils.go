@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
-	"github.com/eris-ltd/thelonious/monkdb"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monktrie"
 	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/thelonious/monkvm"
 	"io/ioutil"
 	"math/big"
+	"strconv"
 	"os"
 	"path"
 )
@@ -146,24 +147,23 @@ func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject) {
 }
 
 // Run data through evm code and return value
-func EvmCall(code, data []byte, dump bool) []byte {
+func EvmCall(code, data []byte, state *monkstate.State, dump bool) []byte {
 	gas := "1000000000000000"
 	price := "10000000"
 
 	stateObject := state.NewStateObject([]byte("evmuser"))
-	closure := vm.NewClosure(nil, stateObject, stateObject, code, ethutil.Big(gas), ethutil.Big(price))
+	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
-	env := monkchain.NewEnv()
-	ret, _, e := closure.Call(vm.New(env, vm.DebugVmTy), data)
+	env := monkchain.NewEnv(state, nil, nil)
+	ret, _, e := closure.Call(monkvm.New(env), data)
 
-	logger.Flush()
-	if e != nil {
-		perr(e)
-	}
+    if e != nil{
+        fmt.Println("vm error!", e)
+    }
 
-	if dump {
+	/*if dump {
 		fmt.Println(string(env.state.Dump()))
-	}
+	}*/
 
 	return ret
 }
