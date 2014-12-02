@@ -52,8 +52,18 @@ type Monk struct {
 	keyManager *monkcrypto.KeyManager
 	reactor    *monkreact.ReactorEngine
 	started    bool
-	chans      map[string]chan events.Event
-	reactchans map[string]chan monkreact.Event
+
+    chans      map[string]Chan
+	//chans      map[string]chan events.Event
+	//reactchans map[string]chan monkreact.Event
+}
+
+type Chan struct{
+    ch      chan events.Event
+    reactCh chan monkreact.Event
+    name    string
+    event   string
+    target  string
 }
 
 /*
@@ -117,8 +127,9 @@ func (mod *MonkModule) Init() error {
 	m.reactor = m.thelonious.Reactor()
 
 	// subscribe to the new block
-	m.chans = make(map[string]chan events.Event)
-	m.reactchans = make(map[string]chan monkreact.Event)
+    m.chans = make(map[string]Chan)
+	//m.chans = make(map[string]chan events.Event)
+	//m.reactchans = make(map[string]chan monkreact.Event)
 	m.Subscribe("newBlock", "newBlock", "")
 
 	log.Println(m.thelonious.Port)
@@ -449,8 +460,16 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 	}
 
 	ch := make(chan events.Event)
-	monk.chans[name] = ch
-	monk.reactchans[name] = th_ch
+    c := Chan{
+        ch: ch,
+        reactCh: th_ch,
+        name:   name,
+        event:  event,
+        target: target,
+    }
+    monk.chans[name] = c
+	//monk.chans[name] = ch
+	//monk.reactchans[name] = th_ch
 
 	// fire up a goroutine and broadcast module specific chan on our main chan
 	go func() {
@@ -469,9 +488,9 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 			resource := eve.Resource
 			if block, ok := resource.(*monkchain.Block); ok {
 				returnEvent.Resource = convertBlock(block)
-			} else if tx, ok := resource.(monkchain.Transaction); ok {
-				returnEvent.Resource = convertTx(&tx)
-			} else if txFail, ok := resource.(monkchain.TxFail); ok {
+			} else if tx, ok := resource.(*monkchain.Transaction); ok {
+				returnEvent.Resource = convertTx(tx)
+			} else if txFail, ok := resource.(*monkchain.TxFail); ok {
 				tx := convertTx(txFail.Tx)
 				tx.Error = txFail.Err.Error()
 				returnEvent.Resource = tx
@@ -485,20 +504,18 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 }
 
 func (monk *Monk) UnSubscribe(name string) {
-	if c, ok := monk.reactchans[name]; ok {
-		close(c)
-		delete(monk.reactchans, name)
-	}
-	if c, ok := monk.chans[name]; ok {
-		close(c)
-		delete(monk.chans, name)
-	}
+    if c, ok := monk.chans[name]; ok{
+        monk.reactor.Unsubscribe(c.event, c.reactCh) 
+        close(c.reactCh)
+        close(c.ch)
+        delete(monk.chans, name)
+    }
 }
 
 // Mine a block
 func (m *Monk) Commit() {
 	m.StartMining()
-	_ = <-m.chans["newBlock"]
+	_ = <-m.chans["newBlock"].ch
 	v := false
 	for !v {
 		v = m.StopMining()
