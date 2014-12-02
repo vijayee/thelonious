@@ -127,11 +127,11 @@ func (tx *Transaction) Sign(privk []byte) error {
 	return nil
 }
 
-func (tx *Transaction) GetSig() []byte{
-    if tx.r != nil && tx.s != nil{
-        return append(tx.r, append(tx.s, tx.v)...)     
-    }
-    return nil
+func (tx *Transaction) GetSig() []byte {
+	if tx.r != nil && tx.s != nil {
+		return append(tx.r, append(tx.s, tx.v)...)
+	}
+	return nil
 }
 
 func (tx *Transaction) RlpData() interface{} {

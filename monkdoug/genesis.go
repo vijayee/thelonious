@@ -11,8 +11,8 @@ import (
 	"math/big"
 	"os"
 	"path"
+	"reflect"
 	"strconv"
-    "reflect"
 )
 
 /*
@@ -31,98 +31,98 @@ type Account struct {
 
 type GenesisConfig struct {
 	/*
-        MetaGenDoug
-    */
-    // 20 ASCI bytes of gendoug addr
-	Address   string `json:"address"`    
-    // Path to lll doug contract
-	DougPath  string `json:"doug"`      
-    // Should gendoug be unique (set true in production)
-    Unique      bool    `json:"unique"` 
-    // A private key to seed uniqueness (otherwise is random)
-    PrivateKey  string  `json:"private-key"`
-    // Name of the gendoug access model (yes, no, std, vm, eth)
-	ModelName string `json:"model"`      
-    // Turn off gendoug
-	NoGenDoug bool   `json:"no-gendoug"` 
+	   MetaGenDoug
+	*/
+	// 20 ASCI bytes of gendoug addr
+	Address string `json:"address"`
+	// Path to lll doug contract
+	DougPath string `json:"doug"`
+	// Should gendoug be unique (set true in production)
+	Unique bool `json:"unique"`
+	// A private key to seed uniqueness (otherwise is random)
+	PrivateKey string `json:"private-key"`
+	// Name of the gendoug access model (yes, no, std, vm, eth)
+	ModelName string `json:"model"`
+	// Turn off gendoug
+	NoGenDoug bool `json:"no-gendoug"`
 
 	/*
-        Global GenDoug Singles
-    */
-    // Consensus/difficulty mechanism (stake, robin, constant, eth)
-	Consensus    string `json:"consensus"` 
-    // Starting difficulty level
-	Difficulty   int    `json:"difficulty"`
-    // Allow anyone to mine
-	PublicMine   int    `json:"public:mine"`
-    // Allow anyone to create contracts
-	PublicCreate int    `json:"public:create"`
-    // Allow anyone to transact
-	PublicTx     int    `json:"public:tx"`
-    // Max gas per tx
-	MaxGasTx     string `json:"maxgastx"`
-    // Target block time (shaky...)
-	BlockTime    int    `json:"blocktime"`
-    
-    // Paths to lll consensus contracts (if ModelName = vm)
-    Vm *VmConsensus `json:"vm"`
+	   Global GenDoug Singles
+	*/
+	// Consensus/difficulty mechanism (stake, robin, constant, eth)
+	Consensus string `json:"consensus"`
+	// Starting difficulty level
+	Difficulty int `json:"difficulty"`
+	// Allow anyone to mine
+	PublicMine int `json:"public:mine"`
+	// Allow anyone to create contracts
+	PublicCreate int `json:"public:create"`
+	// Allow anyone to transact
+	PublicTx int `json:"public:tx"`
+	// Max gas per tx
+	MaxGasTx string `json:"maxgastx"`
+	// Target block time (shaky...)
+	BlockTime int `json:"blocktime"`
+
+	// Paths to lll consensus contracts (if ModelName = vm)
+	Vm *VmConsensus `json:"vm"`
 
 	// Accounts (permissions and stake)
 	Accounts []*Account `json:"accounts"`
 
-    // for convenience, not filled in by json
+	// for convenience, not filled in by json
 	hexAddr      string
 	byteAddr     []byte
 	contractPath string
 
-    // Gendoug based protocol interface
-    // for verifying blocks/txs
+	// Gendoug based protocol interface
+	// for verifying blocks/txs
 	model monkchain.Protocol
 
-    // Signed genesis block (hex)
-    chainId string
+	// Signed genesis block (hex)
+	chainId string
 }
 
 // A protocol level call executed through the vm
-type SysCall struct{
-    // Path to lll code for this function
-    CodePath string `json:"code-path"`
-    // Should we use doug's state or our own
-    // TODO: this the kind of thing that may require us
-    // to have the genesis.json and not just the genesis block!
-    // Phase it out!
-    Doug    bool    `json:"doug"`
-    // Addr of this contract
-    Addr    string  `json:"addr"`
-    byteAddr []byte
+type SysCall struct {
+	// Path to lll code for this function
+	CodePath string `json:"code-path"`
+	// Should we use doug's state or our own
+	// TODO: this the kind of thing that may require us
+	// to have the genesis.json and not just the genesis block!
+	// Phase it out!
+	Doug bool `json:"doug"`
+	// Addr of this contract
+	Addr     string `json:"addr"`
+	byteAddr []byte
 }
 
-type VmConsensus struct{
-    // Name of a suite of contracts
-    SuiteName   string  `json:"suite-name"`
-    // Path to lll permission verify contract
-    PermissionVerify SysCall `json:"permission-verify"`
-    // Path to lll block verify contract 
-    BlockVerify SysCall `json:"block-verify"` 
-    // Path to lll tx verify contract 
-    TxVerify SysCall `json:"tx-verify"` 
-    // Path to lll compute difficulty contract
-    // Calculate difficulty for block from parent (and storage)
-    ComputeDifficulty SysCall `json:"compute-difficulty"` 
-    // Path to lll participate contract 
-    // Determine if a coinbase should participate in consensus
-    ComputeParticipate SysCall `json:"compute-participate"` 
-    // TODO: Participate/Pledge contract
-    Participate SysCall `json:"participate"`
-    // Contract to run at the beginning of a block
-    PreCall SysCall `json:"precall"`
-    // Contract to run at the end of a block
-    PostCall SysCall `json:"postcall"`
-    // Other contracts for arbitrary functionality
-    Other []Syscall `json:"other"`
+type VmConsensus struct {
+	// Name of a suite of contracts
+	SuiteName string `json:"suite-name"`
+	// Path to lll permission verify contract
+	PermissionVerify SysCall `json:"permission-verify"`
+	// Path to lll block verify contract
+	BlockVerify SysCall `json:"block-verify"`
+	// Path to lll tx verify contract
+	TxVerify SysCall `json:"tx-verify"`
+	// Path to lll compute difficulty contract
+	// Calculate difficulty for block from parent (and storage)
+	ComputeDifficulty SysCall `json:"compute-difficulty"`
+	// Path to lll participate contract
+	// Determine if a coinbase should participate in consensus
+	ComputeParticipate SysCall `json:"compute-participate"`
+	// TODO: Participate/Pledge contract
+	Participate SysCall `json:"participate"`
+	// Contract to run at the beginning of a block
+	PreCall SysCall `json:"precall"`
+	// Contract to run at the end of a block
+	PostCall SysCall `json:"postcall"`
+	// Other contracts for arbitrary functionality
+	Other []Syscall `json:"other"`
 }
 
-func (g *GenesisConfig) Model() monkchain.Protocol{
+func (g *GenesisConfig) Model() monkchain.Protocol {
 	return g.model
 }
 
@@ -158,7 +158,7 @@ func LoadGenesis(file string) *GenesisConfig {
 	// set doug model
 	g.model = NewPermModel(g)
 
-    fmt.Println(g)
+	fmt.Println(g)
 
 	return g
 }
@@ -186,29 +186,29 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 
 	fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
 
-    // Keys for creating valid txs and for signing
-    // the final gendoug 
-    // Must be unique for production use!
-    var keys *monkcrypto.KeyPair
-    var err error
-    if g.Unique{
-        if g.PrivateKey != ""{
-            // TODO: some kind of encryption here ...
-            decoded := monkutil.Hex2Bytes(g.PrivateKey)
-            keys, err = monkcrypto.NewKeyPairFromSec(decoded)
-            if err != nil {
-                log.Fatal("Invalid private key", err)
-            }
-        } else{
-            keys = monkcrypto.GenerateNewKeyPair()
-        }
-    } else{
-        static := []byte("11111111112222222222333333333322")
-        keys, err = monkcrypto.NewKeyPairFromSec(static)
-        if err != nil {
-            log.Fatal("Invalid static private", err)
-        }
-    }
+	// Keys for creating valid txs and for signing
+	// the final gendoug
+	// Must be unique for production use!
+	var keys *monkcrypto.KeyPair
+	var err error
+	if g.Unique {
+		if g.PrivateKey != "" {
+			// TODO: some kind of encryption here ...
+			decoded := monkutil.Hex2Bytes(g.PrivateKey)
+			keys, err = monkcrypto.NewKeyPairFromSec(decoded)
+			if err != nil {
+				log.Fatal("Invalid private key", err)
+			}
+		} else {
+			keys = monkcrypto.GenerateNewKeyPair()
+		}
+	} else {
+		static := []byte("11111111112222222222333333333322")
+		keys, err = monkcrypto.NewKeyPairFromSec(static)
+		if err != nil {
+			log.Fatal("Invalid static private", err)
+		}
+	}
 	fmt.Println(keys.Address())
 
 	// create the genesis doug
@@ -239,73 +239,73 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 		}
 	}
 
-    // set verification contracts for "vm" consensus
-    if g.ModelName == "vm"{
-        if g.Vm == nil{
-            log.Fatal("Model=vm requires non-nil VmConsensus obj")
-        }
+	// set verification contracts for "vm" consensus
+	if g.ModelName == "vm" {
+		if g.Vm == nil {
+			log.Fatal("Model=vm requires non-nil VmConsensus obj")
+		}
 
-        suite := suites[g.Vm.SuiteName]
+		suite := suites[g.Vm.SuiteName]
 
-        // loop through g.Vm fields
-        // deploy the non-nil ones
-        // fall back to suite (if set) or nothing (default)
-        m := g.model.(*VmModel)
-        gvm := reflect.ValueOf(g.Vm).Elem()
-        svm := reflect.ValueOf(suite).Elem()
-        typeOf := gvm.Type()
-        for i := 1; i < gvm.NumField(); i++ {
-            def := true
-            f := gvm.Field(i)
-            name := typeOf.Field(i).Name
-            addr := monkutil.LeftPadBytes([]byte(name), 20)
-            tag := typeOf.Field(i).Tag.Get("json")
-            useDoug := false
-            // value of f is a SysCall struct
-            val := f.FieldByName("CodePath").String()
-            // if val exists, overwrite suite defaults with config values
-            if val != ""{
-                def = false
-           } else if suite != nil{
-                // field is set by suite
-                c := svm.FieldByName(name)
-                val = c.FieldByName("CodePath").String()
-                if val != ""{
-                    f = c
-                    def = false
-                }
-           }
-           if !def{
-                if a := f.FieldByName("Addr").String(); a != ""{
-                    if len(a) > 20 && len(monkutil.UserHex2Bytes(a)) == 20{
-                        addr = monkutil.UserHex2Bytes(a)
-                    } else{
-                        addr = monkutil.LeftPadBytes([]byte(a), 20)
-                    }
-                }
-                if a := f.FieldByName("Doug").String(); a != ""{
-                    useDoug = true
-                }
-                codePath := path.Join(g.contractPath, val)
-                _, _, err := MakeApplyTx(codePath, addr, nil, keys, block)
-                if err == nil{
-                    s := SysCall{
-                        Addr: monkutil.Bytes2Hex(addr),
-                        byteAddr: addr,
-                        Doug: useDoug,
-                        CodePath: codePath,
-                    }
-                    m.contract[tag] = s
-                }
-                SetValue(genAddr, []string{"setvar", tag, "0x"+monkutil.Bytes2Hex(addr)}, keys, block)
-            }
+		// loop through g.Vm fields
+		// deploy the non-nil ones
+		// fall back to suite (if set) or nothing (default)
+		m := g.model.(*VmModel)
+		gvm := reflect.ValueOf(g.Vm).Elem()
+		svm := reflect.ValueOf(suite).Elem()
+		typeOf := gvm.Type()
+		for i := 1; i < gvm.NumField(); i++ {
+			def := true
+			f := gvm.Field(i)
+			name := typeOf.Field(i).Name
+			addr := monkutil.LeftPadBytes([]byte(name), 20)
+			tag := typeOf.Field(i).Tag.Get("json")
+			useDoug := false
+			// value of f is a SysCall struct
+			val := f.FieldByName("CodePath").String()
+			// if val exists, overwrite suite defaults with config values
+			if val != "" {
+				def = false
+			} else if suite != nil {
+				// field is set by suite
+				c := svm.FieldByName(name)
+				val = c.FieldByName("CodePath").String()
+				if val != "" {
+					f = c
+					def = false
+				}
+			}
+			if !def {
+				if a := f.FieldByName("Addr").String(); a != "" {
+					if len(a) > 20 && len(monkutil.UserHex2Bytes(a)) == 20 {
+						addr = monkutil.UserHex2Bytes(a)
+					} else {
+						addr = monkutil.LeftPadBytes([]byte(a), 20)
+					}
+				}
+				if a := f.FieldByName("Doug").String(); a != "" {
+					useDoug = true
+				}
+				codePath := path.Join(g.contractPath, val)
+				_, _, err := MakeApplyTx(codePath, addr, nil, keys, block)
+				if err == nil {
+					s := SysCall{
+						Addr:     monkutil.Bytes2Hex(addr),
+						byteAddr: addr,
+						Doug:     useDoug,
+						CodePath: codePath,
+					}
+					m.contract[tag] = s
+				}
+				SetValue(genAddr, []string{"setvar", tag, "0x" + monkutil.Bytes2Hex(addr)}, keys, block)
+			}
 
-        }
-    }
-    
-    // This is the chainID (65 bytes)
+		}
+	}
+
+	// This is the chainID (65 bytes)
 	chainId := block.Sign(keys.PrivateKey)
-    g.chainId = monkutil.Bytes2Hex(chainId)
+	g.chainId = monkutil.Bytes2Hex(chainId)
 }
 
 // set balance of an account (does not commit)
@@ -326,12 +326,12 @@ func NewPermModel(g *GenesisConfig) (model monkchain.Protocol) {
 	switch modelName {
 	case "std":
 		// gendoug-v2
-        // uses eris-std-lib/gotests/vars for reading
-        // from gendoug
+		// uses eris-std-lib/gotests/vars for reading
+		// from gendoug
 		model = NewStdLibModel(g)
-    case "vm":
-        // run processing through the vm
-        model = NewVmModel(g)
+	case "vm":
+		// run processing through the vm
+		model = NewVmModel(g)
 	case "yes":
 		// everyone allowed everything
 		model = NewYesModel(g)
@@ -339,11 +339,11 @@ func NewPermModel(g *GenesisConfig) (model monkchain.Protocol) {
 		// noone allowed anything
 		model = NewNoModel(g)
 	case "eth":
-        // ethereum
+		// ethereum
 		model = NewEthModel(g)
 	default:
-        // default to yes
-		model = NewYesModel(g) 
+		// default to yes
+		model = NewYesModel(g)
 	}
 	return
 }
@@ -364,15 +364,15 @@ var DefaultGenesis = GenesisConfig{
 
 // Contract suites for vm based protocol
 var suites = map[string]*VmConsensus{
-    "std":&VmConsensus{
-        SuiteName:"std",
-        PermissionVerify:SysCall{"", true, "", nil},
-        BlockVerify:SysCall{"", true, "", nil},
-        TxVerify:SysCall{"", true, "", nil},
-        ComputeDifficulty:SysCall{"", true, "", nil},
-        ComputeParticipate:SysCall{"", true, "", nil},
-        Participate:SysCall{"", true, "", nil},
-        PreCall:SysCall{"", true, "", nil},
-        PostCall:SysCall{"", true, "", nil},
-    },
+	"std": &VmConsensus{
+		SuiteName:          "std",
+		PermissionVerify:   SysCall{"", true, "", nil},
+		BlockVerify:        SysCall{"", true, "", nil},
+		TxVerify:           SysCall{"", true, "", nil},
+		ComputeDifficulty:  SysCall{"", true, "", nil},
+		ComputeParticipate: SysCall{"", true, "", nil},
+		Participate:        SysCall{"", true, "", nil},
+		PreCall:            SysCall{"", true, "", nil},
+		PostCall:           SysCall{"", true, "", nil},
+	},
 }

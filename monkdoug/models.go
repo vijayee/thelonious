@@ -89,140 +89,140 @@ func (m *NoModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 }
 
 // The VM Model runs all processing through the EVM
-type VmModel struct{
-	g *GenesisConfig
-    doug []byte    
+type VmModel struct {
+	g    *GenesisConfig
+	doug []byte
 
-    // map of contract names to syscalls
-    // names are json tags, addresses are
-    // left-padded struct field names (VmConsensus struct)
-    contract map[string]SysCall
+	// map of contract names to syscalls
+	// names are json tags, addresses are
+	// left-padded struct field names (VmConsensus struct)
+	contract map[string]SysCall
 }
 
 func NewVmModel(g *GenesisConfig) monkchain.Protocol {
-    contract := make(map[string]SysCall)
+	contract := make(map[string]SysCall)
 	return &VmModel{g, g.byteAddr, contract}
 }
 
-func (m *VmModel) Deploy(block *monkchain.Block){
-    m.g.Deploy(block)
+func (m *VmModel) Deploy(block *monkchain.Block) {
+	m.g.Deploy(block)
 }
 
-// TODO: 
+// TODO:
 //  - enforce read-only option for vm
 
-func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool{
-    if scall, ok := m.contract["compute-participate"]; ok{
-        addr := scall.byteAddr
-        state := parent.State()
-        obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
-        coinbaseHex := monkutil.Bytes2Hex(coinbase)
-        data := monkutil.PackTxDataArgs2(coinbaseHex)
-        ret := EvmCall(code, data, obj, state, nil, parent, true)
-        // TODO: check not nil
-        return monkutil.BigD(ret).Int64() > 0
-    }
-    return true
+func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
+	if scall, ok := m.contract["compute-participate"]; ok {
+		addr := scall.byteAddr
+		state := parent.State()
+		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		coinbaseHex := monkutil.Bytes2Hex(coinbase)
+		data := monkutil.PackTxDataArgs2(coinbaseHex)
+		ret := EvmCall(code, data, obj, state, nil, parent, true)
+		// TODO: check not nil
+		return monkutil.BigD(ret).Int64() > 0
+	}
+	return true
 }
 
-func (m *VmModel) pickCallObjAndCode(addr []byte, state *monkstate.State, useDoug bool) (obj *monkstate.StateObject, code []byte){
-    obj = state.GetStateObject(addr)
-    code = obj.Code
-    if useDoug{
-        obj = state.GetStateObject(m.doug) 
-    }
-    return
+func (m *VmModel) pickCallObjAndCode(addr []byte, state *monkstate.State, useDoug bool) (obj *monkstate.StateObject, code []byte) {
+	obj = state.GetStateObject(addr)
+	code = obj.Code
+	if useDoug {
+		obj = state.GetStateObject(m.doug)
+	}
+	return
 }
 
-func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int{
-    if scall, ok := m.contract["compute-difficulty"]; ok{
-        addr := scall.byteAddr
-        state := parent.State()
-        obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
-        coinbase := monkutil.Bytes2Hex(block.Coinbase)
-        data := monkutil.PackTxDataArgs2(coinbase)
-        ret := EvmCall(code, data, obj, state, nil, block, true)
-        // TODO: check not nil
-        return monkutil.BigD(ret)
-    }
+func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
+	if scall, ok := m.contract["compute-difficulty"]; ok {
+		addr := scall.byteAddr
+		state := parent.State()
+		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		coinbase := monkutil.Bytes2Hex(block.Coinbase)
+		data := monkutil.PackTxDataArgs2(coinbase)
+		ret := EvmCall(code, data, obj, state, nil, block, true)
+		// TODO: check not nil
+		return monkutil.BigD(ret)
+	}
 	return monkutil.BigPow(2, m.g.Difficulty)
 }
 
-func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error{
-    var ret []byte
-    if scall, ok := m.contract["permission-verify"]; ok{
-        contract := scall.byteAddr
-        obj, code := m.pickCallObjAndCode(contract, state, scall.Doug)
-        data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
-        ret = EvmCall(code, data, obj, state, nil, nil, true)
-    } else {
-        // get perm from doug
-        doug := state.GetStateObject(m.doug) 
-        data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
-        ret = EvmCall(doug.Code, data, doug, state, nil, nil, true)
-    }
-    if monkutil.BigD(ret).Int64() > 0{
-        return nil
-    }
-    return fmt.Errorf("Permission error")
+func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error {
+	var ret []byte
+	if scall, ok := m.contract["permission-verify"]; ok {
+		contract := scall.byteAddr
+		obj, code := m.pickCallObjAndCode(contract, state, scall.Doug)
+		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
+		ret = EvmCall(code, data, obj, state, nil, nil, true)
+	} else {
+		// get perm from doug
+		doug := state.GetStateObject(m.doug)
+		data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
+		ret = EvmCall(doug.Code, data, doug, state, nil, nil, true)
+	}
+	if monkutil.BigD(ret).Int64() > 0 {
+		return nil
+	}
+	return fmt.Errorf("Permission error")
 }
 
-func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error{
-    if scall, ok := m.contract["block-verify"]; ok{
-        addr := scall.byteAddr
-        parent := bc.CurrentBlock()
-        state := parent.State()
-        obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
-        // get block args
-        prevhash := block.PrevHash
-        unclesha := block.UncleSha
-        coinbase := block.Coinbase
-        stateroot := monkutil.NewValue(block.GetRoot()).Bytes()
-        txsha := block.TxSha
-        diff := block.Difficulty.Bytes()
-        number := block.Number.Bytes()
-        minGasPrice := block.MinGasPrice.Bytes()
-        gasLim := block.GasLimit.Bytes()
-        gasUsed := block.GasUsed.Bytes()
-        t := big.NewInt(block.Time).Bytes()
-        extra := []byte(block.Extra)
-        sig := block.GetSig()
+func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error {
+	if scall, ok := m.contract["block-verify"]; ok {
+		addr := scall.byteAddr
+		parent := bc.CurrentBlock()
+		state := parent.State()
+		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		// get block args
+		prevhash := block.PrevHash
+		unclesha := block.UncleSha
+		coinbase := block.Coinbase
+		stateroot := monkutil.NewValue(block.GetRoot()).Bytes()
+		txsha := block.TxSha
+		diff := block.Difficulty.Bytes()
+		number := block.Number.Bytes()
+		minGasPrice := block.MinGasPrice.Bytes()
+		gasLim := block.GasLimit.Bytes()
+		gasUsed := block.GasUsed.Bytes()
+		t := big.NewInt(block.Time).Bytes()
+		extra := []byte(block.Extra)
+		sig := block.GetSig()
 
-        prevdiff := parent.Difficulty.Bytes()
-        prevT := big.NewInt(parent.Time).Bytes()
-    
-        data := monkutil.PackTxDataBytes(prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig)
+		prevdiff := parent.Difficulty.Bytes()
+		prevT := big.NewInt(parent.Time).Bytes()
 
-        ret := EvmCall(code, data, obj, state, nil, block, true)
-        if monkutil.BigD(ret).Int64() > 0{
-            return nil
-        }
-        return fmt.Errorf("Permission error")
-    }
-    return m.ValidatePerm(block.Coinbase, "mine", block.State())
+		data := monkutil.PackTxDataBytes(prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig)
+
+		ret := EvmCall(code, data, obj, state, nil, block, true)
+		if monkutil.BigD(ret).Int64() > 0 {
+			return nil
+		}
+		return fmt.Errorf("Permission error")
+	}
+	return m.ValidatePerm(block.Coinbase, "mine", block.State())
 }
 
-func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error{
-    if scall, ok := m.contract["tx-verify"]; ok{
-        addr := scall.byteAddr
-        obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
-        // get tx args
-        nonce := big.NewInt(int64(tx.Nonce)).Bytes() // TODO: safe cast?
-        rec := tx.Recipient
-        value := tx.Value.Bytes()
-        gas := tx.Gas.Bytes()
-        gasPrice := tx.GasPrice.Bytes()
-        data := tx.Data
-        sig := tx.GetSig()
-        
-        data = monkutil.PackTxDataBytes(nonce, rec, value, gas, gasPrice, sig, data)
-        ret := EvmCall(code, data, obj, state, tx, nil, true)
-        if monkutil.BigD(ret).Int64() > 0{
-            return nil
-        }
-        return fmt.Errorf("Permission error")
-    }
-    return m.ValidatePerm(tx.Sender(), "transact", state)
+func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error {
+	if scall, ok := m.contract["tx-verify"]; ok {
+		addr := scall.byteAddr
+		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		// get tx args
+		nonce := big.NewInt(int64(tx.Nonce)).Bytes() // TODO: safe cast?
+		rec := tx.Recipient
+		value := tx.Value.Bytes()
+		gas := tx.Gas.Bytes()
+		gasPrice := tx.GasPrice.Bytes()
+		data := tx.Data
+		sig := tx.GetSig()
+
+		data = monkutil.PackTxDataBytes(nonce, rec, value, gas, gasPrice, sig, data)
+		ret := EvmCall(code, data, obj, state, tx, nil, true)
+		if monkutil.BigD(ret).Int64() > 0 {
+			return nil
+		}
+		return fmt.Errorf("Permission error")
+	}
+	return m.ValidatePerm(tx.Sender(), "transact", state)
 }
 
 // The stdlib model grants permissions based on the state of the gendoug

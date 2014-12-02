@@ -10,9 +10,9 @@ import (
 	"github.com/eris-ltd/thelonious/monkvm"
 	"io/ioutil"
 	"math/big"
-	"strconv"
 	"os"
 	"path"
+	"strconv"
 )
 
 var (
@@ -35,7 +35,7 @@ func NewContract(scriptFile string) (*monkchain.Transaction, error) {
 		r, err := ioutil.ReadFile(scriptFile)
 		if err != nil {
 			fmt.Println("could not load contract!", scriptFile, err)
-            return nil, err
+			return nil, err
 		}
 		s = string(r)
 	} else {
@@ -44,7 +44,7 @@ func NewContract(scriptFile string) (*monkchain.Transaction, error) {
 	script, err := monkutil.Compile(string(s), false)
 	if err != nil {
 		fmt.Println("failed compile", err)
-        return nil, err
+		return nil, err
 	}
 
 	// create tx
@@ -110,12 +110,12 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
 // TODO: if addr is empty or invalid, use proper contract addr
 func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt, error) {
 	var tx *monkchain.Transaction
-    var err error
+	var err error
 	if codePath != "" {
 		tx, err = NewContract(codePath)
-        if err != nil{
-            return nil, nil, err
-        }
+		if err != nil {
+			return nil, nil, err
+		}
 	} else {
 		tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
 	}
@@ -159,13 +159,13 @@ func EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monks
 	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
 	env := monkchain.NewEnv(state, tx, block)
-    vm := monkvm.New(env)
-    vm.Verbose = true
+	vm := monkvm.New(env)
+	vm.Verbose = true
 	ret, _, e := closure.Call(vm, data)
 
-    if e != nil{
-        fmt.Println("vm error!", e)
-    }
+	if e != nil {
+		fmt.Println("vm error!", e)
+	}
 
 	/*if dump {
 		fmt.Println(string(env.State().Dump()))

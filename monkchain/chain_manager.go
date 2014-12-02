@@ -213,7 +213,7 @@ func (bc *ChainManager) setLastBlock() {
 
 func (bc *ChainManager) Reset() {
 	// prepare genesis (calls sync)
-	bc.protocol.Deploy(bc.genesisBlock) 
+	bc.protocol.Deploy(bc.genesisBlock)
 
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
