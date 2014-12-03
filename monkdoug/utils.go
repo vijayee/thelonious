@@ -151,29 +151,6 @@ func PrintHelp(m map[string]interface{}, obj *monkstate.StateObject) {
 	})
 }
 
-// Run data through evm code and return value
-func EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
-	gas := "1000000000000000"
-	price := "10000000"
-
-	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
-
-	env := monkchain.NewEnv(state, tx, block)
-	vm := monkvm.New(env)
-	vm.Verbose = true
-	ret, _, e := closure.Call(vm, data)
-
-	if e != nil {
-		fmt.Println("vm error!", e)
-	}
-
-	/*if dump {
-		fmt.Println(string(env.State().Dump()))
-	}*/
-
-	return ret
-}
-
 func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt) {
 	data := monkutil.PackTxDataArgs2(args...)
 	tx, rec, _ := MakeApplyTx("", addr, data, keys, block)
@@ -191,4 +168,55 @@ func SetPermissions(genAddr, addr []byte, permissions map[string]int, block *mon
 		receipts = append(receipts, rec)
 	}
 	return txs, receipts
+}
+
+// Run data through evm code and return value
+func EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
+	gas := "1000000000000000"
+	price := "10000000"
+
+	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
+
+	env := NewEnv(state, tx, block)
+	vm := monkvm.New(env)
+	vm.Verbose = true
+	ret, _, e := closure.Call(vm, data)
+
+	if e != nil {
+		fmt.Println("vm error!", e)
+	}
+
+	/*if dump {
+		fmt.Println(string(env.State().Dump()))
+	}*/
+
+	return ret
+}
+
+type VMEnv struct {
+	protocol monkchain.Protocol
+	state    *monkstate.State
+	block    *monkchain.Block
+	tx       *monkchain.Transaction
+}
+
+func NewEnv(state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block) *VMEnv {
+	return &VMEnv{
+		state: state,
+		block: block,
+		tx:    tx,
+	}
+}
+
+func (self *VMEnv) Origin() []byte          { return []byte("000000000000000LOCAL") } //self.tx.Sender() }
+func (self *VMEnv) BlockNumber() *big.Int   { return self.block.Number }
+func (self *VMEnv) PrevHash() []byte        { return self.block.PrevHash }
+func (self *VMEnv) Coinbase() []byte        { return self.block.Coinbase }
+func (self *VMEnv) Time() int64             { return self.block.Time }
+func (self *VMEnv) Difficulty() *big.Int    { return self.block.Difficulty }
+func (self *VMEnv) BlockHash() []byte       { return self.block.Hash() }
+func (self *VMEnv) Value() *big.Int         { return self.tx.Value }
+func (self *VMEnv) State() *monkstate.State { return self.state }
+func (self *VMEnv) DougValidate(addr []byte, role string, state *monkstate.State) error {
+	return monkchain.DougValidatePerm(addr, role, state)
 }

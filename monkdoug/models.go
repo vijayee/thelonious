@@ -120,7 +120,7 @@ func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 		data := monkutil.PackTxDataArgs2(coinbaseHex)
 		ret := EvmCall(code, data, obj, state, nil, parent, true)
 		// TODO: check not nil
-		return monkutil.BigD(ret).Int64() > 0
+		return monkutil.BigD(ret).Uint64() > 0
 	}
 	return true
 }
@@ -161,7 +161,7 @@ func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
 		data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
 		ret = EvmCall(doug.Code, data, doug, state, nil, nil, true)
 	}
-	if monkutil.BigD(ret).Int64() > 0 {
+	if monkutil.BigD(ret).Uint64() > 0 {
 		return nil
 	}
 	return fmt.Errorf("Permission error")
@@ -194,7 +194,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		data := monkutil.PackTxDataBytes(prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig)
 
 		ret := EvmCall(code, data, obj, state, nil, block, true)
-		if monkutil.BigD(ret).Int64() > 0 {
+		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
 		return fmt.Errorf("Permission error")
@@ -217,7 +217,7 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 
 		data = monkutil.PackTxDataBytes(nonce, rec, value, gas, gasPrice, sig, data)
 		ret := EvmCall(code, data, obj, state, tx, nil, true)
-		if monkutil.BigD(ret).Int64() > 0 {
+		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
 		return fmt.Errorf("Permission error")

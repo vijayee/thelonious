@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"math/big"
+	"runtime"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
@@ -90,6 +91,9 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 				ret = closure.Return(nil)
 				err = fmt.Errorf("%v", r)
 				vmlogger.Errorln("vm err", err)
+				trace := make([]byte, 2048)
+				count := runtime.Stack(trace, true)
+				fmt.Printf("Stack of %d bytes: %s", count, trace)
 			}
 		}()
 	}
@@ -866,12 +870,13 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			snapshot := self.env.State().Copy()
 
-			var executeAddr []byte
-			if op == CALLSTATELESS {
-				executeAddr = closure.Address()
-			} else {
-				executeAddr = addr.Bytes()
-			}
+			/*	var executeAddr []byte
+				if op == CALLSTATELESS {
+					executeAddr = closure.Address()
+				} else {
+					executeAddr = addr.Bytes()
+				}*/
+			executeAddr := addr.Bytes()
 
 			msg := NewMessage(self, executeAddr, args, gas, closure.Price, value)
 			ret, err := msg.Exec(addr.Bytes(), closure)
@@ -1041,28 +1046,28 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 
 		err = fmt.Errorf("Insufficient funds to transfer value. Req %v, has %v", self.value, object.Balance)
 	} else {
-        naddr := monkutil.BigD(self.address).Uint64()
-        if p := Precompiled[naddr]; p!=nil{
-            if self.gas.Cmp(p.Gas) >= 0 {                                          
-                ret = p.Call(self.input)
-                self.vm.Printf("NATIVE_FUNC(%x) => %x", naddr, ret)                
-            }
-        } else {
-            stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
-            self.object = stateObject
+		naddr := monkutil.BigD(self.address).Uint64()
+		if p := Precompiled[naddr]; p != nil {
+			if self.gas.Cmp(p.Gas) >= 0 {
+				ret = p.Call(self.input)
+				self.vm.Printf("NATIVE_FUNC(%x) => %x", naddr, ret)
+			}
+		} else {
+			stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
+			self.object = stateObject
 
-            caller.Object().SubAmount(self.value)
-            stateObject.AddAmount(self.value)
+			caller.Object().SubAmount(self.value)
+			stateObject.AddAmount(self.value)
 
-            // Retrieve the executing code
-            code := self.vm.env.State().GetCode(codeAddr)
+			// Retrieve the executing code
+			code := self.vm.env.State().GetCode(codeAddr)
 
-            // Create a new callable closure
-            c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
-            // Executer the closure and get the return value (if any)
-            ret, _, err = c.Call(self.vm, self.input)
-        }
-        msg.Output = ret
+			// Create a new callable closure
+			c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
+			// Executer the closure and get the return value (if any)
+			ret, _, err = c.Call(self.vm, self.input)
+		}
+		msg.Output = ret
 
 		return ret, err
 	}
