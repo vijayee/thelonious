@@ -1052,11 +1052,11 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 
 		err = fmt.Errorf("Insufficient funds to transfer value. Req %v, has %v", self.value, object.Balance)
 	} else {
-		naddr := monkutil.BigD(self.address).Uint64()
-		if p := Precompiled[naddr]; p != nil {
+		baddr := monkutil.BigD(self.address).Bytes()
+		if p := Precompiled[string(baddr)]; p != nil {
 			if self.gas.Cmp(p.Gas) >= 0 {
 				ret = p.Call(self.input)
-				self.vm.Printf("NATIVE_FUNC(%x) => %x", naddr, ret)
+				self.vm.Printf("NATIVE_FUNC(%s) => %x", string(self.address), ret)
 			}
 		} else {
 			stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
