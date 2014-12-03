@@ -508,19 +508,16 @@ func (p *Peer) HandleInbound() {
 
 					blockPool := p.thelonious.blockPool
 
+					// add hashes to pool until found common
 					foundCommonHash := false
-
 					it := msg.Data.NewIterator()
 					for it.Next() {
 						hash := it.Value().Bytes()
 						p.lastReceivedHash = hash
-
 						if blockPool.HasCommonHash(hash) {
 							foundCommonHash = true
-
 							break
 						}
-
 						blockPool.AddHash(hash, p)
 					}
 

@@ -12,7 +12,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkwire"
+	//	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 var poollogger = monklog.NewLogger("BPOOL")
@@ -87,36 +87,65 @@ func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
 	return
 }
 
+// Add a hash to the hash pool
+// and an empty block obj to block pool
 func (self *BlockPool) AddHash(hash []byte, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
 	if self.pool[string(hash)] == nil {
 		self.pool[string(hash)] = &block{peer, nil, nil, time.Now(), 0}
-
 		self.hashPool = append([][]byte{hash}, self.hashPool...)
 	}
 }
 
+// A block has just come in from a peer
+// If the block is a checkpoint block, pass it to the chain
+// If we are still waiting for a checkpoint, do nothing
+// If the block came before the checkpoint block, ignore it
+// If we have the block already, do nothing
+// If we haven't seen the hash, before, the block is unrequested
+//      If we haven't seen its parents either, ignore it; TODO (better)
+// If we've seen the hash, add the block to the pool
 func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
 	hash := string(b.Hash())
+	cman := self.eth.ChainManager()
+
+	// if we're still waiting for a checkpoint block,
+	// check if this is it
+	if cman.WaitingForCheckpoint() {
+		if cman.ReceiveCheckPointBlock(b) {
+			poollogger.Infof("Received checkpoint block (#%d) %x from peer", b.Number, b.Hash())
+		}
+		return
+	}
+
+	// if block is before checkpoint, do nothing
+	if b.Number.Uint64() < cman.LatestCheckPointNumber() {
+		return
+	}
+
+	// if we have the block, do nothing
+	if cman.HasBlock(b.Hash()) {
+		return
+	}
 
 	// Note this doesn't check the working tree
 	// Leave it to TestChain to ignore blocks already in forks
 	// Also, we can one day use the information on which/howmany peers
 	//  give us which blocks, in the td calculation. Hold on to your hats!
-	if self.pool[hash] == nil && !self.eth.ChainManager().HasBlock(b.Hash()) {
+	if self.pool[hash] == nil {
 		poollogger.Infof("Got unrequested block (%x...)\n", hash[0:4])
 
 		self.hashPool = append(self.hashPool, b.Hash())
 		self.pool[hash] = &block{peer, peer, b, time.Now(), 0}
 
-		if !self.eth.ChainManager().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
+		if !cman.HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
 			poollogger.Infof("Unknown block, requesting parent (%x...)\n", b.PrevHash[0:4])
-			peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
+			//peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
 		}
 	} else if self.pool[hash] != nil {
 		self.pool[hash].block = b

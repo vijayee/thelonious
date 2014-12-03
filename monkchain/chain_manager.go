@@ -66,6 +66,7 @@ type ChainManager struct {
 	latestCheckPointHash   []byte
 	latestCheckPointBlock  *Block
 	latestCheckPointNumber uint64
+	waitingForCheckPoint   bool
 
 	// sync access to current state (block, hash, num)
 	mut sync.Mutex
@@ -113,19 +114,32 @@ func (bc *ChainManager) CheckPoint(proposed []byte) {
 	}
 }
 
+// Receive the checkpointed block from peers
+func (bc *ChainManager) ReceiveCheckPointBlock(block *Block) bool {
+	isCheckpoint := bytes.Compare(block.Hash(), bc.LatestCheckPointHash()) == 0
+	if isCheckpoint {
+		bc.add(block)
+		bc.updateCheckpoint(block.Hash())
+		return true
+	}
+	return false
+}
+
 // This assumes this checkpoint is valid, but only writes it
 // to the db if/once we have the block
 func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
 	b := bc.GetBlock(checkPoint)
 	bc.latestCheckPointHash = checkPoint
-	chainlogger.Infoln("Updating checkpoint: %x\n", checkPoint)
+	chainlogger.Infof("Updating checkpoint: %x\n", checkPoint)
 	if b != nil {
+		bc.setWaitingForCheckpoint(false)
 		bc.latestCheckPointBlock = b
 		bc.latestCheckPointNumber = b.Number.Uint64()
 		monkutil.Config.Db.Put([]byte("LatestCheckPoint"), b.RlpEncode())
-		chainlogger.Infoln("\tblock number: %d\n", bc.latestCheckPointNumber)
+		chainlogger.Infof("\tblock number: %d\n", bc.latestCheckPointNumber)
 	} else {
 		chainlogger.Infoln("\tblock not found. Getting checkpoint block from peers\n")
+		bc.setWaitingForCheckpoint(true)
 		// we have accepted the checkpoint but don't have the block
 		// TODO: get block pool to confirm a chain of hashes from checkpoint
 		// back to genblock
@@ -134,6 +148,18 @@ func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
 
 		// TODO: once we have the block, call updateCheckpoint
 	}
+}
+
+func (bc *ChainManager) WaitingForCheckpoint() bool {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.waitingForCheckPoint
+}
+
+func (bc *ChainManager) setWaitingForCheckpoint(waiting bool) {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	bc.waitingForCheckPoint = waiting
 }
 
 // load checkpoint from db or set to genesis
