@@ -118,7 +118,7 @@ func (bc *ChainManager) CheckPoint(proposed []byte) {
 func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
 	b := bc.GetBlock(checkPoint)
 	bc.latestCheckPointHash = checkPoint
-	chainlogger.Infoln("Updating checkpoint: %x\n".checkPoint)
+	chainlogger.Infoln("Updating checkpoint: %x\n", checkPoint)
 	if b != nil {
 		bc.latestCheckPointBlock = b
 		bc.latestCheckPointNumber = b.Number.Uint64()
@@ -244,7 +244,7 @@ func (bc *ChainManager) setLastBlock() {
 	data, _ := monkutil.Config.Db.Get([]byte("GenesisBlock"))
 	if len(data) != 0 {
 		bc.genesisBlock = NewBlockFromBytes(data)
-		data, _ := monkutil.Config.Db.Get([]byte("ChainID"))
+		data, _ = monkutil.Config.Db.Get([]byte("ChainID"))
 		if len(data) == 0 {
 			log.Fatal("No chainID found for genesis block.")
 		}
@@ -283,6 +283,7 @@ func (bc *ChainManager) setLastBlock() {
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
 
 	chainlogger.Infof("Last block (#%d) %x\n", bc.currentBlockNumber, bc.currentBlock.Hash())
+	chainlogger.Infof("ChainID (%x) and Genesis (%x)\n", bc.chainID, bc.genesisBlock.Hash())
 }
 
 func (bc *ChainManager) Reset() {
@@ -311,6 +312,12 @@ func (bc *ChainManager) add(block *Block) {
 	encodedBlock := block.RlpEncode()
 	monkutil.Config.Db.Put(block.Hash(), encodedBlock)
 	monkutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
+}
+
+func (bc *ChainManager) ChainID() []byte {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.chainID
 }
 
 func (bc *ChainManager) CurrentBlock() *Block {

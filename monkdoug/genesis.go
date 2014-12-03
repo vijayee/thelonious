@@ -180,7 +180,8 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) []byte {
 			// direct state modification to create accounts and balances
 			AddAccount(account.byteAddr, account.Balance, block)
 		}
-		return nil
+		// TODO: make sure defer happens first!
+		return block.Hash()
 	}
 
 	fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
@@ -353,6 +354,7 @@ func NewPermModel(g *GenesisConfig) (model monkchain.Consensus) {
 		model = NewNoModel(g)
 	case "eth":
 		// ethereum
+		g.NoGenDoug = true
 		model = NewEthModel(g)
 	default:
 		// default to yes

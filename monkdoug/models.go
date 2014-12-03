@@ -265,8 +265,9 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 	return m.ValidatePerm(tx.Sender(), perm, state)
 }
 
-func (m *VmModel) CheckPoint(proposed []byte, bc *ChainManager) bool {
+func (m *VmModel) CheckPoint(proposed []byte, bc *monkchain.ChainManager) bool {
 	// TODO: checkpoint validation contract
+	return true
 }
 
 // The stdlib model grants permissions based on the state of the gendoug
@@ -451,7 +452,7 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.Sta
 	return nil
 }
 
-func (m *StdLibModel) CheckPoint(proposed []byte, bc *ChainManager) bool {
+func (m *StdLibModel) CheckPoint(proposed []byte, bc *monkchain.ChainManager) bool {
 	// TODO: something reasonable
 	return true
 }

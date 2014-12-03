@@ -566,6 +566,7 @@ func (self *Peer) FetchHashes() {
 
 	blockPool := self.thelonious.blockPool
 
+	// if this peer has higher TD than other peers, fetch hashes
 	if self.td.Cmp(self.thelonious.HighestTDPeer()) >= 0 {
 		blockPool.td = self.td
 
@@ -734,11 +735,11 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 		netVersion   = c.Get(1).Uint()
 		td           = c.Get(2).BigInt()
 		bestHash     = c.Get(3).Bytes()
-		genesis      = c.Get(4).Bytes()
+		chainId      = c.Get(4).Bytes()
 	)
 
-	if bytes.Compare(self.thelonious.ChainManager().Genesis().Hash(), genesis) != 0 {
-		monklogger.Warnf("Invalid genisis hash %x. Disabling [eth]\n", genesis)
+	if bytes.Compare(self.thelonious.ChainManager().ChainID(), chainId) != 0 {
+		monklogger.Warnf("Invalid chainId %x. Disabling [eth]\n", chainId)
 		return
 	}
 

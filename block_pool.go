@@ -3,7 +3,7 @@ package thelonious
 import (
 	"bytes"
 	"container/list"
-	"fmt"
+	//"fmt"
 	"math"
 	"math/big"
 	"sync"
@@ -26,7 +26,7 @@ type block struct {
 }
 
 type BlockPool struct {
-	mut sync.Mutex
+	mut sync.Mutex // TODO: should this be RW?
 
 	eth *Thelonious
 
@@ -133,34 +133,9 @@ func (self *BlockPool) Remove(hash []byte) {
 	delete(self.pool, string(hash))
 }
 
-func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmount int) {
-	blocks := self.Blocks()
-
-	monkchain.BlockBy(monkchain.Number).Sort(blocks)
-	fmt.Println("Len block pool in process canonical: ", len(blocks))
-	if len(blocks) > 0 {
-		fmt.Println("first blocks num:", blocks[0].Number)
-		fmt.Println("last blocks num:", blocks[len(blocks)-1].Number)
-	} else {
-		fmt.Println("no blocks in pool!")
-	}
-	for _, block := range blocks {
-		if self.eth.ChainManager().HasBlock(block.PrevHash) {
-			procAmount++
-
-			f(block)
-
-			self.Remove(block.Hash())
-		} else {
-			fmt.Println("not processed as we don't have prevhash")
-		}
-
-	}
-
-	return
-}
-
+// Distribute pool hashes over peers and fetch them
 func (self *BlockPool) DistributeHashes() {
+	// TODO: can we do better than locking up everything to run this?
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
@@ -170,11 +145,16 @@ func (self *BlockPool) DistributeHashes() {
 		dist    = make(map[*Peer][][]byte)
 	)
 
+	// min (amount, len(pool))
 	num := int(math.Min(float64(amount), float64(len(self.pool))))
-	for i, j := 0, 0; i < len(self.hashPool) && j < num; i++ {
+	for i, j := 0, 0; i < self.Len() && j < num; i++ {
 		hash := self.hashPool[i]
 		item := self.pool[string(hash)]
 
+		// if we have the item but not the block
+		//  - if we have a peer, try to get block
+		//  - if not, find a peer
+		//  - append hash to dist[peer]
 		if item != nil && item.block == nil {
 			var peer *Peer
 			lastFetchFailed := time.Since(item.reqAt) > 5*time.Second
@@ -236,24 +216,35 @@ out:
 		case <-serviceTimer.C:
 			// Check if we're catching up. If not distribute the hashes to
 			// the peers and download the blockchain
-			self.fetchingHashes = false
-			self.eth.peerMut.Lock()
-			eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
-				if p.statusKnown && p.FetchingHashes() {
-					self.fetchingHashes = true
-				}
-			})
-			self.eth.peerMut.Unlock()
-
-			self.DistributeHashes()
-
-			self.mut.Lock()
-			if self.ChainLength < len(self.hashPool) {
-				self.ChainLength = len(self.hashPool)
+			if !self.areWeFetchingHashes() {
+				self.DistributeHashes()
 			}
-			self.mut.Unlock()
+
+			self.setChainLength()
 		}
 	}
+}
+
+func (self *BlockPool) setChainLength() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+	if self.ChainLength < len(self.hashPool) {
+		self.ChainLength = len(self.hashPool)
+	}
+}
+
+func (self *BlockPool) areWeFetchingHashes() bool {
+	self.eth.peerMut.Lock()
+	defer self.eth.peerMut.Unlock()
+	fetchingHashes := false
+	eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+		if p.statusKnown && p.FetchingHashes() {
+			self.fetchingHashes = true
+		}
+	})
+	self.fetchingHashes = fetchingHashes
+
+	return fetchingHashes
 }
 
 // Sort blocks in pool by number

@@ -6,7 +6,7 @@
     "unique":false,
     "private-key":"",
     "consensus":"", 
-    "difficulty":15,
+    "difficulty":19,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,
