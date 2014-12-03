@@ -22,7 +22,7 @@ func (self PrecompiledAddress) Call(in []byte) []byte {
 
 var Precompiled = map[string]*PrecompiledAddress{
 	"ecrecover": &PrecompiledAddress{big.NewInt(500), ecrecoverFunc},
-	"sha256": &PrecompiledAddress{big.NewInt(100), sha256Func},
+	"sha256":    &PrecompiledAddress{big.NewInt(100), sha256Func},
 	"ripemd160": &PrecompiledAddress{big.NewInt(100), ripemd160Func},
 }
 

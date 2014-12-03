@@ -51,15 +51,21 @@ type NodeManager interface {
 	Protocol() Protocol
 }
 
-type CheckPoint interface {
+type Protocol interface {
+	// Permissions based consensus
+	Consensus
+	// GenDoug address
+	Doug() []byte
+	// deploy genesis block containing protocol rules
+	// returns 20-byte chainId
+	Deploy(block *Block) []byte
+	// validate the chain's Id
+	// (typically requires other info, like signatures)
+	ValidateChainID(chainId []byte, genesisBlock *Block) error
 }
 
 // Model defining the consensus
-type Protocol interface {
-	// return the GenDoug address
-	Doug() []byte
-	// deploy genesis block containing protocol rules
-	Deploy(block *Block)
+type Consensus interface {
 	// determine whether to attempt participating in consensus
 	Participate(coinbase []byte, parent *Block) bool
 	// required difficulty of a block
@@ -70,6 +76,8 @@ type Protocol interface {
 	ValidateBlock(block *Block, bc *ChainManager) error
 	// validate a tx
 	ValidateTx(tx *Transaction, state *monkstate.State) error
+	// determine whether or not this checkpoint should be accepted
+	CheckPoint(proposed []byte, bc *ChainManager) bool
 }
 
 // Private global genDoug variable for checking permissions on arbitrary

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
+	"log"
 	"math/big"
 	"sync"
 	//"github.com/eris-ltd/thelonious/monkcrypto"
@@ -45,8 +46,10 @@ type ChainManager struct {
 	//Thelonious NodeManager
 	processor BlockProcessor
 	protocol  Protocol
-	// The famous, the fabulous Mister GENESIIIIIIS (block)
+	// Genesis Block and Chain ID
 	genesisBlock *Block
+	chainID      []byte
+
 	// Last known total difficulty
 	TD *big.Int
 
@@ -55,11 +58,19 @@ type ChainManager struct {
 	currentBlock       *Block
 	currentBlockHash   []byte
 
+	// Our working chains
 	workingTree  map[string]*link
 	workingChain *BlockChain
 
-	mut      sync.Mutex // for current state (block, hash, num)
-	chainMut sync.Mutex // for TestChain/InsertChain
+	// Our latest checkpoint
+	latestCheckPointHash   []byte
+	latestCheckPointBlock  *Block
+	latestCheckPointNumber uint64
+
+	// sync access to current state (block, hash, num)
+	mut sync.Mutex
+	// sync access to TestChain/InsertChain
+	chainMut sync.Mutex
 }
 
 func NewChainManager(protocol Protocol) *ChainManager {
@@ -68,9 +79,71 @@ func NewChainManager(protocol Protocol) *ChainManager {
 	bc.workingTree = make(map[string]*link)
 	bc.protocol = protocol
 
+	// set last block we know of or deploy genesis
 	bc.setLastBlock()
+	// load the latest checkpoint
+	bc.loadCheckpoint()
 
 	return bc
+}
+
+// This is an attempt to change the chain's checkpoint
+// It is valid only if the latest checkpoint is the genesis block
+// or if the proposed is a known block (and satisfies some checkpoint
+// satisfiability contract).
+// Proposals should come after NewChainManager and come from a separate
+// file or trusted process.
+// TODO: allow proposals to come out of the vm
+func (bc *ChainManager) CheckPoint(proposed []byte) {
+	if proposed == nil {
+		return
+	}
+
+	// if this is our first time booting up
+	// we always accept checkpoints
+	isBoot := bytes.Compare(bc.LatestCheckPointHash(), bc.Genesis().Hash()) == 0
+	if isBoot {
+		bc.updateCheckpoint(proposed)
+		return
+	}
+
+	// check if the checkpoint satisfies consensus rules
+	if bc.protocol.CheckPoint(proposed, bc) {
+		bc.updateCheckpoint(proposed)
+	}
+}
+
+// This assumes this checkpoint is valid, but only writes it
+// to the db if/once we have the block
+func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
+	b := bc.GetBlock(checkPoint)
+	bc.latestCheckPointHash = checkPoint
+	chainlogger.Infoln("Updating checkpoint: %x\n".checkPoint)
+	if b != nil {
+		bc.latestCheckPointBlock = b
+		bc.latestCheckPointNumber = b.Number.Uint64()
+		monkutil.Config.Db.Put([]byte("LatestCheckPoint"), b.RlpEncode())
+		chainlogger.Infoln("\tblock number: %d\n", bc.latestCheckPointNumber)
+	} else {
+		chainlogger.Infoln("\tblock not found. Getting checkpoint block from peers\n")
+		// we have accepted the checkpoint but don't have the block
+		// TODO: get block pool to confirm a chain of hashes from checkpoint
+		// back to genblock
+
+		// TODO: get block from peers
+
+		// TODO: once we have the block, call updateCheckpoint
+	}
+}
+
+// load checkpoint from db or set to genesis
+func (bc *ChainManager) loadCheckpoint() {
+	data, _ := monkutil.Config.Db.Get([]byte("LatestCheckPoint"))
+	if len(data) != 0 {
+		bc.updateCheckpoint(data)
+	} else {
+		bc.updateCheckpoint(bc.genesisBlock.Hash())
+	}
 }
 
 func (bc *ChainManager) SetProcessor(proc BlockProcessor) {
@@ -166,32 +239,33 @@ func (self *ChainManager) GetChainHashesFromHash(hash []byte, max uint64) (chain
 	return
 }
 
-/*
-func AddTestNetFunds(block *Block) {
-	for _, addr := range []string{
-		"51ba59315b3a95761d0863b05ccc7a7f54703d99",
-		"e4157b34ea9615cfbde6b4fda419828124b70c78",
-		"b9c015918bdaba24b4ff057a92a3873d6eb201be",
-		"6c386a4b26f73c802f34673f7248bb118f97424a",
-		"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
-		"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
-		"e6716f9544a56c530d868e4bfbacb172315bdead",
-		"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
-	} {
-		codedAddr := monkutil.Hex2Bytes(addr)
-		account := block.state.GetAccount(codedAddr)
-		account.Balance = monkutil.Big("1606938044258990275541962092341162602522202993782792835301376") //monkutil.BigPow(2, 200)
-		block.state.UpdateStateObject(account)
-	}
-}
-*/
-
 func (bc *ChainManager) setLastBlock() {
-	bc.protocol.Deploy(bc.genesisBlock)
+	// check for a genesis block
+	data, _ := monkutil.Config.Db.Get([]byte("GenesisBlock"))
+	if len(data) != 0 {
+		bc.genesisBlock = NewBlockFromBytes(data)
+		data, _ := monkutil.Config.Db.Get([]byte("ChainID"))
+		if len(data) == 0 {
+			log.Fatal("No chainID found for genesis block.")
+		}
+		// chainId is leading 20 bytes of signed genblock hash
+		// validated on startup
+		err := bc.protocol.ValidateChainID(data, bc.genesisBlock)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bc.chainID = data
+	} else {
+		// no genesis block found. fire up a deploy
+		// save genesis and chainId to db
+		chainId := bc.protocol.Deploy(bc.genesisBlock)
+		monkutil.Config.Db.Put([]byte("GenesisBlock"), bc.genesisBlock.RlpEncode())
+		monkutil.Config.Db.Put([]byte("ChainID"), chainId[:])
+		bc.chainID = chainId
+	}
 
-	// check for last block. if none exists, fire up a genesis
-	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))
-	fmt.Println("length lastblock data:", len(data))
+	// check for last block.
+	data, _ = monkutil.Config.Db.Get([]byte("LastBlock"))
 	if len(data) != 0 {
 		block := NewBlockFromBytes(data)
 		bc.currentBlock = block
@@ -201,7 +275,7 @@ func (bc *ChainManager) setLastBlock() {
 		bc.Reset()
 	}
 	// set the genDoug model (global var) for determining chain permissions
-	genDoug = bc.protocol //Thelonious.GenesisModel()
+	genDoug = bc.protocol
 
 	//bc.SetTotalDifficulty(monkutil.Big("0"))
 
@@ -212,9 +286,6 @@ func (bc *ChainManager) setLastBlock() {
 }
 
 func (bc *ChainManager) Reset() {
-	// prepare genesis (calls sync)
-	bc.protocol.Deploy(bc.genesisBlock)
-
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 	//bc.Ethereum.Db().Put(fk, make([]byte, 255))
@@ -264,6 +335,24 @@ func (bc *ChainManager) CurrentBlockPrevHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
 	return bc.currentBlock.PrevHash
+}
+
+func (bc *ChainManager) LatestCheckPointHash() []byte {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.latestCheckPointHash
+}
+
+func (bc *ChainManager) LatestCheckPointBlock() *Block {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.latestCheckPointBlock
+}
+
+func (bc *ChainManager) LatestCheckPointNumber() uint64 {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.latestCheckPointNumber
 }
 
 func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {

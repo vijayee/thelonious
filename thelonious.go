@@ -102,7 +102,7 @@ type Thelonious struct {
 	protocol monkchain.Protocol
 }
 
-func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Thelonious, error) {
+func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, checkPoint []byte, genConfig *monkdoug.GenesisConfig) (*Thelonious, error) {
 	var err error
 	var nat NAT
 
@@ -142,6 +142,11 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 	th.blockChain = monkchain.NewChainManager(protocol)
 	th.blockManager = monkchain.NewBlockManager(th)
 	th.blockChain.SetProcessor(th.blockManager)
+
+	// Set chain's checkpoint
+	if len(checkPoint) > 0 {
+		th.blockChain.CheckPoint(checkPoint)
+	}
 
 	// Start the tx pool
 	th.txPool.Start()

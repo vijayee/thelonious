@@ -14,27 +14,56 @@ import (
 
 var Adversary = 0
 
-/*
-   Permission models are used for setting up the genesis block
-   and for validating blocks and transactions.
-   They allow for arbitrary extensions of consensus
-*/
+type Protocol struct {
+	g         *GenesisConfig
+	consensus monkchain.Consensus
+}
+
+func (p *Protocol) Doug() []byte {
+	return p.g.byteAddr
+}
+
+func (p *Protocol) Deploy(block *monkchain.Block) []byte {
+	return p.g.Deploy(block)
+}
+
+func (p *Protocol) ValidateChainID(chainId []byte, genesisBlock *monkchain.Block) error {
+	return nil
+}
+
+// Determine whether to accept a new checkpoint
+//
+func (p *Protocol) Participate(coinbase []byte, parent *monkchain.Block) bool {
+	return p.consensus.Participate(coinbase, parent)
+}
+
+func (p *Protocol) Difficulty(block, parent *monkchain.Block) *big.Int {
+	return p.consensus.Difficulty(block, parent)
+}
+
+func (p *Protocol) ValidatePerm(addr []byte, role string, state *monkstate.State) error {
+	return p.consensus.ValidatePerm(addr, role, state)
+}
+
+func (p *Protocol) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error {
+	return p.consensus.ValidateBlock(block, bc)
+}
+
+func (p *Protocol) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error {
+	return p.consensus.ValidateTx(tx, state)
+}
+
+func (p *Protocol) CheckPoint(proposed []byte, bc *monkchain.ChainManager) bool {
+	return p.consensus.CheckPoint(proposed, bc)
+}
 
 // The yes model grants all permissions
 type YesModel struct {
 	g *GenesisConfig
 }
 
-func NewYesModel(g *GenesisConfig) monkchain.Protocol {
+func NewYesModel(g *GenesisConfig) monkchain.Consensus {
 	return &YesModel{g}
-}
-
-func (m *YesModel) Doug() []byte {
-	return nil
-}
-
-func (m *YesModel) Deploy(block *monkchain.Block) {
-	m.g.Deploy(block)
 }
 
 func (m *YesModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
@@ -57,21 +86,17 @@ func (m *YesModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State)
 	return nil
 }
 
+func (m *YesModel) CheckPoint(proposed []byte, bc *monkchain.ChainManager) bool {
+	return true
+}
+
 // The no model grants no permissions
 type NoModel struct {
 	g *GenesisConfig
 }
 
-func NewNoModel(g *GenesisConfig) monkchain.Protocol {
+func NewNoModel(g *GenesisConfig) monkchain.Consensus {
 	return &NoModel{g}
-}
-
-func (m *NoModel) Doug() []byte {
-	return nil
-}
-
-func (m *NoModel) Deploy(block *monkchain.Block) {
-	m.g.Deploy(block)
 }
 
 func (m *NoModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
@@ -96,6 +121,10 @@ func (m *NoModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 	return fmt.Errorf("No!")
 }
 
+func (m *NoModel) CheckPoint(proposed []byte, bc *monkchain.ChainManager) bool {
+	return false
+}
+
 // The VM Model runs all processing through the EVM
 type VmModel struct {
 	g    *GenesisConfig
@@ -107,17 +136,9 @@ type VmModel struct {
 	contract map[string]SysCall
 }
 
-func NewVmModel(g *GenesisConfig) monkchain.Protocol {
+func NewVmModel(g *GenesisConfig) monkchain.Consensus {
 	contract := make(map[string]SysCall)
 	return &VmModel{g, g.byteAddr, contract}
-}
-
-func (m *VmModel) Doug() []byte {
-	return m.doug
-}
-
-func (m *VmModel) Deploy(block *monkchain.Block) {
-	m.g.Deploy(block)
 }
 
 // TODO:
@@ -244,6 +265,10 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 	return m.ValidatePerm(tx.Sender(), perm, state)
 }
 
+func (m *VmModel) CheckPoint(proposed []byte, bc *ChainManager) bool {
+	// TODO: checkpoint validation contract
+}
+
 // The stdlib model grants permissions based on the state of the gendoug
 // It depends on the eris-std-lib for its storage model
 type StdLibModel struct {
@@ -253,21 +278,13 @@ type StdLibModel struct {
 	pow  monkchain.PoW
 }
 
-func NewStdLibModel(g *GenesisConfig) monkchain.Protocol {
+func NewStdLibModel(g *GenesisConfig) monkchain.Consensus {
 	return &StdLibModel{
 		base: new(big.Int),
 		doug: g.byteAddr,
 		g:    g,
 		pow:  &monkchain.EasyPow{},
 	}
-}
-
-func (m *StdLibModel) Doug() []byte {
-	return m.doug
-}
-
-func (m *StdLibModel) Deploy(block *monkchain.Block) {
-	m.g.Deploy(block)
 }
 
 func (m *StdLibModel) GetPermission(addr []byte, perm string, state *monkstate.State) *monkutil.Value {
@@ -434,21 +451,18 @@ func (m *StdLibModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.Sta
 	return nil
 }
 
+func (m *StdLibModel) CheckPoint(proposed []byte, bc *ChainManager) bool {
+	// TODO: something reasonable
+	return true
+}
+
 type EthModel struct {
 	pow monkchain.PoW
 	g   *GenesisConfig
 }
 
-func NewEthModel(g *GenesisConfig) monkchain.Protocol {
+func NewEthModel(g *GenesisConfig) monkchain.Consensus {
 	return &EthModel{&monkchain.EasyPow{}, g}
-}
-
-func (m *EthModel) Doug() []byte {
-	return nil
-}
-
-func (m *EthModel) Deploy(block *monkchain.Block) {
-	m.g.Deploy(block)
 }
 
 func (m *EthModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
@@ -499,4 +513,10 @@ func (m *EthModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State)
 		return monkchain.NonceError(tx.Nonce, sender.Nonce)
 	}
 	return nil
+}
+
+func (m *EthModel) CheckPoint(proposed []byte, bc *monkchain.ChainManager) bool {
+	// TODO: can we authenticate eth checkpoints?
+	//   or just do something reasonable
+	return false
 }

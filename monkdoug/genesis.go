@@ -77,7 +77,8 @@ type GenesisConfig struct {
 
 	// Gendoug based protocol interface
 	// for verifying blocks/txs
-	model monkchain.Protocol
+	protocol  monkchain.Protocol
+	consensus monkchain.Consensus
 
 	// Signed genesis block (hex)
 	chainId string
@@ -123,11 +124,11 @@ type VmConsensus struct {
 }
 
 func (g *GenesisConfig) Model() monkchain.Protocol {
-	return g.model
+	return g.protocol
 }
 
-func (g *GenesisConfig) SetModel(m monkchain.Protocol) {
-	g.model = m
+func (g *GenesisConfig) SetModel() {
+	g.protocol = NewProtocol(g)
 }
 
 // Load the genesis block info from genesis.json
@@ -156,7 +157,7 @@ func LoadGenesis(file string) *GenesisConfig {
 	g.contractPath = path.Join(ErisLtd, "eris-std-lib")
 
 	// set doug model
-	g.model = NewPermModel(g)
+	g.protocol = NewProtocol(g)
 
 	return g
 }
@@ -165,7 +166,7 @@ func LoadGenesis(file string) *GenesisConfig {
 // Converts the GenesisConfiginfo into a populated and functional doug contract in the genesis block
 // if NoGenDoug, simply bankroll the accounts
 // TODO: offer an EPM version
-func (g *GenesisConfig) Deploy(block *monkchain.Block) {
+func (g *GenesisConfig) Deploy(block *monkchain.Block) []byte {
 	block.Difficulty = monkutil.BigPow(2, g.Difficulty)
 
 	defer func(b *monkchain.Block) {
@@ -179,7 +180,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 			// direct state modification to create accounts and balances
 			AddAccount(account.byteAddr, account.Balance, block)
 		}
-		return
+		return nil
 	}
 
 	fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
@@ -227,7 +228,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 	for _, account := range g.Accounts {
 		// direct state modification to create accounts and balances
 		AddAccount(account.byteAddr, account.Balance, block)
-		if g.model != nil {
+		if g.protocol != nil {
 			// issue txs to set perms according to the model
 			SetPermissions(genAddr, account.byteAddr, account.Permissions, block, keys)
 			if account.Permissions["mine"] != 0 {
@@ -248,7 +249,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 		// loop through g.Vm fields
 		// deploy the non-nil ones
 		// fall back to suite (if set) or nothing (default)
-		m := g.model.(*VmModel)
+		m := g.protocol.(*Protocol).consensus.(*VmModel)
 		gvm := reflect.ValueOf(g.Vm).Elem()
 		svm := reflect.ValueOf(suite).Elem()
 		typeOf := gvm.Type()
@@ -310,6 +311,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 	// This is the chainID (65 bytes)
 	chainId := block.Sign(keys.PrivateKey)
 	g.chainId = monkutil.Bytes2Hex(chainId)
+	return chainId
 }
 
 // set balance of an account (does not commit)
@@ -319,10 +321,17 @@ func AddAccount(addr []byte, balance string, block *monkchain.Block) {
 	block.State().UpdateStateObject(account)
 }
 
+//
+func NewProtocol(g *GenesisConfig) monkchain.Protocol {
+	consensus := NewPermModel(g)
+	p := &Protocol{g: g, consensus: consensus}
+	return p
+}
+
 // Return a new permissions model
 // Only "std" and "vm" care about gendoug
 // NoGendoug defaults to the "yes" model
-func NewPermModel(g *GenesisConfig) (model monkchain.Protocol) {
+func NewPermModel(g *GenesisConfig) (model monkchain.Consensus) {
 	modelName := g.ModelName
 	if g.NoGenDoug {
 		modelName = "yes"

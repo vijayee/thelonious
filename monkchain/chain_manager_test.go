@@ -321,7 +321,7 @@ func TestBrokenChain(t *testing.T) {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug, nil), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
 	parent := bman2.bc.CurrentBlock()
 
@@ -343,7 +343,7 @@ func BenchmarkChainTesting(b *testing.B) {
 		b.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug, nil), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
 	parent := bman2.bc.CurrentBlock()
 

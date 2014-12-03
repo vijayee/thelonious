@@ -110,6 +110,10 @@ func (mod *MonkModule) Init() error {
 	}
 	m.genConfig = mod.GenesisConfig
 
+	if !m.config.UseCheckpoint {
+		m.config.LatestCheckpoint = ""
+	}
+
 	monkdoug.Adversary = mod.Config.Adversary
 
 	// if no thelonious instance
@@ -280,7 +284,7 @@ func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig {
 // Set the genesis json object. This can only be done once
 func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig) {
 	// reset the permission model struct (since config may have changed)
-	genJson.SetModel(monkdoug.NewPermModel(genJson))
+	//genJson.SetModel(monkdoug.NewPermModel(genJson))
 	mod.GenesisConfig = genJson
 }
 
@@ -623,8 +627,10 @@ func (m *Monk) newThelonious() {
 
 	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
 
+	checkpoint := monkutil.UserHex2Bytes(m.config.LatestCheckpoint)
+
 	// create the thelonious obj
-	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, m.genConfig)
+	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, checkpoint, m.genConfig)
 
 	if err != nil {
 		log.Fatal("Could not start node: %s\n", err)
