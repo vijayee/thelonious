@@ -139,6 +139,9 @@ func PackTxDataBytes(args ...[]byte) []byte {
 	ret := *new([]byte)
 	for _, s := range args {
 		l := len(s)
+		if l == 0 {
+			ret = append(ret, LeftPadBytes([]byte{0}, 32)...)
+		}
 		ret = append(ret, LeftPadBytes(s, 32*((l+31)/32))...)
 	}
 	return ret

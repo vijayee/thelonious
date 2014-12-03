@@ -1,6 +1,7 @@
 package monkvm
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
@@ -38,5 +39,7 @@ func ecrecoverFunc(in []byte) []byte {
 	// In case of an invalid sig. Defaults to return nil
 	defer func() { recover() }()
 
-	return monkcrypto.Ecrecover(in)
+	addr := monkcrypto.Ecrecover(in)
+	// we want to pad the return (its only 20 bytes)
+	return monkutil.LeftPadBytes(addr, 32)
 }

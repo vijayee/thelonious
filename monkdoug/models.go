@@ -180,6 +180,7 @@ func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
 }
 
 func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error {
+
 	if scall, ok := m.contract["block-verify"]; ok {
 		addr := scall.byteAddr
 		parent := bc.CurrentBlock()
@@ -203,7 +204,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		prevdiff := parent.Difficulty.Bytes()
 		prevT := big.NewInt(parent.Time).Bytes()
 
-		data := monkutil.PackTxDataBytes(prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig)
+		data := monkutil.PackTxDataBytes(block.Hash(), prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig[:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32))
 
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		if monkutil.BigD(ret).Uint64() > 0 {

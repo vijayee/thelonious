@@ -43,5 +43,9 @@ func Ecrecover(data []byte) []byte {
 
 	r, _ := secp256k1.RecoverPubkey(in.hash, in.sig)
 
+	if len(r) > 0 {
+		return Sha3Bin(r[1:])[12:]
+	}
+
 	return r
 }
