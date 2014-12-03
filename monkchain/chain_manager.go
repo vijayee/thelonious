@@ -114,10 +114,19 @@ func (bc *ChainManager) CheckPoint(proposed []byte) {
 	}
 }
 
+func (bc *ChainManager) IsCheckpoint(hash []byte) bool{
+	return bytes.Compare(hash, bc.LatestCheckPointHash()) == 0
+}
+
 // Receive the checkpointed block from peers
 func (bc *ChainManager) ReceiveCheckPointBlock(block *Block) bool {
-	isCheckpoint := bytes.Compare(block.Hash(), bc.LatestCheckPointHash()) == 0
-	if isCheckpoint {
+    if block == nil{
+        return false
+    }
+
+	if bc.IsCheckpoint(block.Hash()){
+        block.State().Update()
+        block.State().Sync()
 		bc.add(block)
 		bc.updateCheckpoint(block.Hash())
 		return true
@@ -135,7 +144,7 @@ func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
 		bc.setWaitingForCheckpoint(false)
 		bc.latestCheckPointBlock = b
 		bc.latestCheckPointNumber = b.Number.Uint64()
-		monkutil.Config.Db.Put([]byte("LatestCheckPoint"), b.RlpEncode())
+		monkutil.Config.Db.Put([]byte("LatestCheckPoint"), b.Hash())
 		chainlogger.Infof("\tblock number: %d\n", bc.latestCheckPointNumber)
 	} else {
 		chainlogger.Infoln("\tblock not found. Getting checkpoint block from peers\n")

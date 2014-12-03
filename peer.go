@@ -507,7 +507,7 @@ func (p *Peer) HandleInbound() {
 					p.setCatchingUp(true)
 
 					blockPool := p.thelonious.blockPool
-
+                    waiting := p.thelonious.ChainManager().WaitingForCheckpoint()
 					// add hashes to pool until found common
 					foundCommonHash := false
 					it := msg.Data.NewIterator()
@@ -518,7 +518,9 @@ func (p *Peer) HandleInbound() {
 							foundCommonHash = true
 							break
 						}
-						blockPool.AddHash(hash, p)
+                        if !waiting{
+                            blockPool.AddHash(hash, p)
+                        }
 					}
 
 					if !foundCommonHash && msg.Data.Len() != 0 {

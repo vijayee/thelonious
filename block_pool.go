@@ -72,7 +72,13 @@ func (self *BlockPool) HasLatestHash() bool {
 }
 
 func (self *BlockPool) HasCommonHash(hash []byte) bool {
-	return self.eth.ChainManager().GetBlock(hash) != nil
+    cman := self.eth.ChainManager()
+    if cman.WaitingForCheckpoint() && cman.IsCheckpoint(hash){
+        poollogger.Debugln("still waiting for checkpoiny...")
+        return true
+    }
+
+	return cman.GetBlock(hash) != nil
 }
 
 func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
@@ -92,6 +98,14 @@ func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
 func (self *BlockPool) AddHash(hash []byte, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
+
+    //cman := self.eth.ChainManager()
+    // if we are waiting for a checkpoint block and this
+    // isn't it, do nothing
+    /*if cman.WaitingForCheckpoint() && !cman.IsCheckpoint(hash){
+        poollogger.Debugln("Still waiting for checkpoint and this isn't it!")
+        return 
+    }*/
 
 	if self.pool[string(hash)] == nil {
 		self.pool[string(hash)] = &block{peer, nil, nil, time.Now(), 0}
@@ -117,8 +131,10 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 	// if we're still waiting for a checkpoint block,
 	// check if this is it
 	if cman.WaitingForCheckpoint() {
+        poollogger.Debugln("Still waiting for checkpoint ")
 		if cman.ReceiveCheckPointBlock(b) {
 			poollogger.Infof("Received checkpoint block (#%d) %x from peer", b.Number, b.Hash())
+            poollogger.Debugln(b)
 		}
 		return
 	}
@@ -243,10 +259,27 @@ out:
 		case <-self.quit:
 			break out
 		case <-serviceTimer.C:
-			// Check if we're catching up. If not distribute the hashes to
-			// the peers and download the blockchain
+			// If we're not catching up. 
 			if !self.areWeFetchingHashes() {
-				self.DistributeHashes()
+                // If we're waiting for a checkpoint, request it from
+                // all peers
+                cman := self.eth.ChainManager()
+                if cman.WaitingForCheckpoint(){
+                    eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+                        p.FetchBlocks([][]byte{cman.LatestCheckPointHash()})
+                    })
+                } else {
+                    // if pool is empty, get hashes
+                    if self.Len() == 0{
+                        eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+                            p.FetchHashes()
+                        })
+                    } else {
+                        // distribute the hashes to peers
+                        // and download the blockchain
+                        self.DistributeHashes()
+                    }
+                }
 			}
 
 			self.setChainLength()

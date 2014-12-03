@@ -34,13 +34,12 @@ const (
 
 var monklogger = monklog.NewLogger("SERV")
 
+// not thread safe, callback should hold lock
 func eachPeer(peers *list.List, callback func(*Peer, *list.Element)) {
 	// Loop thru the peers and close them (if we had them)
 	for e := peers.Front(); e != nil; e = e.Next() {
-		p := e.Value.(*Peer)
-		p.mut.Lock()
+		//p := e.Value.(*Peer)
 		callback(e.Value.(*Peer), e)
-		p.mut.Unlock()
 	}
 }
 
