@@ -29,6 +29,10 @@ func NewYesModel(g *GenesisConfig) monkchain.Protocol {
 	return &YesModel{g}
 }
 
+func (m *YesModel) Doug() []byte {
+	return nil
+}
+
 func (m *YesModel) Deploy(block *monkchain.Block) {
 	m.g.Deploy(block)
 }
@@ -60,6 +64,10 @@ type NoModel struct {
 
 func NewNoModel(g *GenesisConfig) monkchain.Protocol {
 	return &NoModel{g}
+}
+
+func (m *NoModel) Doug() []byte {
+	return nil
 }
 
 func (m *NoModel) Deploy(block *monkchain.Block) {
@@ -104,6 +112,10 @@ func NewVmModel(g *GenesisConfig) monkchain.Protocol {
 	return &VmModel{g, g.byteAddr, contract}
 }
 
+func (m *VmModel) Doug() []byte {
+	return m.doug
+}
+
 func (m *VmModel) Deploy(block *monkchain.Block) {
 	m.g.Deploy(block)
 }
@@ -118,7 +130,7 @@ func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
 		coinbaseHex := monkutil.Bytes2Hex(coinbase)
 		data := monkutil.PackTxDataArgs2(coinbaseHex)
-		ret := EvmCall(code, data, obj, state, nil, parent, true)
+		ret := m.EvmCall(code, data, obj, state, nil, parent, true)
 		// TODO: check not nil
 		return monkutil.BigD(ret).Uint64() > 0
 	}
@@ -141,7 +153,7 @@ func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
 		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
 		coinbase := monkutil.Bytes2Hex(block.Coinbase)
 		data := monkutil.PackTxDataArgs2(coinbase)
-		ret := EvmCall(code, data, obj, state, nil, block, true)
+		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		// TODO: check not nil
 		return monkutil.BigD(ret)
 	}
@@ -154,12 +166,12 @@ func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
 		contract := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(contract, state, scall.Doug)
 		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
-		ret = EvmCall(code, data, obj, state, nil, nil, true)
+		ret = m.EvmCall(code, data, obj, state, nil, nil, true)
 	} else {
 		// get perm from doug
 		doug := state.GetStateObject(m.doug)
 		data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
-		ret = EvmCall(doug.Code, data, doug, state, nil, nil, true)
+		ret = m.EvmCall(doug.Code, data, doug, state, nil, nil, true)
 	}
 	if monkutil.BigD(ret).Uint64() > 0 {
 		return nil
@@ -193,7 +205,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 
 		data := monkutil.PackTxDataBytes(prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig)
 
-		ret := EvmCall(code, data, obj, state, nil, block, true)
+		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
@@ -216,7 +228,7 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 		sig := tx.GetSig()
 
 		data = monkutil.PackTxDataBytes(nonce, rec, value, gas, gasPrice, sig, data)
-		ret := EvmCall(code, data, obj, state, tx, nil, true)
+		ret := m.EvmCall(code, data, obj, state, tx, nil, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
@@ -241,6 +253,10 @@ func NewStdLibModel(g *GenesisConfig) monkchain.Protocol {
 		g:    g,
 		pow:  &monkchain.EasyPow{},
 	}
+}
+
+func (m *StdLibModel) Doug() []byte {
+	return m.doug
 }
 
 func (m *StdLibModel) Deploy(block *monkchain.Block) {
@@ -418,6 +434,10 @@ type EthModel struct {
 
 func NewEthModel(g *GenesisConfig) monkchain.Protocol {
 	return &EthModel{&monkchain.EasyPow{}, g}
+}
+
+func (m *EthModel) Doug() []byte {
+	return nil
 }
 
 func (m *EthModel) Deploy(block *monkchain.Block) {

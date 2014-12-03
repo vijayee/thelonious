@@ -56,6 +56,8 @@ type CheckPoint interface {
 
 // Model defining the consensus
 type Protocol interface {
+	// return the GenDoug address
+	Doug() []byte
 	// deploy genesis block containing protocol rules
 	Deploy(block *Block)
 	// determine whether to attempt participating in consensus

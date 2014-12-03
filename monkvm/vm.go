@@ -53,6 +53,7 @@ type Environment interface {
 	Difficulty() *big.Int
 	Value() *big.Int
 	BlockHash() []byte
+	Doug() []byte
 	DougValidate(addr []byte, role string, state *monkstate.State) error
 }
 
@@ -703,6 +704,11 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		case GASLIMIT:
 			// TODO
 			stack.Push(big.NewInt(0))
+		case GENDOUG:
+			doug := self.env.Doug()
+			stack.Push(monkutil.BigD(doug))
+
+			self.Printf(" => 0x%x", doug)
 
 			// 0x50 range
 		case PUSH1, PUSH2, PUSH3, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH30, PUSH31, PUSH32:

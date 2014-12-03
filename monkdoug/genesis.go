@@ -252,7 +252,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 		gvm := reflect.ValueOf(g.Vm).Elem()
 		svm := reflect.ValueOf(suite).Elem()
 		typeOf := gvm.Type()
-        // First is suite name, last is list of SysCalls (deal with later)
+		// First is suite name, last is list of SysCalls (deal with later)
 		for i := 1; i < gvm.NumField()-1; i++ {
 			def := true
 			f := gvm.Field(i)
@@ -262,18 +262,18 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 			useDoug := false
 			// value of f is a SysCall struct
 			v := f.FieldByName("CodePath")
-            val := v.String()
+			val := v.String()
 			// if val exists, overwrite suite defaults with config values
 			if val != "" { //v.IsValid(){
-                val = v.String()
+				val = v.String()
 				def = false
 			} else if suite != nil {
 				// field is set by suite
 				c := svm.FieldByName(name)
 				v := c.FieldByName("CodePath")
-                val = v.String()
+				val = v.String()
 				if val != "" { //v.IsValid() {
-                    val = v.String()
+					val = v.String()
 					f = c
 					def = false
 				}
@@ -304,7 +304,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 			}
 
 		}
-        //TODO handle final element in Vm struct (list of SysCalls)
+		//TODO handle final element in Vm struct (list of SysCalls)
 	}
 
 	// This is the chainID (65 bytes)

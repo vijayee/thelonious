@@ -10,31 +10,31 @@ type OpCode int
 const (
 	// 0x0 range - arithmetic ops
 	STOP OpCode = iota
-	ADD  
-	MUL  
-	SUB  
-	DIV  
-	SDIV 
-	MOD  
-	SMOD 
-	EXP  
-	NEG  
-	LT   
-	GT   
-	SLT  
-	SGT  
-	EQ   
-	NOT  
+	ADD
+	MUL
+	SUB
+	DIV
+	SDIV
+	MOD
+	SMOD
+	EXP
+	NEG
+	LT
+	GT
+	SLT
+	SGT
+	EQ
+	NOT
 )
 
-const(
+const (
 	// 0x10 range - bit ops
-	AND   OpCode  = iota + 0x10
-	OR     
-	XOR    
-	BYTE   
-	ADDMOD 
-	MULMOD 
+	AND OpCode = iota + 0x10
+	OR
+	XOR
+	BYTE
+	ADDMOD
+	MULMOD
 )
 
 const (
@@ -44,126 +44,127 @@ const (
 
 const (
 	// 0x30 range - closure state
-	ADDRESS       OpCode = iota + 0x30
-	BALANCE       
-	ORIGIN        
-	CALLER        
-	CALLVALUE     
-	CALLDATALOAD  
-	CALLDATASIZE  
-	CALLDATACOPY  
-	CODESIZE      
-	CODECOPY      
-	GASPRICE      
-	EXTCODECOPY   
-	EXTCODESIZE   
-	CALLSTACK     
-	CALLSTACKSIZE 
+	ADDRESS OpCode = iota + 0x30
+	BALANCE
+	ORIGIN
+	CALLER
+	CALLVALUE
+	CALLDATALOAD
+	CALLDATASIZE
+	CALLDATACOPY
+	CODESIZE
+	CODECOPY
+	GASPRICE
+	EXTCODECOPY
+	EXTCODESIZE
+	CALLSTACK
+	CALLSTACKSIZE
 )
 
 const (
 	// 0x40 range - block operations
-	PREVHASH   OpCode = iota + 0x40
-	COINBASE   
-	TIMESTAMP  
-	NUMBER     
-	DIFFICULTY 
-	GASLIMIT   
+	PREVHASH OpCode = iota + 0x40
+	COINBASE
+	TIMESTAMP
+	NUMBER
+	DIFFICULTY
+	GASLIMIT
+	GENDOUG
 )
 
 const (
 
 	// 0x50 range - 'storage' and execution
 	POP OpCode = iota + 0x50
-	_ //DUP     = 0x51
-	_ //SWAP    = 0x52
-	MLOAD 
-	MSTORE  
-	MSTORE8 
-	SLOAD   
-	SSTORE  
-	JUMP    
-	JUMPI   
-	PC      
-	MSIZE   
-	GAS     
+	_          //DUP     = 0x51
+	_          //SWAP    = 0x52
+	MLOAD
+	MSTORE
+	MSTORE8
+	SLOAD
+	SSTORE
+	JUMP
+	JUMPI
+	PC
+	MSIZE
+	GAS
 )
 
 const (
 	// 0x60 range
-	PUSH1  OpCode = iota + 0x60
-	PUSH2  
-	PUSH3  
-	PUSH4  
-	PUSH5  
-	PUSH6  
-	PUSH7  
-	PUSH8  
-	PUSH9  
-	PUSH10 
-	PUSH11 
-	PUSH12 
-	PUSH13 
-	PUSH14 
-	PUSH15 
-	PUSH16 
-	PUSH17 
-	PUSH18 
-	PUSH19 
-	PUSH20 
-	PUSH21 
-	PUSH22 
-	PUSH23 
-	PUSH24 
-	PUSH25 
-	PUSH26 
-	PUSH27 
-	PUSH28 
-	PUSH29 
-	PUSH30 
-	PUSH31 
-	PUSH32 
-	DUP1  
-	DUP2  
-	DUP3  
-	DUP4  
-	DUP5  
-	DUP6  
-	DUP7  
-	DUP8  
-	DUP9  
-	DUP10 
-	DUP11 
-	DUP12 
-	DUP13 
-	DUP14 
-	DUP15 
-	DUP16 
-	SWAP1  
-	SWAP2  
-	SWAP3  
-	SWAP4  
-	SWAP5  
-	SWAP6  
-	SWAP7  
-	SWAP8  
-	SWAP9  
-	SWAP10 
-	SWAP11 
-	SWAP12 
-	SWAP13 
-	SWAP14 
-	SWAP15 
-	SWAP16 
+	PUSH1 OpCode = iota + 0x60
+	PUSH2
+	PUSH3
+	PUSH4
+	PUSH5
+	PUSH6
+	PUSH7
+	PUSH8
+	PUSH9
+	PUSH10
+	PUSH11
+	PUSH12
+	PUSH13
+	PUSH14
+	PUSH15
+	PUSH16
+	PUSH17
+	PUSH18
+	PUSH19
+	PUSH20
+	PUSH21
+	PUSH22
+	PUSH23
+	PUSH24
+	PUSH25
+	PUSH26
+	PUSH27
+	PUSH28
+	PUSH29
+	PUSH30
+	PUSH31
+	PUSH32
+	DUP1
+	DUP2
+	DUP3
+	DUP4
+	DUP5
+	DUP6
+	DUP7
+	DUP8
+	DUP9
+	DUP10
+	DUP11
+	DUP12
+	DUP13
+	DUP14
+	DUP15
+	DUP16
+	SWAP1
+	SWAP2
+	SWAP3
+	SWAP4
+	SWAP5
+	SWAP6
+	SWAP7
+	SWAP8
+	SWAP9
+	SWAP10
+	SWAP11
+	SWAP12
+	SWAP13
+	SWAP14
+	SWAP15
+	SWAP16
 )
 
 const (
 	// 0xf0 range - closures
-	CREATE        OpCode = iota + 0xf0
-	CALL          
-	RETURN        
-	POST          
-	CALLSTATELESS 
+	CREATE OpCode = iota + 0xf0
+	CALL
+	RETURN
+	POST
+	CALLSTATELESS
 )
 
 const (
@@ -225,6 +226,7 @@ var opCodeToString = map[OpCode]string{
 	NUMBER:      "NUMBER",
 	DIFFICULTY:  "DIFFICULTY",
 	GASLIMIT:    "GASLIMIT",
+	GENDOUG:     "GENDOUG",
 	EXTCODESIZE: "EXTCODESIZE",
 	EXTCODECOPY: "EXTCODECOPY",
 
@@ -385,6 +387,7 @@ var OpCodes = map[string]byte{
 	"NUMBER":     0x43,
 	"DIFFICULTY": 0x44,
 	"GASLIMIT":   0x45,
+	"GENDOUG":    0x46,
 
 	// 0x50 range - 'storage' and execution
 	"POP":     0x51,

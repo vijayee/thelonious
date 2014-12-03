@@ -171,13 +171,13 @@ func SetPermissions(genAddr, addr []byte, permissions map[string]int, block *mon
 }
 
 // Run data through evm code and return value
-func EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
+func (m *VmModel) EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
 	gas := "1000000000000000"
 	price := "10000000"
 
 	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
-	env := NewEnv(state, tx, block)
+	env := NewEnv(state, tx, block, m.g.model)
 	vm := monkvm.New(env)
 	vm.Verbose = true
 	ret, _, e := closure.Call(vm, data)
@@ -200,11 +200,12 @@ type VMEnv struct {
 	tx       *monkchain.Transaction
 }
 
-func NewEnv(state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block) *VMEnv {
+func NewEnv(state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, protocol monkchain.Protocol) *VMEnv {
 	return &VMEnv{
-		state: state,
-		block: block,
-		tx:    tx,
+		protocol: protocol,
+		state:    state,
+		block:    block,
+		tx:       tx,
 	}
 }
 
@@ -217,6 +218,7 @@ func (self *VMEnv) Difficulty() *big.Int    { return self.block.Difficulty }
 func (self *VMEnv) BlockHash() []byte       { return self.block.Hash() }
 func (self *VMEnv) Value() *big.Int         { return self.tx.Value }
 func (self *VMEnv) State() *monkstate.State { return self.state }
+func (self *VMEnv) Doug() []byte            { return self.protocol.Doug() }
 func (self *VMEnv) DougValidate(addr []byte, role string, state *monkstate.State) error {
-	return monkchain.DougValidatePerm(addr, role, state)
+	return self.protocol.ValidatePerm(addr, role, state)
 }
