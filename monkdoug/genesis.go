@@ -372,7 +372,7 @@ var suites = map[string]*VmConsensus{
 		SuiteName:          "std",
 		PermissionVerify:   SysCall{"", true, "", nil},
 		BlockVerify:        SysCall{"Protocol/block-verify.lll", true, "", nil},
-		TxVerify:           SysCall{"", true, "", nil},
+		TxVerify:           SysCall{"Protocol/tx-verify.lll", true, "", nil},
 		ComputeDifficulty:  SysCall{"", true, "", nil},
 		ComputeParticipate: SysCall{"", true, "", nil},
 		Participate:        SysCall{"", true, "", nil},

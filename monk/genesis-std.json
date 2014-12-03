@@ -19,7 +19,7 @@
             "doug":false
         },
         "tx-verify":{
-            "code-path":"Protocol/tx.lll",
+            "code-path":"",
             "doug":false
         },
         "permission-verify":{

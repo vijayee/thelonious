@@ -228,14 +228,20 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 		data := tx.Data
 		sig := tx.GetSig()
 
-		data = monkutil.PackTxDataBytes(nonce, rec, value, gas, gasPrice, sig, data)
+		data = monkutil.PackTxDataBytes(tx.Hash(), nonce, rec, value, gas, gasPrice, sig[:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32), data)
 		ret := m.EvmCall(code, data, obj, state, tx, nil, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
 		return fmt.Errorf("Permission error")
 	}
-	return m.ValidatePerm(tx.Sender(), "transact", state)
+	var perm string
+	if tx.IsContract() {
+		perm = "create"
+	} else {
+		perm = "transact"
+	}
+	return m.ValidatePerm(tx.Sender(), perm, state)
 }
 
 // The stdlib model grants permissions based on the state of the gendoug

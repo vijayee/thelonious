@@ -210,13 +210,13 @@ func NewEnv(state *monkstate.State, tx *monkchain.Transaction, block *monkchain.
 }
 
 func (self *VMEnv) Origin() []byte          { return []byte("000000000000000LOCAL") } //self.tx.Sender() }
-func (self *VMEnv) BlockNumber() *big.Int   { return self.block.Number }
-func (self *VMEnv) PrevHash() []byte        { return self.block.PrevHash }
-func (self *VMEnv) Coinbase() []byte        { return self.block.Coinbase }
-func (self *VMEnv) Time() int64             { return self.block.Time }
-func (self *VMEnv) Difficulty() *big.Int    { return self.block.Difficulty }
-func (self *VMEnv) BlockHash() []byte       { return self.block.Hash() }
-func (self *VMEnv) Value() *big.Int         { return self.tx.Value }
+func (self *VMEnv) BlockNumber() *big.Int   { return nil } //self.block.Number }
+func (self *VMEnv) PrevHash() []byte        { return nil } //self.block.PrevHash }
+func (self *VMEnv) Coinbase() []byte        { return nil } //self.block.Coinbase }
+func (self *VMEnv) Time() int64             { return 0 } //self.block.Time }
+func (self *VMEnv) Difficulty() *big.Int    { return nil } //self.block.Difficulty }
+func (self *VMEnv) BlockHash() []byte       { return nil } //self.block.Hash() }
+func (self *VMEnv) Value() *big.Int         { return big.NewInt(0) }
 func (self *VMEnv) State() *monkstate.State { return self.state }
 func (self *VMEnv) Doug() []byte            { return self.protocol.Doug() }
 func (self *VMEnv) DougValidate(addr []byte, role string, state *monkstate.State) error {
