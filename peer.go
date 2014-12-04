@@ -17,6 +17,7 @@ import (
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkwire"
+	"github.com/eris-ltd/thelonious/monktrie"
 )
 
 var peerlogger = monklog.NewLogger("PEER")
@@ -46,6 +47,8 @@ const (
 	DiscBadPeer      = 0x03
 	DiscTooManyPeers = 0x04
 	DiscConnDup      = 0x05
+
+
 	DiscGenesisErr   = 0x06
 	DiscProtoErr     = 0x07
 	DiscQuitting     = 0x08
@@ -544,7 +547,31 @@ func (p *Peer) HandleInbound() {
 
 						p.setLastBlockReceived()
 					}
+
+                case monkwire.MsgGetStateTy:
+                    //root := msg.Data.Bytes()
+
+                    tr := p.thelonious.ChainManager().CurrentBlock().State().Trie
+                    trIt := tr.NewIterator()
+                    response := []interface{}{}
+                    trIt.Each(func(key string, val *monkutil.Value){
+                        pair := []interface{}{[]byte(key), val.Bytes()}
+                        response = append(response, pair)
+                    })
+
+                    p.QueueMessage(monkwire.NewMessage(monkwire.MsgStateTy, response))
+                     
+                case monkwire.MsgStateTy:
+                    //
+                    newTrie := monktrie.New(monkutil.Config.Db, "")
+                    for i := 0; i < msg.Data.Len(); i++ {
+                        n := msg.Data.Get(i)
+                       newTrie.Update(string(n.Get(0).Bytes()), string(n.Get(1).Bytes()))
+                    }
+                    newTrie.Sync() 
+					p.thelonious.blockPool.start <- true
 				}
+
 			}
 		}
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
-	//	"github.com/eris-ltd/thelonious/monkwire"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 var poollogger = monklog.NewLogger("BPOOL")
@@ -42,6 +42,8 @@ type BlockPool struct {
 	ChainLength, BlocksProcessed int
 
 	peer *Peer
+
+    start chan bool
 }
 
 func NewBlockPool(eth *Thelonious) *BlockPool {
@@ -50,6 +52,7 @@ func NewBlockPool(eth *Thelonious) *BlockPool {
 		pool: make(map[string]*block),
 		td:   monkutil.Big0,
 		quit: make(chan bool),
+        start: make(chan bool),
 	}
 }
 
@@ -131,10 +134,10 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 	// if we're still waiting for a checkpoint block,
 	// check if this is it
 	if cman.WaitingForCheckpoint() {
-        poollogger.Debugln("Still waiting for checkpoint ")
 		if cman.ReceiveCheckPointBlock(b) {
 			poollogger.Infof("Received checkpoint block (#%d) %x from peer", b.Number, b.Hash())
             poollogger.Debugln(b)
+		    self.eth.Broadcast(monkwire.MsgGetStateTy, []interface{}{b.GetRoot()})
 		}
 		return
 	}
@@ -317,6 +320,8 @@ func (self *BlockPool) areWeFetchingHashes() bool {
 //      or      sum difficulties of fork
 //      and     possibly cause re-org
 func (self *BlockPool) chainThread() {
+    // wait for the start signal from the state
+    <- self.start
 	procTimer := time.NewTicker(500 * time.Millisecond)
 out:
 	for {

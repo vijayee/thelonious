@@ -125,8 +125,6 @@ func (bc *ChainManager) ReceiveCheckPointBlock(block *Block) bool {
     }
 
 	if bc.IsCheckpoint(block.Hash()){
-        block.State().Update()
-        block.State().Sync()
 		bc.add(block)
 		bc.updateCheckpoint(block.Hash())
 		return true
@@ -137,8 +135,8 @@ func (bc *ChainManager) ReceiveCheckPointBlock(block *Block) bool {
 // This assumes this checkpoint is valid, but only writes it
 // to the db if/once we have the block
 func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
-	b := bc.GetBlock(checkPoint)
 	bc.latestCheckPointHash = checkPoint
+	b := bc.GetBlock(checkPoint)
 	chainlogger.Infof("Updating checkpoint: %x\n", checkPoint)
 	if b != nil {
 		bc.setWaitingForCheckpoint(false)
@@ -165,10 +163,10 @@ func (bc *ChainManager) WaitingForCheckpoint() bool {
 	return bc.waitingForCheckPoint
 }
 
-func (bc *ChainManager) setWaitingForCheckpoint(waiting bool) {
+func (bc *ChainManager) setWaitingForCheckpoint(s bool){
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-	bc.waitingForCheckPoint = waiting
+    bc.waitingForCheckPoint = s
 }
 
 // load checkpoint from db or set to genesis

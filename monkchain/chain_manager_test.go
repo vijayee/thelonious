@@ -66,12 +66,15 @@ func (e *fakeEth) Protocol() Protocol                                     { retu
 
 type fakeDoug struct{}
 
-func (d *fakeDoug) Deploy(block *Block)                                                 {}
-func (d *fakeDoug) StartMining(coinbase []byte, parent *Block) bool                     { return false }
+func (d *fakeDoug) Doug () []byte { return nil }
+func (d *fakeDoug) Deploy(block *Block)                                                []byte  { return nil }
+func (d *fakeDoug) ValidateChainID(chainId []byte, genBlock *Block)                                                 error { return nil }
+func (d *fakeDoug) Participate(coinbase []byte, parent *Block) bool                     { return false }
 func (d *fakeDoug) Difficulty(block, parent *Block) *big.Int                            { return nil }
 func (d *fakeDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) error { return nil }
 func (d *fakeDoug) ValidateBlock(block *Block, bc *ChainManager) error                  { return nil }
 func (d *fakeDoug) ValidateTx(tx *Transaction, state *monkstate.State) error            { return nil }
+func (d *fakeDoug) CheckPoint(proposed []byte, bc *ChainManager) bool { return false }
 
 var (
 	FakeEth  = &fakeEth{}
@@ -156,7 +159,7 @@ func newCanonical(n int) (*BlockManager, error) {
 
 // Create a new chain manager starting from given block
 // Effectively a fork factory
-func newChainManager(block *Block, protocol GenDougModel) *ChainManager {
+func newChainManager(block *Block, protocol Protocol) *ChainManager {
 	bc := &ChainManager{}
 	bc.protocol = protocol
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
@@ -321,7 +324,7 @@ func TestBrokenChain(t *testing.T) {
 		t.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug, nil), Pow: fakePow{}, th: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
 	parent := bman2.bc.CurrentBlock()
 
@@ -343,7 +346,7 @@ func BenchmarkChainTesting(b *testing.B) {
 		b.Fatal("Could not make new canonical chain:", err)
 	}
 
-	bman2 := &BlockManager{bc: NewChainManager(FakeDoug, nil), Pow: fakePow{}, th: FakeEth}
+	bman2 := &BlockManager{bc: NewChainManager(FakeDoug), Pow: fakePow{}, th: FakeEth}
 	bman2.bc.SetProcessor(bman2)
 	parent := bman2.bc.CurrentBlock()
 
