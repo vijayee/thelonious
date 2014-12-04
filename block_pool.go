@@ -11,6 +11,7 @@ import (
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
+	"github.com/eris-ltd/thelonious/monkreact"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkwire"
 )
@@ -43,16 +44,16 @@ type BlockPool struct {
 
 	peer *Peer
 
-    start chan bool
+	start chan monkreact.Event
 }
 
 func NewBlockPool(eth *Thelonious) *BlockPool {
 	return &BlockPool{
-		eth:  eth,
-		pool: make(map[string]*block),
-		td:   monkutil.Big0,
-		quit: make(chan bool),
-        start: make(chan bool),
+		eth:   eth,
+		pool:  make(map[string]*block),
+		td:    monkutil.Big0,
+		quit:  make(chan bool),
+		start: make(chan monkreact.Event),
 	}
 }
 
@@ -75,11 +76,11 @@ func (self *BlockPool) HasLatestHash() bool {
 }
 
 func (self *BlockPool) HasCommonHash(hash []byte) bool {
-    cman := self.eth.ChainManager()
-    if cman.WaitingForCheckpoint() && cman.IsCheckpoint(hash){
-        poollogger.Debugln("still waiting for checkpoiny...")
-        return true
-    }
+	cman := self.eth.ChainManager()
+	if cman.WaitingForCheckpoint() && cman.IsCheckpoint(hash) {
+		poollogger.Debugln("still waiting for checkpoiny...")
+		return true
+	}
 
 	return cman.GetBlock(hash) != nil
 }
@@ -102,13 +103,13 @@ func (self *BlockPool) AddHash(hash []byte, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
-    //cman := self.eth.ChainManager()
-    // if we are waiting for a checkpoint block and this
-    // isn't it, do nothing
-    /*if cman.WaitingForCheckpoint() && !cman.IsCheckpoint(hash){
-        poollogger.Debugln("Still waiting for checkpoint and this isn't it!")
-        return 
-    }*/
+	//cman := self.eth.ChainManager()
+	// if we are waiting for a checkpoint block and this
+	// isn't it, do nothing
+	/*if cman.WaitingForCheckpoint() && !cman.IsCheckpoint(hash){
+	    poollogger.Debugln("Still waiting for checkpoint and this isn't it!")
+	    return
+	}*/
 
 	if self.pool[string(hash)] == nil {
 		self.pool[string(hash)] = &block{peer, nil, nil, time.Now(), 0}
@@ -136,8 +137,7 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 	if cman.WaitingForCheckpoint() {
 		if cman.ReceiveCheckPointBlock(b) {
 			poollogger.Infof("Received checkpoint block (#%d) %x from peer", b.Number, b.Hash())
-            poollogger.Debugln(b)
-		    self.eth.Broadcast(monkwire.MsgGetStateTy, []interface{}{b.GetRoot()})
+			self.eth.Broadcast(monkwire.MsgGetStateTy, []interface{}{b.Hash()})
 		}
 		return
 	}
@@ -246,6 +246,7 @@ func (self *BlockPool) DistributeHashes() {
 }
 
 func (self *BlockPool) Start() {
+	self.eth.Reactor().Subscribe("chainReady", self.start)
 	go self.downloadThread()
 	go self.chainThread()
 }
@@ -256,36 +257,37 @@ func (self *BlockPool) Stop() {
 
 func (self *BlockPool) downloadThread() {
 	serviceTimer := time.NewTicker(100 * time.Millisecond)
+	flushedTimer := time.NewTicker(5 * time.Second)
 out:
 	for {
 		select {
 		case <-self.quit:
 			break out
 		case <-serviceTimer.C:
-			// If we're not catching up. 
+			// If we're not catching up.
 			if !self.areWeFetchingHashes() {
-                // If we're waiting for a checkpoint, request it from
-                // all peers
-                cman := self.eth.ChainManager()
-                if cman.WaitingForCheckpoint(){
-                    eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
-                        p.FetchBlocks([][]byte{cman.LatestCheckPointHash()})
-                    })
-                } else {
-                    // if pool is empty, get hashes
-                    if self.Len() == 0{
-                        eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
-                            p.FetchHashes()
-                        })
-                    } else {
-                        // distribute the hashes to peers
-                        // and download the blockchain
-                        self.DistributeHashes()
-                    }
-                }
+				// If we're waiting for a checkpoint, request it from
+				// all peers
+				cman := self.eth.ChainManager()
+				if cman.WaitingForCheckpoint() {
+					eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+						p.FetchBlocks([][]byte{cman.LatestCheckPointHash()})
+					})
+				} else {
+					// distribute the hashes to peers
+					// and download the blockchain
+					self.DistributeHashes()
+				}
 			}
 
 			self.setChainLength()
+		case <-flushedTimer.C:
+			// if pool is empty, get hashes
+			if self.Len() == 0 {
+				eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+					//p.FetchHashes()
+				})
+			}
 		}
 	}
 }
@@ -320,8 +322,10 @@ func (self *BlockPool) areWeFetchingHashes() bool {
 //      or      sum difficulties of fork
 //      and     possibly cause re-org
 func (self *BlockPool) chainThread() {
-    // wait for the start signal from the state
-    <- self.start
+	// wait for the start signal from the state
+	if self.eth.ChainManager().WaitingForCheckpoint() {
+		<-self.start
+	}
 	procTimer := time.NewTicker(500 * time.Millisecond)
 out:
 	for {

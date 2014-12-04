@@ -15,9 +15,9 @@ import (
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
+	"github.com/eris-ltd/thelonious/monktrie"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkwire"
-	"github.com/eris-ltd/thelonious/monktrie"
 )
 
 var peerlogger = monklog.NewLogger("PEER")
@@ -48,10 +48,9 @@ const (
 	DiscTooManyPeers = 0x04
 	DiscConnDup      = 0x05
 
-
-	DiscGenesisErr   = 0x06
-	DiscProtoErr     = 0x07
-	DiscQuitting     = 0x08
+	DiscGenesisErr = 0x06
+	DiscProtoErr   = 0x07
+	DiscQuitting   = 0x08
 )
 
 var discReasonToString = []string{
@@ -510,7 +509,7 @@ func (p *Peer) HandleInbound() {
 					p.setCatchingUp(true)
 
 					blockPool := p.thelonious.blockPool
-                    waiting := p.thelonious.ChainManager().WaitingForCheckpoint()
+					//waiting := p.thelonious.ChainManager().WaitingForCheckpoint()
 					// add hashes to pool until found common
 					foundCommonHash := false
 					it := msg.Data.NewIterator()
@@ -521,9 +520,7 @@ func (p *Peer) HandleInbound() {
 							foundCommonHash = true
 							break
 						}
-                        if !waiting{
-                            blockPool.AddHash(hash, p)
-                        }
+						blockPool.AddHash(hash, p)
 					}
 
 					if !foundCommonHash && msg.Data.Len() != 0 {
@@ -548,28 +545,29 @@ func (p *Peer) HandleInbound() {
 						p.setLastBlockReceived()
 					}
 
-                case monkwire.MsgGetStateTy:
-                    //root := msg.Data.Bytes()
+				case monkwire.MsgGetStateTy:
+					data := msg.Data.Get(0)
+					bb := p.thelonious.ChainManager().GetBlock(data.Bytes())
+					tr := bb.State().Trie
+					poollogger.Infoln("root is", tr.Root)
+					trIt := tr.NewIterator()
+					response := []interface{}{}
+					trIt.Each(func(key string, val *monkutil.Value) {
+						pair := []interface{}{[]byte(key), val.Bytes()}
+						response = append(response, pair)
+					})
 
-                    tr := p.thelonious.ChainManager().CurrentBlock().State().Trie
-                    trIt := tr.NewIterator()
-                    response := []interface{}{}
-                    trIt.Each(func(key string, val *monkutil.Value){
-                        pair := []interface{}{[]byte(key), val.Bytes()}
-                        response = append(response, pair)
-                    })
+					p.QueueMessage(monkwire.NewMessage(monkwire.MsgStateTy, response))
 
-                    p.QueueMessage(monkwire.NewMessage(monkwire.MsgStateTy, response))
-                     
-                case monkwire.MsgStateTy:
-                    //
-                    newTrie := monktrie.New(monkutil.Config.Db, "")
-                    for i := 0; i < msg.Data.Len(); i++ {
-                        n := msg.Data.Get(i)
-                       newTrie.Update(string(n.Get(0).Bytes()), string(n.Get(1).Bytes()))
-                    }
-                    newTrie.Sync() 
-					p.thelonious.blockPool.start <- true
+				case monkwire.MsgStateTy:
+					poollogger.Infoln("Catching up on state!")
+					newTrie := monktrie.New(monkutil.Config.Db, "")
+					for i := 0; i < msg.Data.Len(); i++ {
+						n := msg.Data.Get(i)
+						newTrie.Update(string(n.Get(0).Bytes()), string(n.Get(1).Bytes()))
+					}
+					newTrie.Sync()
+					p.thelonious.Reactor().Post("chainReady", nil)
 				}
 
 			}

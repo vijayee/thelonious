@@ -114,17 +114,17 @@ func (bc *ChainManager) CheckPoint(proposed []byte) {
 	}
 }
 
-func (bc *ChainManager) IsCheckpoint(hash []byte) bool{
+func (bc *ChainManager) IsCheckpoint(hash []byte) bool {
 	return bytes.Compare(hash, bc.LatestCheckPointHash()) == 0
 }
 
 // Receive the checkpointed block from peers
 func (bc *ChainManager) ReceiveCheckPointBlock(block *Block) bool {
-    if block == nil{
-        return false
-    }
+	if block == nil {
+		return false
+	}
 
-	if bc.IsCheckpoint(block.Hash()){
+	if bc.IsCheckpoint(block.Hash()) {
 		bc.add(block)
 		bc.updateCheckpoint(block.Hash())
 		return true
@@ -163,10 +163,10 @@ func (bc *ChainManager) WaitingForCheckpoint() bool {
 	return bc.waitingForCheckPoint
 }
 
-func (bc *ChainManager) setWaitingForCheckpoint(s bool){
+func (bc *ChainManager) setWaitingForCheckpoint(s bool) {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-    bc.waitingForCheckPoint = s
+	bc.waitingForCheckPoint = s
 }
 
 // load checkpoint from db or set to genesis

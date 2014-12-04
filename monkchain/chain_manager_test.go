@@ -66,15 +66,19 @@ func (e *fakeEth) Protocol() Protocol                                     { retu
 
 type fakeDoug struct{}
 
-func (d *fakeDoug) Doug () []byte { return nil }
-func (d *fakeDoug) Deploy(block *Block)                                                []byte  { return nil }
-func (d *fakeDoug) ValidateChainID(chainId []byte, genBlock *Block)                                                 error { return nil }
+func (d *fakeDoug) Doug() []byte { return nil }
+func (d *fakeDoug) Deploy(block *Block) []byte {
+	return nil
+}
+func (d *fakeDoug) ValidateChainID(chainId []byte, genBlock *Block) error {
+	return nil
+}
 func (d *fakeDoug) Participate(coinbase []byte, parent *Block) bool                     { return false }
 func (d *fakeDoug) Difficulty(block, parent *Block) *big.Int                            { return nil }
 func (d *fakeDoug) ValidatePerm(addr []byte, role string, state *monkstate.State) error { return nil }
 func (d *fakeDoug) ValidateBlock(block *Block, bc *ChainManager) error                  { return nil }
 func (d *fakeDoug) ValidateTx(tx *Transaction, state *monkstate.State) error            { return nil }
-func (d *fakeDoug) CheckPoint(proposed []byte, bc *ChainManager) bool { return false }
+func (d *fakeDoug) CheckPoint(proposed []byte, bc *ChainManager) bool                   { return false }
 
 var (
 	FakeEth  = &fakeEth{}

@@ -431,7 +431,7 @@ func (s *Thelonious) ReapDeadPeerHandler() {
 }
 
 // Start thelonious
-func (s *Thelonious) Start(seed bool) {
+func (s *Thelonious) Start(seed string) {
 	s.reactor.Start()
 	s.blockPool.Start()
 	s.StartListening()
@@ -445,13 +445,13 @@ func (s *Thelonious) Start(seed bool) {
 	go s.update()
 	go s.filterLoop()
 
-	if seed {
-		s.Seed()
+	if seed != "" {
+		s.Seed(seed)
 	}
 	monklogger.Infoln("Server started")
 }
 
-func (s *Thelonious) Seed() {
+func (s *Thelonious) Seed(seed string) {
 	ips := PastPeers()
 	if len(ips) > 0 {
 		for _, ip := range ips {
@@ -459,7 +459,7 @@ func (s *Thelonious) Seed() {
 			s.ConnectToPeer(ip)
 		}
 	}
-	s.ConnectToPeer(seedNodeAddress)
+	s.ConnectToPeer(seed)
 	/* else {
 		monklogger.Debugln("Retrieving seed nodes")
 

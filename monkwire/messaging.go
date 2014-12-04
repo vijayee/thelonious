@@ -41,8 +41,8 @@ const (
 	MsgGetBlocksTy      = 0x15
 	MsgBlockTy          = 0x16
 
-    MsgGetStateTy       = 0x20
-    MsgStateTy          = 0x21
+	MsgGetStateTy = 0x20
+	MsgStateTy    = 0x21
 )
 
 var msgTypeToString = map[MsgType]string{
@@ -59,8 +59,8 @@ var msgTypeToString = map[MsgType]string{
 	MsgGetBlockHashesTy: "Get block hashes",
 	MsgBlockHashesTy:    "Block hashes",
 	MsgGetBlocksTy:      "Get blocks",
-    MsgGetStateTy:       "Get state",
-    MsgStateTy:          "State",
+	MsgGetStateTy:       "Get state",
+	MsgStateTy:          "State",
 }
 
 func (mt MsgType) String() string {

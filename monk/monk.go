@@ -144,7 +144,12 @@ func (mod *MonkModule) Init() error {
 // start the thelonious node
 func (mod *MonkModule) Start() (err error) {
 	m := mod.monk
-	m.thelonious.Start(true) // peer seed
+	remote := m.config.RemoteHost + ":" + strconv.Itoa(m.config.RemotePort)
+	m.thelonious.Start(remote) // peer seed
+	RegisterInterrupt(func(sig os.Signal) {
+		m.thelonious.Stop()
+		monklog.Flush()
+	})
 	m.started = true
 
 	if m.config.Mining {
