@@ -58,7 +58,7 @@ type Protocol interface {
 	Doug() []byte
 	// deploy genesis block containing protocol rules
 	// returns 20-byte chainId
-	Deploy(block *Block) []byte
+	Deploy(block *Block) ([]byte, error)
 	// validate the chain's Id
 	// (typically requires other info, like signatures)
 	ValidateChainID(chainId []byte, genesisBlock *Block) error

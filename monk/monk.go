@@ -105,8 +105,19 @@ func (mod *MonkModule) Init() error {
 	if m.config == nil {
 		m.config = DefaultConfig
 	}
+
+	// set epm contract path
+	setContractPath(m.config.ContractPath)
+
+	// setup genesis config and genesis deploy handler
 	if mod.GenesisConfig == nil {
 		mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
+	}
+	if mod.GenesisConfig.Pdx != "" {
+		mod.GenesisConfig.Deployer = func(block *monkchain.Block) ([]byte, error) {
+			// TODO: get full path
+			return epmDeploy(block, mod.GenesisConfig.Pdx)
+		}
 	}
 	m.genConfig = mod.GenesisConfig
 
@@ -622,6 +633,7 @@ func (monk *Monk) AddressCount() int {
 // init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
 func (m *Monk) newThelonious() {
 	db := NewDatabase(m.config.DbName)
+	fmt.Println("db:", db)
 
 	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
@@ -635,6 +647,7 @@ func (m *Monk) newThelonious() {
 	checkpoint := monkutil.UserHex2Bytes(m.config.LatestCheckpoint)
 
 	// create the thelonious obj
+	fmt.Println("db:", db)
 	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, checkpoint, m.genConfig)
 
 	if err != nil {

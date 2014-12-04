@@ -110,6 +110,7 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
 // TODO: if addr is empty or invalid, use proper contract addr
 func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt, error) {
 	var tx *monkchain.Transaction
+	fmt.Println("make apply..", codePath)
 	var err error
 	if codePath != "" {
 		tx, err = NewContract(codePath)

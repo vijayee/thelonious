@@ -291,7 +291,10 @@ func (bc *ChainManager) setLastBlock() {
 	} else {
 		// no genesis block found. fire up a deploy
 		// save genesis and chainId to db
-		chainId := bc.protocol.Deploy(bc.genesisBlock)
+		chainId, err := bc.protocol.Deploy(bc.genesisBlock)
+		if err != nil {
+			log.Fatal("Genesis deploy failed:", err)
+		}
 		monkutil.Config.Db.Put([]byte("GenesisBlock"), bc.genesisBlock.RlpEncode())
 		monkutil.Config.Db.Put([]byte("ChainID"), chainId[:])
 		bc.chainID = chainId

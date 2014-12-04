@@ -61,7 +61,8 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 
 			return byteCode, nil
 		} else {
-			//
+			// assume it's hex encoded bytecode
+			return UserHex2Bytes(script), nil
 		}
 	}
 

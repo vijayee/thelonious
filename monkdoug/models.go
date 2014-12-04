@@ -23,8 +23,8 @@ func (p *Protocol) Doug() []byte {
 	return p.g.byteAddr
 }
 
-func (p *Protocol) Deploy(block *monkchain.Block) []byte {
-	return p.g.Deploy(block)
+func (p *Protocol) Deploy(block *monkchain.Block) ([]byte, error) {
+	return p.g.Deployer(block)
 }
 
 func (p *Protocol) ValidateChainID(chainId []byte, genesisBlock *monkchain.Block) error {

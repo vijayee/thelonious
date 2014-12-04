@@ -35,6 +35,8 @@ type GenesisConfig struct {
 	*/
 	// 20 ASCI bytes of gendoug addr
 	Address string `json:"address"`
+	// Should we use epm deploy?
+	Pdx string `json:"pdx"`
 	// Path to lll doug contract
 	DougPath string `json:"doug"`
 	// Should gendoug be unique (set true in production)
@@ -82,6 +84,9 @@ type GenesisConfig struct {
 
 	// Signed genesis block (hex)
 	chainId string
+
+	// so we can register a deployer function (which might import monkdoug)
+	Deployer func(block *monkchain.Block) ([]byte, error)
 }
 
 // A protocol level call executed through the vm
@@ -159,6 +164,9 @@ func LoadGenesis(file string) *GenesisConfig {
 	// set doug model
 	g.protocol = NewProtocol(g)
 
+	// set default deploy function
+	g.Deployer = g.Deploy
+
 	return g
 }
 
@@ -166,7 +174,7 @@ func LoadGenesis(file string) *GenesisConfig {
 // Converts the GenesisConfiginfo into a populated and functional doug contract in the genesis block
 // if NoGenDoug, simply bankroll the accounts
 // TODO: offer an EPM version
-func (g *GenesisConfig) Deploy(block *monkchain.Block) []byte {
+func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 	block.Difficulty = monkutil.BigPow(2, g.Difficulty)
 
 	defer func(b *monkchain.Block) {
@@ -181,7 +189,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) []byte {
 			AddAccount(account.byteAddr, account.Balance, block)
 		}
 		// TODO: make sure defer happens first!
-		return block.Hash()
+		return block.Hash(), nil
 	}
 
 	fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
@@ -312,7 +320,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) []byte {
 	// This is the chainID (65 bytes)
 	chainId := block.Sign(keys.PrivateKey)
 	g.chainId = monkutil.Bytes2Hex(chainId)
-	return chainId
+	return chainId, nil
 }
 
 // set balance of an account (does not commit)
