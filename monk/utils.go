@@ -363,6 +363,9 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 	}
 	e.ExecuteJobs()
 	e.Commit()
-	// TODO: compute chain id
-	return nil, nil
+	chainId, err := m.ChainId()
+	if err != nil {
+		return nil, err
+	}
+	return chainId, nil
 }

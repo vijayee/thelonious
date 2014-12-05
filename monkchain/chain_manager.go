@@ -137,23 +137,17 @@ func (bc *ChainManager) ReceiveCheckPointBlock(block *Block) bool {
 func (bc *ChainManager) updateCheckpoint(checkPoint []byte) {
 	bc.latestCheckPointHash = checkPoint
 	b := bc.GetBlock(checkPoint)
-	chainlogger.Infof("Updating checkpoint: %x\n", checkPoint)
 	if b != nil {
 		bc.setWaitingForCheckpoint(false)
 		bc.latestCheckPointBlock = b
 		bc.latestCheckPointNumber = b.Number.Uint64()
 		monkutil.Config.Db.Put([]byte("LatestCheckPoint"), b.Hash())
-		chainlogger.Infof("\tblock number: %d\n", bc.latestCheckPointNumber)
+		chainlogger.Infof("Updating checkpoint block: (#%d) %x\n", bc.latestCheckPointNumber, checkPoint)
 	} else {
-		chainlogger.Infoln("\tblock not found. Getting checkpoint block from peers\n")
-		bc.setWaitingForCheckpoint(true)
 		// we have accepted the checkpoint but don't have the block
-		// TODO: get block pool to confirm a chain of hashes from checkpoint
-		// back to genblock
-
-		// TODO: get block from peers
-
-		// TODO: once we have the block, call updateCheckpoint
+		// it should come in now through the block pool
+		chainlogger.Infof("Updating checkpoint block %x not found. Retrieving from peers.\n", checkPoint)
+		bc.setWaitingForCheckpoint(true)
 	}
 }
 
@@ -297,6 +291,7 @@ func (bc *ChainManager) setLastBlock() {
 		}
 		monkutil.Config.Db.Put([]byte("GenesisBlock"), bc.genesisBlock.RlpEncode())
 		monkutil.Config.Db.Put([]byte("ChainID"), chainId[:])
+		fmt.Println("saved chain id", chainId)
 		bc.chainID = chainId
 	}
 

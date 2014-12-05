@@ -76,16 +76,15 @@ func (miner *Miner) Start() {
 	reactor.Subscribe("newBlock", miner.powQuitChan)
 	reactor.Subscribe("newTx:pre", miner.powQuitChan)
 
-
 	reactor.Post("miner:start", miner)
 }
 
 func (miner *Miner) listener() {
 	// wait for the ready signal
-    if miner.thelonious.ChainManager().WaitingForCheckpoint(){
-        logger.Infoln("Waiting for start signal")
-        <-miner.startChan
-    }
+	if miner.thelonious.ChainManager().WaitingForCheckpoint() {
+		logger.Infoln("Waiting for start signal")
+		<-miner.startChan
+	}
 	logger.Infoln("Started")
 	for {
 		select {
