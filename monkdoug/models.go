@@ -144,9 +144,9 @@ func NewVmModel(g *GenesisConfig) monkchain.Consensus {
 //  - enforce read-only option for vm
 
 func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
-	if scall, ok := m.contract["compute-participate"]; ok {
+	state := parent.State()
+	if scall, ok := m.getSysCall("compute-participate", state); ok {
 		addr := scall.byteAddr
-		state := parent.State()
 		obj, code := m.pickCallObjAndCode(addr, state)
 		coinbaseHex := monkutil.Bytes2Hex(coinbase)
 		data := monkutil.PackTxDataArgs2(coinbaseHex)
@@ -166,10 +166,22 @@ func (m *VmModel) pickCallObjAndCode(addr []byte, state *monkstate.State) (obj *
 	return
 }
 
+func (m *VmModel) getSysCall(name string, state *monkstate.State) (SysCall, bool) {
+	if s, ok := m.contract[name]; ok {
+		return s, ok
+	}
+
+	addr := GetValue(m.doug, name, state)
+	if addr != nil {
+		return SysCall{byteAddr: addr}, true
+	}
+	return SysCall{}, false
+}
+
 func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
-	if scall, ok := m.contract["compute-difficulty"]; ok {
+	state := parent.State()
+	if scall, ok := m.getSysCall("compute-difficulty", state); ok {
 		addr := scall.byteAddr
-		state := parent.State()
 		obj, code := m.pickCallObjAndCode(addr, state)
 		coinbase := monkutil.Bytes2Hex(block.Coinbase)
 		data := monkutil.PackTxDataArgs2(coinbase)
@@ -182,7 +194,7 @@ func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
 
 func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error {
 	var ret []byte
-	if scall, ok := m.contract["permission-verify"]; ok {
+	if scall, ok := m.getSysCall("permission-verify", state); ok {
 		contract := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(contract, state)
 		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
@@ -200,11 +212,11 @@ func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
 }
 
 func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error {
+	parent := bc.CurrentBlock()
+	state := parent.State()
 
-	if scall, ok := m.contract["block-verify"]; ok {
+	if scall, ok := m.getSysCall("block-verify", state); ok {
 		addr := scall.byteAddr
-		parent := bc.CurrentBlock()
-		state := parent.State()
 		obj, code := m.pickCallObjAndCode(addr, state)
 		// get block args
 		prevhash := block.PrevHash
@@ -236,7 +248,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 }
 
 func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error {
-	if scall, ok := m.contract["tx-verify"]; ok {
+	if scall, ok := m.getSysCall("tx-verify", state); ok {
 		addr := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(addr, state)
 		// get tx args

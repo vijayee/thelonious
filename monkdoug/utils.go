@@ -167,7 +167,7 @@ func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkc
 	return tx, rec
 }
 
-func GetValue(addr []byte, query string, block *monkchain.Block) []byte {
+func GetValue(addr []byte, query string, state *monkstate.State) []byte {
 	return nil
 }
 

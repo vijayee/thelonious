@@ -366,7 +366,7 @@ func (g *GenesisConfig) hookVm(block *monkchain.Block) {
 	for i := 1; i < gvm.NumField()-1; i++ {
 		_, tag, _ := nameTagPath(gvm, i)
 		// address of contract from gendoug
-		addr := GetValue(g.byteAddr, tag, block)
+		addr := GetValue(g.byteAddr, tag, block.State())
 		s := SysCall{
 			byteAddr: addr,
 		}
