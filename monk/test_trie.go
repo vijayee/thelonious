@@ -1,13 +1,13 @@
 package monk
 
 import (
-    //"github.com/eris-ltd/decerver/chain"
-    "github.com/eris-ltd/thelonious/monkutil"
-    //"github.com/project-douglas/eth-go/monkchain"
-    //"github.com/eris-ltd/thelonious/monktrie"
-    "github.com/eris-ltd/thelonious/monkstate"
-    "os"
-    "fmt"
+	//"github.com/eris-ltd/decerver/chain"
+	"github.com/eris-ltd/thelonious/monkutil"
+	//"github.com/project-douglas/eth-go/monkchain"
+	//"github.com/eris-ltd/thelonious/monktrie"
+	"fmt"
+	"github.com/eris-ltd/thelonious/monkstate"
+	"os"
 )
 
 // traverse the trie
@@ -41,7 +41,7 @@ func test_state_trie(){
     eth := chain.NewEth(nil)
     eth.Init()
 
-    gen := eth.Ethereum.ChainManager().Genesis()
+    gen := eth.Thelonious.ChainManager().Genesis()
     monkchain.AddTestNetFunds(gen)
     state := gen.State()
     trie := state.Trie
@@ -63,53 +63,45 @@ func test_state_trie(){
     acct := state.GetAccount(monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001"))
     fmt.Println(acct.Address(), acct.Amount, acct.Nonce, acct.State.Trie)
 //    decoder := monkutil.NewValueFromBytes([]byte(data))
-    
+
     //fmt.Println(data)
     //fmt.Println(obj)
 }
 */
 
+func test_trie() {
 
-func test_trie(){
+	eth := NewMonk(nil)
+	eth.Init() // necessary for config..
+	c := monkstate.NewStateObject([]byte("hithere"))
+	trie := c.State.Trie //monktrie.New(monkutil.Config.Db, "")
+	fmt.Println("trie root before", trie.Root)
+	k := "000000000000000000000000000000000000000000000000000000000000000a"
+	v := monkutil.NewValue(12)
+	c.SetAddr(monkutil.Hex2Bytes(k), v)
+	//trie.Update(string(monkutil.Hex2Bytes(k)), string(monkutil.Hex2Bytes(v)))
+	fmt.Println("trie root after", trie.Root)
 
-    eth := NewMonk(nil)
-    eth.Init() // necessary for config..
-    c := monkstate.NewStateObject([]byte("hithere"))
-    trie := c.State.Trie //monktrie.New(monkutil.Config.Db, "")
-    fmt.Println("trie root before", trie.Root)
-    k := "000000000000000000000000000000000000000000000000000000000000000a"
-    v := monkutil.NewValue(12)
-    c.SetAddr(monkutil.Hex2Bytes(k), v)
-    //trie.Update(string(monkutil.Hex2Bytes(k)), string(monkutil.Hex2Bytes(v)))
-    fmt.Println("trie root after", trie.Root)
+	n := monkutil.NewValue(trie.Root)
+	fmt.Println("root node", n)
+	fmt.Println("root node val", trie.Cache().Get(n.Bytes()))
+	os.Exit(0)
+	// if its an array, return n
+	// string
+	// if its empty, return
+	// if its less than 32, return NewValueFromBytes
+	// return t.cache.Get(n.Bytes())
 
-    n := monkutil.NewValue(trie.Root)
-    fmt.Println("root node", n)
-    fmt.Println("root node val", trie.Cache().Get(n.Bytes()))
-    os.Exit(0)
-    // if its an array, return n
-    // string
-        // if its empty, return
-        // if its less than 32, return NewValueFromBytes
-        // return t.cache.Get(n.Bytes())
+	k = "0000000000000000000000000000000000000000000000000000000000000005"
+	v = monkutil.NewValueFromBytes(monkutil.Hex2Bytes("a03535000000000000000000000000000000000000000000000000000000000000"))
+	c.SetAddr(monkutil.Hex2Bytes(k), v)
+	//fmt.Println(monkutil.Hex2Bytes(v))
+	//trie.Update(string(monkutil.Hex2Bytes(k)), string(monkutil.Hex2Bytes(v)))
+	fmt.Println("trie root after", trie.Root)
 
-
-
-    k = "0000000000000000000000000000000000000000000000000000000000000005"
-    v = monkutil.NewValueFromBytes(monkutil.Hex2Bytes("a03535000000000000000000000000000000000000000000000000000000000000"))
-    c.SetAddr(monkutil.Hex2Bytes(k), v)
-    //fmt.Println(monkutil.Hex2Bytes(v))
-    //trie.Update(string(monkutil.Hex2Bytes(k)), string(monkutil.Hex2Bytes(v)))
-    fmt.Println("trie root after", trie.Root)
-
-    it := trie.NewIterator()
-    it.Each(func(key string, val *monkutil.Value) {
-        fmt.Println(monkutil.Bytes2Hex([]byte(key)), val)
-    })
-    os.Exit(0)
+	it := trie.NewIterator()
+	it.Each(func(key string, val *monkutil.Value) {
+		fmt.Println(monkutil.Bytes2Hex([]byte(key)), val)
+	})
+	os.Exit(0)
 }
-
-
-
-
-

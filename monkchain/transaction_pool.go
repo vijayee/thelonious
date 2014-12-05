@@ -56,7 +56,7 @@ type TxProcessor interface {
 // pool is being drained or synced for whatever reason the transactions
 // will simple queue up and handled when the mutex is freed.
 type TxPool struct {
-	Ethereum EthManager
+	Thelonious NodeManager
 	// The mutex for accessing the Tx pool.
 	mutex sync.Mutex
 	// Queueing channel for reading and writing incoming
@@ -72,30 +72,28 @@ type TxPool struct {
 	subscribers []chan TxMsg
 }
 
-func NewTxPool(ethereum EthManager) *TxPool {
+func NewTxPool(thelonious NodeManager) *TxPool {
 	return &TxPool{
-		pool:      list.New(),
-		queueChan: make(chan *Transaction, txPoolQueueSize),
-		quit:      make(chan bool),
-		Ethereum:  ethereum,
+		pool:       list.New(),
+		queueChan:  make(chan *Transaction, txPoolQueueSize),
+		quit:       make(chan bool),
+		Thelonious: thelonious,
 	}
 }
 
 // Blocking function. Don't use directly. Use QueueTransaction instead
+// Caller should hold the lock!
 func (pool *TxPool) addTransaction(tx *Transaction) {
-	pool.mutex.Lock()
-	defer pool.mutex.Unlock()
-
 	pool.pool.PushBack(tx)
 
 	// Broadcast the transaction to the rest of the peers
-	pool.Ethereum.Broadcast(monkwire.MsgTxTy, []interface{}{tx.RlpData()})
+	pool.Thelonious.Broadcast(monkwire.MsgTxTy, []interface{}{tx.RlpData()})
 }
 
 func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	// Get the last block so we can retrieve the sender and receiver from
 	// the merkle trie
-	block := pool.Ethereum.ChainManager().CurrentBlock
+	block := pool.Thelonious.ChainManager().CurrentBlock()
 	// Something has gone horribly wrong if this happens
 	if block == nil {
 		return fmt.Errorf("[TXPL] No last block on the block chain")
@@ -110,8 +108,8 @@ func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	}
 
 	// Get the sender
-	//sender := pool.Ethereum.BlockManager().procState.GetAccount(tx.Sender())
-	sender := pool.Ethereum.BlockManager().CurrentState().GetAccount(tx.Sender())
+	//sender := pool.Thelonious.BlockManager().procState.GetAccount(tx.Sender())
+	sender := pool.Thelonious.BlockManager().CurrentState().GetAccount(tx.Sender())
 
 	totAmount := new(big.Int).Set(tx.Value)
 	// Make sure there's enough in the sender's account. Having insufficient
@@ -137,36 +135,46 @@ out:
 	for {
 		select {
 		case tx := <-pool.queueChan:
-			hash := tx.Hash()
-			foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
-				return bytes.Compare(tx.Hash(), hash) == 0
-			})
-
-			if foundTx != nil {
-				break
-			}
-
-			// Validate the transaction
-			err := pool.ValidateTransaction(tx)
-			if err != nil {
-				txplogger.Debugln("Validating Tx failed", err)
-                pool.Ethereum.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
-			} else {
-				// Call blocking version.
-				pool.addTransaction(tx)
-
-				tmp := make([]byte, 4)
-				copy(tmp, tx.Recipient)
-
-				txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
-
-				// Notify the subscribers
-				pool.Ethereum.Reactor().Post("newTx:pre", tx)
-			}
+            if pool.queueTransaction(tx){
+                continue
+            }
 		case <-pool.quit:
 			break out
 		}
 	}
+}
+
+func (pool *TxPool) queueTransaction(tx *Transaction) bool{
+	pool.mutex.Lock()
+	defer pool.mutex.Unlock()
+
+    hash := tx.Hash()
+    foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
+        return bytes.Compare(tx.Hash(), hash) == 0
+    })
+
+    if foundTx != nil {
+        return true
+    }
+
+    // Validate the transaction
+    err := pool.ValidateTransaction(tx)
+    if err != nil {
+        txplogger.Debugln("Validating Tx failed", err)
+        pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
+    } else {
+        // Call blocking version.
+        pool.addTransaction(tx)
+
+        tmp := make([]byte, 4)
+        copy(tmp, tx.Recipient)
+
+        txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
+
+        // Notify the subscribers
+        pool.Thelonious.Reactor().Post("newTx:pre", tx)
+    }
+    return false
 }
 
 func (pool *TxPool) QueueTransaction(tx *Transaction) {
@@ -216,12 +224,14 @@ func (self *TxPool) RemoveSet(txs Transactions) {
 	}
 }
 
-
 func (pool *TxPool) Flush() []*Transaction {
 	txList := pool.CurrentTransactions()
 
 	// Recreate a new list all together
 	// XXX Is this the fastest way?
+	pool.mutex.Lock()
+	defer pool.mutex.Unlock()
+
 	pool.pool = list.New()
 
 	return txList

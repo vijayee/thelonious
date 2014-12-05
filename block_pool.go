@@ -1,4 +1,4 @@
-package eth
+package thelonious
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
-	//"github.com/eris-ltd/thelonious/monkwire"
+	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 var poollogger = monklog.NewLogger("BPOOL")
@@ -28,7 +28,7 @@ type block struct {
 type BlockPool struct {
 	mut sync.Mutex
 
-	eth *Ethereum
+	eth *Thelonious
 
 	hashPool [][]byte
 	pool     map[string]*block
@@ -44,7 +44,7 @@ type BlockPool struct {
 	peer *Peer
 }
 
-func NewBlockPool(eth *Ethereum) *BlockPool {
+func NewBlockPool(eth *Thelonious) *BlockPool {
 	return &BlockPool{
 		eth:  eth,
 		pool: make(map[string]*block),
@@ -68,7 +68,7 @@ func (self *BlockPool) HasLatestHash() bool {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
-	return self.pool[string(self.eth.ChainManager().CurrentBlock.Hash())] != nil
+	return self.pool[string(self.eth.ChainManager().CurrentBlock().Hash())] != nil
 }
 
 func (self *BlockPool) HasCommonHash(hash []byte) bool {
@@ -116,7 +116,7 @@ func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 
 		if !self.eth.ChainManager().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
 			poollogger.Infof("Unknown block, requesting parent (%x...)\n", b.PrevHash[0:4])
-			//peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
+			peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
 		}
 	} else if self.pool[hash] != nil {
 		self.pool[hash].block = b

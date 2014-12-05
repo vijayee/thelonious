@@ -7,9 +7,9 @@ import (
 )
 
 func TestClientIdentity(t *testing.T) {
-	clientIdentity := NewSimpleClientIdentity("Ethereum(G)", "0.5.16", "test")
+	clientIdentity := NewSimpleClientIdentity("Thelonious(G)", "0.5.16", "test")
 	clientString := clientIdentity.String()
-	expected := fmt.Sprintf("Ethereum(G)/v0.5.16/test/%s/Go", runtime.GOOS)
+	expected := fmt.Sprintf("Thelonious(G)/v0.5.16/test/%s/Go", runtime.GOOS)
 	if clientString != expected {
 		t.Error("Expected clientIdentity to be %v, got %v", expected, clientString)
 	}
@@ -23,7 +23,7 @@ func TestClientIdentity(t *testing.T) {
 		t.Error("Expected clientIdentity.GetCustomIdentifier() to be 'test2', got %v", customIdentifier)
 	}
 	clientString = clientIdentity.String()
-	expected = fmt.Sprintf("Ethereum(G)/v0.5.16/test2/%s/Go", runtime.GOOS)
+	expected = fmt.Sprintf("Thelonious(G)/v0.5.16/test2/%s/Go", runtime.GOOS)
 	if clientString != expected {
 		t.Error("Expected clientIdentity to be %v, got %v", expected, clientString)
 	}

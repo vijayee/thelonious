@@ -1,4 +1,4 @@
-package eth
+package thelonious
 
 // Just enough UPnP to be able to forward ports
 //

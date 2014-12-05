@@ -42,7 +42,7 @@ func CalcDifficulty(block, parent *Block) *big.Int {
 }
 
 type ChainManager struct {
-	//Ethereum EthManager
+	//Thelonious NodeManager
 	processor BlockProcessor
 	protocol  GenDougModel
 	// The famous, the fabulous Mister GENESIIIIIIS (block)
@@ -51,23 +51,23 @@ type ChainManager struct {
 	TD *big.Int
 
 	// Our canonical chain
-	LastBlockNumber uint64
-	CurrentBlock    *Block
-	LastBlockHash   []byte
+	currentBlockNumber uint64
+	currentBlock       *Block
+	currentBlockHash   []byte
 
 	workingTree  map[string]*link
 	workingChain *BlockChain
 
-	mut sync.Mutex
+	mut      sync.Mutex // for current state (block, hash, num)
+	chainMut sync.Mutex // for TestChain/InsertChain
 }
 
 func NewChainManager(protocol GenDougModel) *ChainManager {
 	bc := &ChainManager{}
 	bc.genesisBlock = NewBlockFromBytes(monkutil.Encode(Genesis))
-	//bc.Ethereum = ethereum
 	bc.workingTree = make(map[string]*link)
 	// Prepare the genesis block!
-	//bc.Ethereum.GenesisPointer(bc.genesisBlock)
+	//bc.Thelonious.GenesisPointer(bc.genesisBlock)
 	bc.protocol = protocol
 
 	bc.setLastBlock()
@@ -88,9 +88,9 @@ func (bc *ChainManager) NewBlock(coinbase []byte) *Block {
 	var root interface{}
 	hash := ZeroHash256
 
-	if bc.CurrentBlock != nil {
-		root = bc.CurrentBlock.state.Trie.Root
-		hash = bc.LastBlockHash
+	if bc.CurrentBlock() != nil {
+		root = bc.CurrentBlock().state.Trie.Root
+		hash = bc.CurrentBlockHash()
 	}
 
 	block := CreateBlock(
@@ -104,10 +104,10 @@ func (bc *ChainManager) NewBlock(coinbase []byte) *Block {
 	// TODO: How do we feel about this
 	block.MinGasPrice = big.NewInt(10000000000000)
 
-	parent := bc.CurrentBlock
+	parent := bc.CurrentBlock()
 	if parent != nil {
 		block.Difficulty = genDoug.Difficulty(block, parent)
-		block.Number = new(big.Int).Add(bc.CurrentBlock.Number, monkutil.Big1)
+		block.Number = new(big.Int).Add(parent.Number, monkutil.Big1)
 		block.GasLimit = monkutil.BigPow(10, 50) //block.CalcGasLimit(bc.CurrentBlock)
 
 	}
@@ -123,7 +123,7 @@ func (bc *ChainManager) HasBlock(hash []byte) bool {
 
 // TODO: At one point we might want to save a block by prevHash in the db to optimise this...
 func (bc *ChainManager) HasBlockWithPrevHash(hash []byte) bool {
-	block := bc.CurrentBlock
+	block := bc.CurrentBlock()
 
 	for ; block != nil; block = bc.GetBlock(block.PrevHash) {
 		if bytes.Compare(hash, block.PrevHash) == 0 {
@@ -189,40 +189,40 @@ func AddTestNetFunds(block *Block) {
 */
 
 func (bc *ChainManager) setLastBlock() {
-	bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	bc.protocol.Deploy(bc.genesisBlock)
 
 	// check for last block. if none exists, fire up a genesis
 	data, _ := monkutil.Config.Db.Get([]byte("LastBlock"))
 	fmt.Println("length lastblock data:", len(data))
 	if len(data) != 0 {
 		block := NewBlockFromBytes(data)
-		bc.CurrentBlock = block
-		bc.LastBlockHash = block.Hash()
-		bc.LastBlockNumber = block.Number.Uint64()
+		bc.currentBlock = block
+		bc.currentBlockHash = block.Hash()
+		bc.currentBlockNumber = block.Number.Uint64()
 	} else {
 		bc.Reset()
 	}
 	// set the genDoug model (global var) for determining chain permissions
-	genDoug = bc.protocol //Ethereum.GenesisModel()
+	genDoug = bc.protocol //Thelonious.GenesisModel()
 
-	//bc.SetTotalDifficulty(ethutil.Big("0"))
+	//bc.SetTotalDifficulty(monkutil.Big("0"))
 
 	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
 
-	chainlogger.Infof("Last block (#%d) %x\n", bc.LastBlockNumber, bc.CurrentBlock.Hash())
+	chainlogger.Infof("Last block (#%d) %x\n", bc.currentBlockNumber, bc.currentBlock.Hash())
 }
 
 func (bc *ChainManager) Reset() {
 	// prepare genesis (calls sync)
-	bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
+	//bc.protocol.Deploy(bc.genesisBlock) //GenesisPointer(bc.genesisBlock)
 
 	bc.add(bc.genesisBlock)
 	//fk := append([]byte("bloom"), bc.genesisBlock.Hash()...)
 	//bc.Ethereum.Db().Put(fk, make([]byte, 255))
-	bc.CurrentBlock = bc.genesisBlock
-	bc.LastBlockHash = bc.CurrentBlock.Hash()
-	bc.LastBlockNumber = bc.CurrentBlock.Number.Uint64()
+	bc.currentBlock = bc.genesisBlock
+	bc.currentBlockHash = bc.currentBlock.Hash()
+	bc.currentBlockNumber = bc.currentBlock.Number.Uint64()
 }
 
 func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
@@ -232,29 +232,40 @@ func (bc *ChainManager) SetTotalDifficulty(td *big.Int) {
 
 // Add a block to the canonical chain and record addition information
 func (bc *ChainManager) add(block *Block) {
-	fmt.Println("adding block:", monkutil.Bytes2Hex(block.Hash()), block.Number)
-	bc.writeBlockInfo(block)
-
 	bc.mut.Lock()
-	bc.CurrentBlock = block
-	bc.LastBlockHash = block.Hash()
-	bc.mut.Unlock()
+	defer bc.mut.Unlock()
+
+	bc.writeBlockInfo(block)
+	bc.currentBlock = block
+	bc.currentBlockHash = block.Hash()
 
 	encodedBlock := block.RlpEncode()
 	monkutil.Config.Db.Put(block.Hash(), encodedBlock)
 	monkutil.Config.Db.Put([]byte("LastBlock"), encodedBlock)
 }
 
+func (bc *ChainManager) CurrentBlock() *Block {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.currentBlock
+}
+
 func (bc *ChainManager) CurrentBlockHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-	return bc.CurrentBlock.Hash()
+	return bc.currentBlockHash
+}
+
+func (bc *ChainManager) CurrentBlockNumber() uint64 {
+	bc.mut.Lock()
+	defer bc.mut.Unlock()
+	return bc.currentBlockNumber
 }
 
 func (bc *ChainManager) CurrentBlockPrevHash() []byte {
 	bc.mut.Lock()
 	defer bc.mut.Unlock()
-	return bc.CurrentBlock.PrevHash
+	return bc.currentBlock.PrevHash
 }
 
 func (self *ChainManager) CalcTotalDiff(block *Block) (*big.Int, error) {
@@ -295,9 +306,6 @@ func (self *ChainManager) GetBlockWorking(hash []byte) *Block {
 		return l.block
 	}
 
-	if l, ok := self.workingTree[string(hash)]; ok {
-		return l.block
-	}
 	if self.workingChain != nil {
 		for e := self.workingChain.Front(); e != nil; e = e.Next() {
 			if bytes.Compare(e.Value.(*link).block.Hash(), hash) == 0 {
@@ -319,7 +327,7 @@ func (self *ChainManager) GetBlockCanonical(hash []byte) *Block {
 }
 
 func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
-	block := self.CurrentBlock
+	block := self.CurrentBlock()
 	for ; block != nil; block = self.GetBlock(block.PrevHash) {
 		if block.Number.Uint64() == num {
 			break
@@ -334,7 +342,7 @@ func (self *ChainManager) GetBlockByNumber(num uint64) *Block {
 }
 
 func (self *ChainManager) GetBlockBack(num uint64) *Block {
-	block := self.CurrentBlock
+	block := self.CurrentBlock()
 
 	for ; num != 0 && block != nil; num-- {
 		block = self.GetBlock(block.PrevHash)
@@ -377,18 +385,19 @@ func (bc *ChainManager) BlockInfo(block *Block) BlockInfo {
 }
 
 // Unexported method for writing extra non-essential block info to the db
+// not thread safe (caller should lock)
 func (bc *ChainManager) writeBlockInfo(block *Block) {
 	if block.Number.Cmp(big.NewInt(0)) != 0 {
-		bc.LastBlockNumber++
+		bc.currentBlockNumber++
 	}
-	bi := BlockInfo{Number: bc.LastBlockNumber, Hash: block.Hash(), Parent: block.PrevHash, TD: bc.TD}
+	bi := BlockInfo{Number: bc.currentBlockNumber, Hash: block.Hash(), Parent: block.PrevHash, TD: bc.TD}
 
 	// For now we use the block hash with the words "info" appended as key
 	monkutil.Config.Db.Put(append(block.Hash(), []byte("Info")...), bi.RlpEncode())
 }
 
 func (bc *ChainManager) Stop() {
-	if bc.CurrentBlock != nil {
+	if bc.CurrentBlock() != nil {
 		chainlogger.Infoln("Stopped")
 	}
 }
@@ -429,16 +438,20 @@ func NewChain(blocks Blocks) *BlockChain {
 // TODO: Note this will sync new states (we may not want that, but it shouldn't
 //  get in the way, it's just storage we dont need to keep around. Also, if there's a fork attack, we can study it later :) )
 func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) {
+	self.chainMut.Lock()
+	defer self.chainMut.Unlock()
+
 	self.workingChain = chain
-	defer func() { self.workingChain = nil }()
+	defer func(cm *ChainManager) { cm.workingChain = nil }(self)
 
 	var parent *Block
 	var fork bool
 
 	parent, fork = self.detectFork(chain)
 	if fork {
+		fmt.Println("Fork!")
 		if _, ok := self.workingTree[string(parent.Hash())]; !ok {
-			chainlogger.Infof("New fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, self.CurrentBlock.Hash(), self.CurrentBlock.Number)
+			chainlogger.Infof("New fork detected off parent %x at height %d. Head %x at %d", parent.Hash(), parent.Number, self.CurrentBlockHash(), self.CurrentBlockNumber())
 		} else {
 			chainlogger.Infoln("Extending a fork...")
 		}
@@ -448,6 +461,7 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 	for e := chain.Front(); e != nil; e = e.Next() {
 		l := e.Value.(*link)
 		block := l.block
+
 		// parent may be on canonical or a fork on workingTree
 		parent := self.GetBlock(block.PrevHash)
 
@@ -464,6 +478,8 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 			chainlogger.Debugln(block)
 			err = fmt.Errorf("incoming chain failed %v\n", err)
 			return
+		} else {
+			chainlogger.Debugf("Block #%v passed (%x...)\n", block.Number, block.Hash()[0:4])
 		}
 
 		l.td = td
@@ -479,10 +495,14 @@ func (self *ChainManager) TestChain(chain *BlockChain) (td *big.Int, err error) 
 		err = &TDError{td, self.TD}
 		return
 	}
-	return td, nil
+
+	return
 }
 
 func (self *ChainManager) insertChain(chain *BlockChain) {
+	self.chainMut.Lock()
+	defer self.chainMut.Unlock()
+
 	// We are lengthening canonical!
 	// for each block, set the new difficulty, add to chain
 	for e := chain.Front(); e != nil; e = e.Next() {
@@ -492,8 +512,8 @@ func (self *ChainManager) insertChain(chain *BlockChain) {
 		self.add(link.block)
 
 		// XXX: Post. Do we do this here? Prob better for caller ...
-		//self.Ethereum.Reactor().Post(NewBlockEvent{link.block})
-		//self.Ethereum.Reactor().Post(link.messages)
+		//self.Thelonious.Reactor().Post(NewBlockEvent{link.block})
+		//self.Thelonious.Reactor().Post(link.messages)
 	}
 
 	// summarize
@@ -512,7 +532,7 @@ func (self *ChainManager) InsertChain(chain *BlockChain) {
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)
-		head         = self.CurrentBlock
+		head         = self.CurrentBlock()
 	)
 
 	// Check if parent is top block on canonical
@@ -540,13 +560,11 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// Find branch point
 	// Pop them off the top of canonical into a chain
 	//  add the chain to working tree
-	// Pop the new canonical chain out of workingTree and into database
-
+	// Pop the new canonical chain out of workingTree and into databas
 	// Create array of blocks from new head back to branch point
 	// Deletes them from workingTree
 	// Uses memory links. Maybe we should use prev hashes?
-	fmt.Println("chain len:", self.CurrentBlock.Number)
-	fmt.Println("new chain ;en:", chain.Len())
+	chainlogger.Debugln("Popping blocks off working tree")
 	bchain := &BlockChain{list.New()}
 	for l := chain.Back().Value.(*link); l != nil; l = l.parent {
 		bchain.PushFront(&link{l.block, nil, nil, nil})
@@ -559,32 +577,36 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	ancestorHash := bchain.Front().Value.(*link).block.PrevHash
 	ancestor := self.GetBlockCanonical(ancestorHash)
 
-	oldHeadHash := self.LastBlockHash
+	oldHeadHash := self.CurrentBlockHash()
 	oldHead := self.GetBlockCanonical(oldHeadHash)
 
 	// revert the blockchain
 	chainlogger.Infof("Reverting blockchain to block %x at height %d, a reversion of %d blocks", ancestorHash, ancestor.Number, new(big.Int).Sub(oldHead.Number, ancestor.Number))
-	self.CurrentBlock = ancestor
-	self.LastBlockHash = ancestorHash
+
+	self.mut.Lock()
+	self.currentBlock = ancestor
+	self.currentBlockHash = ancestorHash
+	self.mut.Unlock()
 
 	// process the new chain on top
 	// we've already done this
 	// but we're also paranoid
+	chainlogger.Infof("Testing new chain (redundant, we know...)")
 	_, err := self.TestChain(bchain)
 	if err != nil {
 		chainlogger.Infoln("Reorg failed as new chain failed processing. This shouldn't have happened and may mean trouble")
-		self.CurrentBlock = oldHead
-		self.LastBlockHash = oldHeadHash
+		self.mut.Lock()
+		self.currentBlock = oldHead
+		self.currentBlockHash = oldHeadHash
+		self.mut.Unlock()
 		return
 	}
+	chainlogger.Infof("Inserting chain")
 	self.InsertChain(bchain)
 
 	// move old canonical into workingTree chain
 	bchain = &BlockChain{list.New()}
-	i := 0
 	for b := oldHead; bytes.Compare(b.Hash(), ancestorHash) != 0; b = self.GetBlock(b.PrevHash) {
-		fmt.Println(i)
-		i += 1
 		bchain.PushFront(&link{b, nil, nil, nil})
 		// TODO: remove from database
 	}
@@ -592,7 +614,7 @@ func (self *ChainManager) reOrg(chain *BlockChain) {
 	// again, we have already processed, since its fucking canonical
 	// but this is easy for now, gives an extra check
 	_, err = self.TestChain(bchain)
-	if err != nil {
+	if err != nil && !IsTDError(err) {
 		chainlogger.Infoln("Adding the old canonical chain to the workingTree failed. This shouldn't happen, and may imply that Jesus has returned")
 		return
 	}
@@ -743,8 +765,9 @@ func (self *ChainManager) detectFork(chain *BlockChain) (*Block, bool) {
 	var (
 		oldest       = chain.Front().Value.(*link).block
 		branchParent = self.GetBlock(oldest.PrevHash)
-		head         = self.CurrentBlock
+		head         = self.CurrentBlock()
 	)
+
 	if branchParent == nil {
 		return nil, false
 	}
@@ -752,5 +775,6 @@ func (self *ChainManager) detectFork(chain *BlockChain) (*Block, bool) {
 	if bytes.Compare(head.Hash(), branchParent.Hash()) == 0 {
 		return branchParent, false
 	}
+
 	return branchParent, true
 }

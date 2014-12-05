@@ -3,7 +3,7 @@ package monkchain
 import (
 	"fmt"
 	"math/big"
-    "runtime"
+	"runtime"
 
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monktrie"
@@ -35,9 +35,9 @@ type StateTransition struct {
 	data               []byte
 	state              *monkstate.State
 	block              *Block
-    genesis            *Block
-    
-    msg                *monkstate.Message
+	genesis            *Block
+
+	msg *monkstate.Message
 
 	cb, rec, sen *monkstate.StateObject
 }
@@ -130,14 +130,14 @@ func (self *StateTransition) RefundGas() {
 }
 
 func (self *StateTransition) preCheck() (err error) {
-    // preCheck() should be a proxy for calling a doug permissions model
-    // the permissions model will check all the things
-    if err := genDoug.ValidateTx(self.tx, self.state); err != nil{
-        return err
-    }
+	// preCheck() should be a proxy for calling a doug permissions model
+	// the permissions model will check all the things
+	if err := genDoug.ValidateTx(self.tx, self.state); err != nil {
+		return err
+	}
 	// Pre-pay gas / Buy gas off the coinbase account
-    // TODO: reconfigure this to run from gendoug
-    //  probably by moving the BuyGas function over
+	// TODO: reconfigure this to run from gendoug
+	//  probably by moving the BuyGas function over
 	if err = self.BuyGas(); err != nil {
 		return err
 	}
@@ -150,11 +150,11 @@ func (self *StateTransition) TransitionState() (err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-            trace := make([]byte, 1024)
-            runtime.Stack(trace, true)
+			trace := make([]byte, 1024)
+			runtime.Stack(trace, true)
 			statelogger.Infoln(r)
 			err = fmt.Errorf("state transition err %v", r)
-            fmt.Println(string(trace))
+			fmt.Println(string(trace))
 		}
 	}()
 
@@ -220,7 +220,7 @@ func (self *StateTransition) TransitionState() (err error) {
 
 	msg := self.state.Manifest().AddMessage(&monkstate.Message{
 		To: receiver.Address(), From: sender.Address(),
-        Output: nil,
+		Output: nil,
 		Input:  self.tx.Data,
 		Origin: sender.Address(),
 		Block:  self.block.Hash(), Timestamp: self.block.Time, Coinbase: self.block.Coinbase, Number: self.block.Number,
@@ -256,8 +256,8 @@ func (self *StateTransition) TransitionState() (err error) {
 		}
 	}
 
-    // so we can retrieve return values
-    self.msg = msg
+	// so we can retrieve return values
+	self.msg = msg
 
 	return
 }

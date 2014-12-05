@@ -38,7 +38,7 @@ func (s *JsonRpcServer) Stop() {
 func (s *JsonRpcServer) Start() {
 	logger.Infoln("Starting JSON-RPC server")
 	go s.exitHandler()
-	rpc.Register(&EthereumApi{pipe: s.pipe})
+	rpc.Register(&TheloniousApi{pipe: s.pipe})
 	rpc.HandleHTTP()
 
 	for {

@@ -1,4 +1,4 @@
-package eth
+package thelonious
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ const (
 	ProtocolVersion = 33
 	// Current P2P version
 	P2PVersion = 0
-	// Ethereum network version
+	// Thelonious network version
 	NetVersion = 0
 	// Interval for ping/pong message
 	pingPongTimer = 2 * time.Second
@@ -108,8 +108,8 @@ func (c Caps) String() string {
 }
 
 type Peer struct {
-	// Ethereum interface
-	ethereum *Ethereum
+	// Thelonious interface
+	thelonious *Thelonious
 	// Net connection
 	conn net.Conn
 	// Output queue which is used to communicate and handle messages
@@ -163,13 +163,13 @@ type Peer struct {
 	mut sync.RWMutex
 }
 
-func NewPeer(conn net.Conn, ethereum *Ethereum, inbound bool) *Peer {
-	pubkey := ethereum.KeyManager().PublicKey()[1:]
+func NewPeer(conn net.Conn, th *Thelonious, inbound bool) *Peer {
+	pubkey := th.KeyManager().PublicKey()[1:]
 
 	return &Peer{
 		outputQueue:        make(chan *monkwire.Msg, outputBufferSize),
 		quit:               make(chan bool),
-		ethereum:           ethereum,
+		thelonious:         th,
 		conn:               conn,
 		inbound:            inbound,
 		disconnect:         0,
@@ -177,25 +177,25 @@ func NewPeer(conn net.Conn, ethereum *Ethereum, inbound bool) *Peer {
 		port:               30303,
 		pubkey:             pubkey,
 		blocksRequested:    10,
-		caps:               ethereum.ServerCaps(),
-		version:            ethereum.ClientIdentity().String(),
+		caps:               th.ServerCaps(),
+		version:            th.ClientIdentity().String(),
 		protocolCaps:       monkutil.NewValue(nil),
 		td:                 big.NewInt(0),
 		doneFetchingHashes: true,
 	}
 }
 
-func NewOutboundPeer(addr string, ethereum *Ethereum, caps Caps) *Peer {
+func NewOutboundPeer(addr string, th *Thelonious, caps Caps) *Peer {
 	p := &Peer{
 		outputQueue:        make(chan *monkwire.Msg, outputBufferSize),
 		quit:               make(chan bool),
-		ethereum:           ethereum,
+		thelonious:         th,
 		inbound:            false,
 		connected:          0,
 		disconnect:         0,
 		port:               30303,
 		caps:               caps,
-		version:            ethereum.ClientIdentity().String(),
+		version:            th.ClientIdentity().String(),
 		protocolCaps:       monkutil.NewValue(nil),
 		td:                 big.NewInt(0),
 		doneFetchingHashes: true,
@@ -438,7 +438,7 @@ func (p *Peer) HandleInbound() {
 				// processing when a new block is found
 				for i := 0; i < msg.Data.Len(); i++ {
 					tx := monkchain.NewTransactionFromValue(msg.Data.Get(i))
-					p.ethereum.TxPool().QueueTransaction(tx)
+					p.thelonious.TxPool().QueueTransaction(tx)
 				}
 			case monkwire.MsgGetPeersTy:
 				// Peer asked for list of connected peers
@@ -446,7 +446,7 @@ func (p *Peer) HandleInbound() {
 			case monkwire.MsgPeersTy:
 				// Received a list of peers (probably because MsgGetPeersTy was send)
 				data := msg.Data
-				// Create new list of possible peers for the ethereum to process
+				// Create new list of possible peers for the thelonious to process
 				peers := make([]string, data.Len())
 				// Parse each possible peer
 				for i := 0; i < data.Len(); i++ {
@@ -455,7 +455,7 @@ func (p *Peer) HandleInbound() {
 				}
 
 				// Connect to the list of peers
-				p.ethereum.ProcessPeerList(peers)
+				p.thelonious.ProcessPeerList(peers)
 
 			case monkwire.MsgStatusTy:
 				// Handle peer's status msg
@@ -467,7 +467,7 @@ func (p *Peer) HandleInbound() {
 				switch msg.Type {
 				case monkwire.MsgGetTxsTy:
 					// Get the current transactions of the pool
-					txs := p.ethereum.TxPool().CurrentTransactions()
+					txs := p.thelonious.TxPool().CurrentTransactions()
 					// Get the RlpData values from the txs
 					txsInterface := make([]interface{}, len(txs))
 					for i, tx := range txs {
@@ -484,7 +484,7 @@ func (p *Peer) HandleInbound() {
 					hash := msg.Data.Get(0).Bytes()
 					amount := msg.Data.Get(1).Uint()
 
-					hashes := p.ethereum.ChainManager().GetChainHashesFromHash(hash, amount)
+					hashes := p.thelonious.ChainManager().GetChainHashesFromHash(hash, amount)
 
 					p.QueueMessage(monkwire.NewMessage(monkwire.MsgBlockHashesTy, monkutil.ByteSliceToInterface(hashes)))
 
@@ -495,7 +495,7 @@ func (p *Peer) HandleInbound() {
 
 					for i := 0; i < max; i++ {
 						hash := msg.Data.Get(i).Bytes()
-						block := p.ethereum.ChainManager().GetBlock(hash)
+						block := p.thelonious.ChainManager().GetBlock(hash)
 						if block != nil {
 							blocks = append(blocks, block.Value().Raw())
 						}
@@ -506,7 +506,7 @@ func (p *Peer) HandleInbound() {
 				case monkwire.MsgBlockHashesTy:
 					p.setCatchingUp(true)
 
-					blockPool := p.ethereum.blockPool
+					blockPool := p.thelonious.blockPool
 
 					foundCommonHash := false
 
@@ -534,7 +534,7 @@ func (p *Peer) HandleInbound() {
 				case monkwire.MsgBlockTy:
 					p.setCatchingUp(true)
 
-					blockPool := p.ethereum.blockPool
+					blockPool := p.thelonious.blockPool
 
 					it := msg.Data.NewIterator()
 					for it.Next() {
@@ -564,9 +564,9 @@ func (self *Peer) FetchBlocks(hashes [][]byte) {
 func (self *Peer) FetchHashes() {
 	self.doneFetchingHashes = false
 
-	blockPool := self.ethereum.blockPool
+	blockPool := self.thelonious.blockPool
 
-	if self.td.Cmp(self.ethereum.HighestTDPeer()) >= 0 {
+	if self.td.Cmp(self.thelonious.HighestTDPeer()) >= 0 {
 		blockPool.td = self.td
 
 		if !blockPool.HasLatestHash() {
@@ -692,13 +692,13 @@ func (p *Peer) Stop() {
 	}
 
 	// Pre-emptively remove the peer; don't wait for reaping. We already know it's dead if we are here
-	p.ethereum.RemovePeer(p)
+	p.thelonious.RemovePeer(p)
 }
 
 func (p *Peer) peersMessage() *monkwire.Msg {
-	outPeers := make([]interface{}, len(p.ethereum.InOutPeers()))
+	outPeers := make([]interface{}, len(p.thelonious.InOutPeers()))
 	// Serialise each peer
-	for i, peer := range p.ethereum.InOutPeers() {
+	for i, peer := range p.thelonious.InOutPeers() {
 		// Don't return localhost as valid peer
 		if !net.ParseIP(peer.conn.RemoteAddr().String()).IsLoopback() {
 			outPeers[i] = peer.RlpData()
@@ -718,9 +718,9 @@ func (self *Peer) pushStatus() {
 	msg := monkwire.NewMessage(monkwire.MsgStatusTy, []interface{}{
 		uint32(ProtocolVersion),
 		uint32(NetVersion),
-		self.ethereum.ChainManager().TD,
-		self.ethereum.ChainManager().CurrentBlock.Hash(),
-		self.ethereum.ChainManager().Genesis().Hash(),
+		self.thelonious.ChainManager().TD,
+		self.thelonious.ChainManager().CurrentBlock().Hash(),
+		self.thelonious.ChainManager().Genesis().Hash(),
 	})
 
 	self.QueueMessage(msg)
@@ -737,7 +737,7 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 		genesis      = c.Get(4).Bytes()
 	)
 
-	if bytes.Compare(self.ethereum.ChainManager().Genesis().Hash(), genesis) != 0 {
+	if bytes.Compare(self.thelonious.ChainManager().Genesis().Hash(), genesis) != 0 {
 		monklogger.Warnf("Invalid genisis hash %x. Disabling [eth]\n", genesis)
 		return
 	}
@@ -763,8 +763,8 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 
 	// Compare the total TD with the blockchain TD. If remote is higher
 	// fetch hashes from highest TD node.
-	if self.td.Cmp(self.ethereum.ChainManager().TD) > 0 {
-		self.ethereum.blockPool.AddHash(self.lastReceivedHash, self)
+	if self.td.Cmp(self.thelonious.ChainManager().TD) > 0 {
+		self.thelonious.blockPool.AddHash(self.lastReceivedHash, self)
 		self.FetchHashes()
 	}
 
@@ -773,7 +773,7 @@ func (self *Peer) handleStatus(msg *monkwire.Msg) {
 }
 
 func (p *Peer) pushHandshake() error {
-	pubkey := p.ethereum.KeyManager().PublicKey()
+	pubkey := p.thelonious.KeyManager().PublicKey()
 	msg := monkwire.NewMessage(monkwire.MsgHandshakeTy, []interface{}{
 		P2PVersion, []byte(p.version), []interface{}{"eth"}, p.port, pubkey[1:],
 	})
@@ -809,7 +809,7 @@ func (p *Peer) handleHandshake(msg *monkwire.Msg) {
 	}
 
 	// Self connect detection
-	pubkey := p.ethereum.KeyManager().PublicKey()
+	pubkey := p.thelonious.KeyManager().PublicKey()
 	if bytes.Compare(pubkey[1:], pub) == 0 {
 		p.Stop()
 
@@ -818,7 +818,7 @@ func (p *Peer) handleHandshake(msg *monkwire.Msg) {
 
 	usedPub := 0
 	// This peer is already added to the peerlist so we expect to find a double pubkey at least once
-	eachPeer(p.ethereum.Peers(), func(peer *Peer, e *list.Element) {
+	eachPeer(p.thelonious.Peers(), func(peer *Peer, e *list.Element) {
 		if bytes.Compare(pub, peer.pubkey) == 0 {
 			usedPub++
 		}
@@ -840,8 +840,8 @@ func (p *Peer) handleHandshake(msg *monkwire.Msg) {
 
 	p.versionKnown = true
 
-	p.ethereum.PushPeer(p)
-	p.ethereum.reactor.Post("peerList", p.ethereum.Peers())
+	p.thelonious.PushPeer(p)
+	p.thelonious.reactor.Post("peerList", p.thelonious.Peers())
 
 	p.mut.Lock()
 	p.protocolCaps = caps
@@ -859,7 +859,7 @@ func (p *Peer) handleHandshake(msg *monkwire.Msg) {
 		capsStrs = append(capsStrs, cap)
 	}
 
-	monklogger.Infof("Added peer (%s) %d / %d (%v)\n", p.conn.RemoteAddr(), p.ethereum.Peers().Len(), p.ethereum.MaxPeers, capsStrs)
+	monklogger.Infof("Added peer (%s) %d / %d (%v)\n", p.conn.RemoteAddr(), p.thelonious.Peers().Len(), p.thelonious.MaxPeers, capsStrs)
 
 	peerlogger.Debugln(p)
 }

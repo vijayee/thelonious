@@ -19,7 +19,7 @@ type VmVars struct {
 }
 
 type Pipe struct {
-	obj          monkchain.EthManager
+	obj          monkchain.NodeManager
 	stateManager *monkchain.BlockManager
 	blockChain   *monkchain.ChainManager
 	world        *World
@@ -27,7 +27,7 @@ type Pipe struct {
 	Vm VmVars
 }
 
-func New(obj monkchain.EthManager) *Pipe {
+func New(obj monkchain.NodeManager) *Pipe {
 	pipe := &Pipe{
 		obj:          obj,
 		stateManager: obj.BlockManager(),
@@ -53,7 +53,7 @@ func (self *Pipe) Execute(addr []byte, data []byte, value, gas, price *monkutil.
 func (self *Pipe) ExecuteObject(object *Object, data []byte, value, gas, price *monkutil.Value) ([]byte, error) {
 	var (
 		initiator = monkstate.NewStateObject(self.obj.KeyManager().KeyPair().Address())
-		block     = self.blockChain.CurrentBlock
+		block     = self.blockChain.CurrentBlock()
 	)
 
 	self.Vm.State = self.World().State().Copy()
@@ -106,15 +106,15 @@ func (self *Pipe) TransactString(key *monkcrypto.KeyPair, rec string, value, gas
 }
 
 /*
-    Notes on data string
-    if this creates a contract:
-        data is either
-            - hex - compiled script
-            - text - filename
-    if this is a regular transaction
-        data is either
-            - hex - packed input bytes
-            - ascii version of packed bytes
+   Notes on data string
+   if this creates a contract:
+       data is either
+           - hex - compiled script
+           - text - filename
+   if this is a regular transaction
+       data is either
+           - hex - packed input bytes
+           - ascii version of packed bytes
 */
 func (self *Pipe) Transact(key *monkcrypto.KeyPair, rec []byte, value, gas, price *monkutil.Value, data string) ([]byte, error) {
 	//var hash []byte
@@ -126,34 +126,34 @@ func (self *Pipe) Transact(key *monkcrypto.KeyPair, rec []byte, value, gas, pric
 	var tx *monkchain.Transaction
 	// Compile and assemble the given data
 	if contractCreation {
-        if monkutil.IsHex(data){
-            script := monkutil.Hex2Bytes(data[2:])
-		    tx = monkchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
-        } else {
-            script, err := monkutil.Compile(data, false)
-            if err != nil {
-                return nil, err
-            }
-		    tx = monkchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
-        } 
-	} else {
-        /*
-		data := monkutil.StringToByteFunc(data, func(s string) (ret []byte) {
-			slice := strings.Split(s, "\n")
-			for _, dataItem := range slice {
-				d := monkutil.FormatData(dataItem)
-				ret = append(ret, d...)
+		if monkutil.IsHex(data) {
+			script := monkutil.Hex2Bytes(data[2:])
+			tx = monkchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
+		} else {
+			script, err := monkutil.Compile(data, false)
+			if err != nil {
+				return nil, err
 			}
-			return
-		})
-        */
-        var d []byte
-        if len(data) > 0 && data[:2] == "0x"{
-            d = monkutil.Hex2Bytes(data[2:]) 
-        }else{
-            d = []byte(data)
-        }
-        //fmt.Println("data pre tx:", d, len(d))
+			tx = monkchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
+		}
+	} else {
+		/*
+			data := monkutil.StringToByteFunc(data, func(s string) (ret []byte) {
+				slice := strings.Split(s, "\n")
+				for _, dataItem := range slice {
+					d := monkutil.FormatData(dataItem)
+					ret = append(ret, d...)
+				}
+				return
+			})
+		*/
+		var d []byte
+		if len(data) > 0 && data[:2] == "0x" {
+			d = monkutil.Hex2Bytes(data[2:])
+		} else {
+			d = []byte(data)
+		}
+		//fmt.Println("data pre tx:", d, len(d))
 		tx = monkchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), d)
 	}
 
@@ -166,7 +166,7 @@ func (self *Pipe) Transact(key *monkcrypto.KeyPair, rec []byte, value, gas, pric
 
 	if contractCreation {
 		logger.Infof("Contract addr %x", tx.CreationAddress())
-        //logger.Infoln(tx.String())
+		//logger.Infoln(tx.String())
 		return tx.CreationAddress(), nil
 	}
 

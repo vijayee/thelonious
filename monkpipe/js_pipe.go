@@ -15,7 +15,7 @@ type JSPipe struct {
 	*Pipe
 }
 
-func NewJSPipe(eth monkchain.EthManager) *JSPipe {
+func NewJSPipe(eth monkchain.NodeManager) *JSPipe {
 	return &JSPipe{New(eth)}
 }
 
@@ -28,7 +28,7 @@ func (self *JSPipe) BlockByHash(strHash string) *JSBlock {
 
 func (self *JSPipe) BlockByNumber(num int32) *JSBlock {
 	if num == -1 {
-		return NewJSBlock(self.obj.ChainManager().CurrentBlock)
+		return NewJSBlock(self.obj.ChainManager().CurrentBlock())
 	}
 
 	return NewJSBlock(self.obj.ChainManager().GetBlockByNumber(uint64(num)))

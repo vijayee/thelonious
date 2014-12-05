@@ -3,6 +3,7 @@ package monkstate
 import (
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monktrie"
@@ -50,9 +51,13 @@ type StateObject struct {
 	// When an object is marked for deletion it will be delete from the trie
 	// during the "update" phase of the state transition
 	remove bool
+
+	mut sync.Mutex
 }
 
 func (self *StateObject) Reset() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	self.storage = make(Storage)
 	self.State.Reset()
 }
@@ -105,6 +110,9 @@ func (self *StateObject) SetStorage(key *big.Int, value *monkutil.Value) {
 }
 
 func (self *StateObject) getStorage(k []byte) *monkutil.Value {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+
 	key := monkutil.LeftPadBytes(k, 32)
 
 	value := self.storage[string(key)]
@@ -122,12 +130,16 @@ func (self *StateObject) getStorage(k []byte) *monkutil.Value {
 }
 
 func (self *StateObject) setStorage(k []byte, value *monkutil.Value) {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	key := monkutil.LeftPadBytes(k, 32)
 	self.storage[string(key)] = value.Copy()
 }
 
 // Iterate over each storage address and yield callback
 func (self *StateObject) EachStorage(cb monktrie.EachCallback) {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	// First loop over the uncommit/cached values in storage
 	for key, value := range self.storage {
 		// XXX Most iterators Fns as it stands require encoded values
@@ -145,6 +157,9 @@ func (self *StateObject) EachStorage(cb monktrie.EachCallback) {
 }
 
 func (self *StateObject) Sync() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+
 	for key, value := range self.storage {
 		if value.Len() == 0 { // value.BigInt().Cmp(monkutil.Big0) == 0 {
 			//data := self.getStorage([]byte(key))
@@ -234,6 +249,8 @@ func (self *StateObject) RefundGas(gas, price *big.Int) {
 }
 
 func (self *StateObject) Copy() *StateObject {
+	self.mut.Lock()
+	defer self.mut.Unlock()
 	stateObject := NewStateObject(self.Address())
 	stateObject.Balance.Set(self.Balance)
 	stateObject.codeHash = monkutil.CopyBytes(self.codeHash)
@@ -311,6 +328,8 @@ func (c *StateObject) CodeHash() monkutil.Bytes {
 }
 
 func (c *StateObject) RlpDecode(data []byte) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
 	decoder := monkutil.NewValueFromBytes(data)
 
 	c.Nonce = decoder.Get(0).Uint()
