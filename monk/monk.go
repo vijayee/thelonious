@@ -633,7 +633,6 @@ func (monk *Monk) AddressCount() int {
 // init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
 func (m *Monk) newThelonious() {
 	db := NewDatabase(m.config.DbName)
-	fmt.Println("db:", db)
 
 	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
@@ -647,7 +646,6 @@ func (m *Monk) newThelonious() {
 	checkpoint := monkutil.UserHex2Bytes(m.config.LatestCheckpoint)
 
 	// create the thelonious obj
-	fmt.Println("db:", db)
 	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, checkpoint, m.genConfig)
 
 	if err != nil {

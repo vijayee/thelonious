@@ -32,7 +32,6 @@ func (p *Protocol) ValidateChainID(chainId []byte, genesisBlock *monkchain.Block
 }
 
 // Determine whether to accept a new checkpoint
-//
 func (p *Protocol) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	return p.consensus.Participate(coinbase, parent)
 }
@@ -148,7 +147,7 @@ func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	if scall, ok := m.contract["compute-participate"]; ok {
 		addr := scall.byteAddr
 		state := parent.State()
-		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		obj, code := m.pickCallObjAndCode(addr, state)
 		coinbaseHex := monkutil.Bytes2Hex(coinbase)
 		data := monkutil.PackTxDataArgs2(coinbaseHex)
 		ret := m.EvmCall(code, data, obj, state, nil, parent, true)
@@ -158,12 +157,12 @@ func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	return true
 }
 
-func (m *VmModel) pickCallObjAndCode(addr []byte, state *monkstate.State, useDoug bool) (obj *monkstate.StateObject, code []byte) {
+func (m *VmModel) pickCallObjAndCode(addr []byte, state *monkstate.State) (obj *monkstate.StateObject, code []byte) {
 	obj = state.GetStateObject(addr)
 	code = obj.Code
-	if useDoug {
-		obj = state.GetStateObject(m.doug)
-	}
+	//if useDoug {
+	//	obj = state.GetStateObject(m.doug)
+	//}
 	return
 }
 
@@ -171,7 +170,7 @@ func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
 	if scall, ok := m.contract["compute-difficulty"]; ok {
 		addr := scall.byteAddr
 		state := parent.State()
-		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		obj, code := m.pickCallObjAndCode(addr, state)
 		coinbase := monkutil.Bytes2Hex(block.Coinbase)
 		data := monkutil.PackTxDataArgs2(coinbase)
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
@@ -185,7 +184,7 @@ func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
 	var ret []byte
 	if scall, ok := m.contract["permission-verify"]; ok {
 		contract := scall.byteAddr
-		obj, code := m.pickCallObjAndCode(contract, state, scall.Doug)
+		obj, code := m.pickCallObjAndCode(contract, state)
 		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
 		ret = m.EvmCall(code, data, obj, state, nil, nil, true)
 	} else {
@@ -206,7 +205,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		addr := scall.byteAddr
 		parent := bc.CurrentBlock()
 		state := parent.State()
-		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		obj, code := m.pickCallObjAndCode(addr, state)
 		// get block args
 		prevhash := block.PrevHash
 		unclesha := block.UncleSha
@@ -239,7 +238,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) error {
 	if scall, ok := m.contract["tx-verify"]; ok {
 		addr := scall.byteAddr
-		obj, code := m.pickCallObjAndCode(addr, state, scall.Doug)
+		obj, code := m.pickCallObjAndCode(addr, state)
 		// get tx args
 		nonce := big.NewInt(int64(tx.Nonce)).Bytes() // TODO: safe cast?
 		rec := tx.Recipient

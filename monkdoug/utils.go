@@ -53,14 +53,22 @@ func NewContract(scriptFile string) (*monkchain.Transaction, error) {
 	return tx, nil
 }
 
-// apply tx to genesis block
-func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Transaction) *monkchain.Receipt {
+// Apply a tx to the genesis block
+func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Transaction) (*monkchain.Receipt, error) {
 	state := block.State()
 	st := monkchain.NewStateTransition(monkstate.NewStateObject(block.Coinbase), tx, state, block)
 	st.AddGas(monkutil.Big("10000000000000000000000000000000000000000000000000000000000000000000000000000000000")) // gas is silly, but the vm needs it
 
+	// if receiver address is given, use it
+	// else, standard contract addr
+	var receiver *monkstate.StateObject
+	if addr != nil {
+		receiver = state.GetOrNewStateObject(addr)
+	} else {
+		receiver = st.MakeStateObject(state, tx)
+	}
+
 	var script []byte
-	receiver := state.GetOrNewStateObject(addr)
 	if tx.CreatesContract() {
 		receiver.Balance = monkutil.Big("123456789098765432")
 		receiver.InitCode = tx.Data
@@ -80,11 +88,9 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
 		Block:  block.Hash(), Timestamp: block.Time, Coinbase: block.Coinbase, Number: block.Number,
 		Value: value,
 	})
-	// TODO: this should switch on creates contract (init vs code) ?
-	ret, err := st.Eval(msg, script, receiver, "init")
+	ret, err := st.Eval(msg, script, receiver, "genesis")
 	if err != nil {
-		fmt.Println("Eval error in simple transition state:", err)
-		os.Exit(0)
+		return nil, fmt.Errorf("Eval error in simple transition state:", err.Error())
 	}
 	if tx.CreatesContract() {
 		receiver.Code = ret
@@ -100,17 +106,18 @@ func SimpleTransitionState(addr []byte, block *monkchain.Block, tx *monkchain.Tr
 	}
 
 	receipt := &monkchain.Receipt{tx, monkutil.CopyBytes(root), new(big.Int)}
+
+	sender.Nonce += 1
 	// remove stateobject used to deploy gen doug
-	state.DeleteStateObject(sender)
-	return receipt
+	// state.DeleteStateObject(sender)
+	return receipt, nil
 }
 
-// make and apply an administrative tx (simplified vm processing)
-// addr is typically gendoug
-// TODO: if addr is empty or invalid, use proper contract addr
+// Make and apply an administrative tx (simplified vm processing).
+// If addr is empty or invalid, use proper contract address.
+// Include a codePath if it's a contract or data if its a tx
 func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, block *monkchain.Block) (*monkchain.Transaction, *monkchain.Receipt, error) {
 	var tx *monkchain.Transaction
-	fmt.Println("make apply..", codePath)
 	var err error
 	if codePath != "" {
 		tx, err = NewContract(codePath)
@@ -122,8 +129,10 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, b
 	}
 
 	tx.Sign(keys.PrivateKey)
-	//fmt.Println(tx.String())
-	receipt := SimpleTransitionState(addr, block, tx)
+	receipt, err := SimpleTransitionState(addr, block, tx)
+	if err != nil {
+		return nil, nil, err
+	}
 	txs := append(block.Transactions(), tx)
 	receipts := append(block.Receipts(), receipt)
 	block.SetReceipts(receipts, txs)
@@ -156,6 +165,10 @@ func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkc
 	data := monkutil.PackTxDataArgs2(args...)
 	tx, rec, _ := MakeApplyTx("", addr, data, keys, block)
 	return tx, rec
+}
+
+func GetValue(addr []byte, query string, block *monkchain.Block) []byte {
+	return nil
 }
 
 func SetPermissions(genAddr, addr []byte, permissions map[string]int, block *monkchain.Block, keys *monkcrypto.KeyPair) (monkchain.Transactions, []*monkchain.Receipt) {

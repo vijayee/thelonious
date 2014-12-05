@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"path"
@@ -15,10 +15,10 @@ import (
 	"strconv"
 )
 
-/*
-   Configure a new genesis block from genesis.json
-   Deploy the genesis block
-*/
+var douglogger = monklog.NewLogger("DOUG")
+
+//   Configure a new genesis block from genesis.json
+//   Deploy the genesis block
 
 type Account struct {
 	Address     string         `json:"address"`
@@ -93,14 +93,12 @@ type GenesisConfig struct {
 type SysCall struct {
 	// Path to lll code for this function
 	CodePath string `json:"code-path"`
-	// Should we use doug's state or our own
-	// TODO: this the kind of thing that may require us
-	// to have the genesis.json and not just the genesis block!
-	// Phase it out!
-	Doug bool `json:"doug"`
-	// Addr of this contract
-	Addr     string `json:"addr"`
+	// Addr of this contract (left padded ascii of its VmConsensys name)
 	byteAddr []byte
+}
+
+func NewSysCall(codePath string, byteAddr []byte) SysCall {
+	return SysCall{codePath, byteAddr}
 }
 
 type VmConsensus struct {
@@ -138,7 +136,7 @@ func (g *GenesisConfig) SetModel() {
 
 // Load the genesis block info from genesis.json
 func LoadGenesis(file string) *GenesisConfig {
-	fmt.Println("reading ", file)
+	douglogger.Infoln("Loading genesis config:", file)
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		fmt.Println("err reading genesis.json", err)
@@ -171,32 +169,93 @@ func LoadGenesis(file string) *GenesisConfig {
 }
 
 // Deploy the genesis block
-// Converts the GenesisConfiginfo into a populated and functional doug contract in the genesis block
-// if NoGenDoug, simply bankroll the accounts
-// TODO: offer an EPM version
+// Converts the GenesisConfig into a populated and functional doug contract in the genesis block
 func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 	block.Difficulty = monkutil.BigPow(2, g.Difficulty)
 
-	defer func(b *monkchain.Block) {
-		b.State().Update()
-		b.State().Sync()
-	}(block)
-
 	if g.NoGenDoug {
-		// no genesis doug, deploy simple
-		for _, account := range g.Accounts {
-			// direct state modification to create accounts and balances
-			AddAccount(account.byteAddr, account.Balance, block)
-		}
-		// TODO: make sure defer happens first!
-		return block.Hash(), nil
+		// simple bankroll accounts
+		return g.bankRoll(block)
 	}
 
-	fmt.Println("###DEPLOYING DOUG", g.Address, g.DougPath)
+	douglogger.Infoln("Deploying GenDoug:", g.Address, g.DougPath)
 
 	// Keys for creating valid txs and for signing
 	// the final gendoug
-	// Must be unique for production use!
+	keys, err := g.selectKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	douglogger.Debugf("Using %x for deploy\n", keys.Address())
+
+	// create the genesis doug
+	codePath := path.Join(g.contractPath, g.DougPath)
+	_, _, err = MakeApplyTx(codePath, g.byteAddr, nil, keys, block)
+	if err != nil {
+		return nil, err
+	}
+
+	// set the global vars
+	g.setValues(keys, block)
+
+	// set balances and permissions
+	g.bankRollAndPerms(keys, block)
+
+	// set verification contracts for "vm" consensus
+	if g.ModelName == "vm" {
+		if g.Vm == nil {
+			return nil, fmt.Errorf("Model=vm requires non-nil VmConsensus obj")
+		}
+		g.hookVmDeploy(keys, block)
+	}
+
+	// ChainId is leading 20 bytes of SHA3 of 65-byte ecdsa sig
+	// Note this means verification requires provision of pubkey
+	// We choose 20 bytes so the hashes can be keys on mainline DHT
+	sig := block.Sign(keys.PrivateKey)
+	chainId := monkcrypto.Sha3Bin(sig)[:20]
+	g.chainId = monkutil.Bytes2Hex(chainId)
+
+	block.State().Update()
+	block.State().Sync()
+
+	return chainId, nil
+}
+
+/*
+   Deploy utilities
+*/
+
+// bankroll the accounts
+func (g *GenesisConfig) bankRoll(block *monkchain.Block) ([]byte, error) {
+	// no genesis doug, deploy simple
+	for _, account := range g.Accounts {
+		// direct state modification to create accounts and balances
+		AddAccount(account.byteAddr, account.Balance, block)
+	}
+	block.State().Update()
+	block.State().Sync()
+	return block.Hash(), nil
+}
+
+// Bank roll accounts and add permissions and stake
+func (g *GenesisConfig) bankRollAndPerms(keys *monkcrypto.KeyPair, block *monkchain.Block) {
+	for _, account := range g.Accounts {
+		// direct state modification to create accounts and balances
+		AddAccount(account.byteAddr, account.Balance, block)
+		if g.protocol != nil {
+			// issue txs to set perms according to the model
+			SetPermissions(g.byteAddr, account.byteAddr, account.Permissions, block, keys)
+			if account.Permissions["mine"] != 0 {
+				SetValue(g.byteAddr, []string{"addminer", account.Name, "0x" + account.Address, "0x" + strconv.Itoa(account.Stake)}, keys, block)
+			}
+			douglogger.Debugln("Setting permissions for", account.Address)
+		}
+	}
+}
+
+// XXX: Must be unique for production use!
+func (g *GenesisConfig) selectKeyPair() (*monkcrypto.KeyPair, error) {
 	var keys *monkcrypto.KeyPair
 	var err error
 	if g.Unique {
@@ -205,7 +264,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 			decoded := monkutil.Hex2Bytes(g.PrivateKey)
 			keys, err = monkcrypto.NewKeyPairFromSec(decoded)
 			if err != nil {
-				log.Fatal("Invalid private key", err)
+				return nil, fmt.Errorf("Invalid private key", err)
 			}
 		} else {
 			keys = monkcrypto.GenerateNewKeyPair()
@@ -214,113 +273,105 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 		static := []byte("11111111112222222222333333333322")
 		keys, err = monkcrypto.NewKeyPairFromSec(static)
 		if err != nil {
-			log.Fatal("Invalid static private", err)
+			return nil, fmt.Errorf("Invalid static private", err)
 		}
 	}
-	fmt.Println(keys.Address())
+	return keys, nil
+}
 
-	// create the genesis doug
-	codePath := path.Join(g.contractPath, g.DougPath)
-	genAddr := []byte(g.Address)
-	MakeApplyTx(codePath, genAddr, nil, keys, block)
+// Set some global values in gendoug
+func (g *GenesisConfig) setValues(keys *monkcrypto.KeyPair, block *monkchain.Block) {
+	SetValue(g.byteAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
+	SetValue(g.byteAddr, []string{"setvar", "difficulty", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
+	SetValue(g.byteAddr, []string{"setvar", "public:mine", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
+	SetValue(g.byteAddr, []string{"setvar", "public:create", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
+	SetValue(g.byteAddr, []string{"setvar", "public:tx", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
+	SetValue(g.byteAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
+	SetValue(g.byteAddr, []string{"setvar", "blocktime", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
+}
 
-	// set the global vars
-	SetValue(genAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-	SetValue(genAddr, []string{"setvar", "difficulty", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
-	SetValue(genAddr, []string{"setvar", "public:mine", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
-	SetValue(genAddr, []string{"setvar", "public:create", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
-	SetValue(genAddr, []string{"setvar", "public:tx", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
-	SetValue(genAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
-	SetValue(genAddr, []string{"setvar", "blocktime", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
+// Options for hooking consensus to the vm
+const (
+	VmDefTy = iota
+	VmScriptTy
+)
 
-	// set balances and permissions
-	for _, account := range g.Accounts {
-		// direct state modification to create accounts and balances
-		AddAccount(account.byteAddr, account.Balance, block)
-		if g.protocol != nil {
-			// issue txs to set perms according to the model
-			SetPermissions(genAddr, account.byteAddr, account.Permissions, block, keys)
-			if account.Permissions["mine"] != 0 {
-				SetValue(g.byteAddr, []string{"addminer", account.Name, "0x" + account.Address, "0x" + strconv.Itoa(account.Stake)}, keys, block)
-			}
-			fmt.Println("setting perms for", account.Address)
-		}
+// Hook a set of contracts into the protocol for deployment
+// by filling in the VmModel.contracts map.
+// Contracts can be specified explictly or by suite name,
+// or else the (TODO: non-secure) builtin defaults
+// Addresses are stored at standard locations in gendoug
+func (g *GenesisConfig) hookVmDeploy(keys *monkcrypto.KeyPair, block *monkchain.Block) {
+	// grab the suite, if any
+	suite := suites["default"]
+	if s, ok := suites[g.Vm.SuiteName]; ok {
+		suite = s
 	}
 
-	// set verification contracts for "vm" consensus
-	if g.ModelName == "vm" {
-		if g.Vm == nil {
-			log.Fatal("Model=vm requires non-nil VmConsensus obj")
+	// loop through g.Vm fields
+	// deploy the non-nil ones
+	// fall back order: g.Vm > suite > defaults
+	m := g.protocol.(*Protocol).consensus.(*VmModel)
+	gvm := reflect.ValueOf(g.Vm).Elem()
+	svm := reflect.ValueOf(suite).Elem()
+	// Skip first and last (suite name, others)
+	for i := 1; i < gvm.NumField()-1; i++ {
+		// default mode (if a contract is provided)
+		mode := VmDefTy
+		// grab fields from struct
+		_, tag, codePath := nameTagPath(gvm, i)
+		if codePath != "" {
+			mode = VmScriptTy
+		} else if suite != nil {
+			_, _, codePath = nameTagPath(svm, i)
+			if codePath != "" {
+				mode = VmScriptTy
+			}
 		}
 
-		suite := suites[g.Vm.SuiteName]
-
-		// loop through g.Vm fields
-		// deploy the non-nil ones
-		// fall back to suite (if set) or nothing (default)
-		m := g.protocol.(*Protocol).consensus.(*VmModel)
-		gvm := reflect.ValueOf(g.Vm).Elem()
-		svm := reflect.ValueOf(suite).Elem()
-		typeOf := gvm.Type()
-		// First is suite name, last is list of SysCalls (deal with later)
-		for i := 1; i < gvm.NumField()-1; i++ {
-			def := true
-			f := gvm.Field(i)
-			name := typeOf.Field(i).Name
-			addr := monkutil.LeftPadBytes([]byte(name), 20)
-			tag := typeOf.Field(i).Tag.Get("json")
-			useDoug := false
-			// value of f is a SysCall struct
-			v := f.FieldByName("CodePath")
-			val := v.String()
-			// if val exists, overwrite suite defaults with config values
-			if val != "" { //v.IsValid(){
-				val = v.String()
-				def = false
-			} else if suite != nil {
-				// field is set by suite
-				c := svm.FieldByName(name)
-				v := c.FieldByName("CodePath")
-				val = v.String()
-				if val != "" { //v.IsValid() {
-					val = v.String()
-					f = c
-					def = false
+		if mode > 0 {
+			codePath = path.Join(g.contractPath, codePath)
+			tx, _, err := MakeApplyTx(codePath, nil, nil, keys, block)
+			if err == nil {
+				s := SysCall{
+					byteAddr: tx.CreationAddress(),
+					CodePath: codePath,
 				}
+				m.contract[tag] = s
+				SetValue(g.byteAddr, []string{"setvar", tag, "0x" + monkutil.Bytes2Hex(s.byteAddr)}, keys, block)
 			}
-			if !def {
-				if a := f.FieldByName("Addr").String(); a != "" {
-					if len(a) > 20 && len(monkutil.UserHex2Bytes(a)) == 20 {
-						addr = monkutil.UserHex2Bytes(a)
-					} else {
-						addr = monkutil.LeftPadBytes([]byte(a), 20)
-					}
-				}
-				if a := f.FieldByName("Doug").String(); a != "" {
-					useDoug = true
-				}
-				codePath := path.Join(g.contractPath, val)
-				_, _, err := MakeApplyTx(codePath, addr, nil, keys, block)
-				if err == nil {
-					s := SysCall{
-						Addr:     monkutil.Bytes2Hex(addr),
-						byteAddr: addr,
-						Doug:     useDoug,
-						CodePath: codePath,
-					}
-					m.contract[tag] = s
-				}
-				SetValue(genAddr, []string{"setvar", tag, "0x" + monkutil.Bytes2Hex(addr)}, keys, block)
-			}
-
 		}
-		//TODO handle final element in Vm struct (list of SysCalls)
 	}
+	//TODO handle final element in Vm struct (list of SysCalls)
+}
 
-	// This is the chainID (65 bytes)
-	chainId := block.Sign(keys.PrivateKey)
-	g.chainId = monkutil.Bytes2Hex(chainId)
-	return chainId, nil
+// return field name, tag, and codepath
+// value of f is a SysCall struct
+func nameTagPath(gvm reflect.Value, i int) (string, string, string) {
+	// value of f is a SysCall struct
+	f := gvm.Field(i)
+	typeOf := gvm.Type()
+	name := typeOf.Field(i).Name
+	tag := typeOf.Field(i).Tag.Get("json")
+	v := f.FieldByName("CodePath")
+	val := v.String()
+	return name, tag, val
+}
+
+// hook the contracts into consensus for a running node
+// by looking up their addresses in gendoug
+func (g *GenesisConfig) hookVm(block *monkchain.Block) {
+	m := g.protocol.(*Protocol).consensus.(*VmModel)
+	gvm := reflect.ValueOf(g.Vm).Elem()
+	for i := 1; i < gvm.NumField()-1; i++ {
+		_, tag, _ := nameTagPath(gvm, i)
+		// address of contract from gendoug
+		addr := GetValue(g.byteAddr, tag, block)
+		s := SysCall{
+			byteAddr: addr,
+		}
+		m.contract[tag] = s
+	}
 }
 
 // set balance of an account (does not commit)
@@ -389,13 +440,13 @@ var DefaultGenesis = GenesisConfig{
 var suites = map[string]*VmConsensus{
 	"std": &VmConsensus{
 		SuiteName:          "std",
-		PermissionVerify:   SysCall{"", true, "", nil},
-		BlockVerify:        SysCall{"Protocol/block-verify.lll", true, "", nil},
-		TxVerify:           SysCall{"Protocol/tx-verify.lll", true, "", nil},
-		ComputeDifficulty:  SysCall{"", true, "", nil},
-		ComputeParticipate: SysCall{"", true, "", nil},
-		Participate:        SysCall{"", true, "", nil},
-		PreCall:            SysCall{"", true, "", nil},
-		PostCall:           SysCall{"", true, "", nil},
+		PermissionVerify:   NewSysCall("", nil),
+		BlockVerify:        NewSysCall("Protocol/block-verify.lll", nil),
+		TxVerify:           NewSysCall("Protocol/tx-verify.lll", nil),
+		ComputeDifficulty:  NewSysCall("", nil),
+		ComputeParticipate: NewSysCall("", nil),
+		Participate:        NewSysCall("", nil),
+		PreCall:            NewSysCall("", nil),
+		PostCall:           NewSysCall("", nil),
 	},
 }

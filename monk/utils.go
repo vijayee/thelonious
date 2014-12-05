@@ -344,10 +344,13 @@ func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager) {
 	}
 }
 
+// Set the EPM contract root
 func setContractPath(p string) {
 	epm.ContractPath = p
 }
 
+// Deploy a pdx onto a block
+// This is used as a monkdoug deploy function
 func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 	m := genblock.NewGenBlockModule(block)
 	m.Config.LogLevel = 5
