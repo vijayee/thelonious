@@ -46,7 +46,6 @@ func (s *JsonRpcServer) Start() {
 			logger.Infoln("Error starting JSON-RPC:", err)
 			break
 		}
-		logger.Debugln("Incoming request.")
 		go jsonrpc.ServeConn(conn)
 	}
 }
