@@ -1,5 +1,6 @@
 package monk
 
+/*
 import (
 	"github.com/eris-ltd/decerver-interfaces/modules"
 	"testing"
@@ -41,4 +42,4 @@ func TestSubscribe(t *testing.T) {
 		time.Sleep(4 * time.Second)
 		mod.UnSubscribe("testNewBlock")
 	}, 0)
-}
+}*/

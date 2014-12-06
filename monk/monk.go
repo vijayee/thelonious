@@ -13,6 +13,7 @@ import (
 
 	"github.com/eris-ltd/decerver-interfaces/core"
 	"github.com/eris-ltd/decerver-interfaces/events"
+	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/decerver-interfaces/modules"
 
 	"github.com/eris-ltd/thelonious"
@@ -346,7 +347,7 @@ func (monk *Monk) Storage(addr string) *modules.Storage {
 	ret := &modules.Storage{make(map[string]string), []string{}}
 	obj.EachStorage(func(k string, v *monkutil.Value) {
 		kk := monkutil.Bytes2Hex([]byte(k))
-        v.Decode()
+		v.Decode()
 		vv := monkutil.Bytes2Hex(v.Bytes())
 		ret.Order = append(ret.Order, kk)
 		ret.Storage[kk] = vv
@@ -632,16 +633,17 @@ func (monk *Monk) AddressCount() int {
 // expects thConfig to already have been called!
 // init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
 func (m *Monk) newThelonious() {
-	db := NewDatabase(m.config.DbName)
+	db := utils.NewDatabase(m.config.DbName)
 
-	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
+	keyManager := utils.NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 	m.keyManager = keyManager
 
-	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
+	clientIdentity := utils.NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
+	logger.Infoln("Identity created")
 
 	checkpoint := monkutil.UserHex2Bytes(m.config.LatestCheckpoint)
 

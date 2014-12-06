@@ -2,8 +2,6 @@ package monk
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"os/signal"
 	"path"
@@ -15,22 +13,20 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
+	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/epm-go"
+
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
-	"github.com/eris-ltd/thelonious/monkdb"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkminer"
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkrpc"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 // this is basically go-etheruem/utils
-
-// i think for now we only use StartMining, but there's porbably other goodies...
 
 // TODO: use the interupts...
 
@@ -60,22 +56,6 @@ func RunInterruptCallbacks(sig os.Signal) {
 	}
 }
 
-func AbsolutePath(Datadir string, filename string) string {
-	if path.IsAbs(filename) {
-		return filename
-	}
-	return path.Join(Datadir, filename)
-}
-
-func openLogFile(Datadir string, filename string) *os.File {
-	path := AbsolutePath(Datadir, filename)
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))
-	}
-	return file
-}
-
 func confirm(message string) bool {
 	fmt.Println(message, "Are you sure? (y/n)")
 	var r string
@@ -90,32 +70,9 @@ func confirm(message string) bool {
 	return r == "y"
 }
 
-func InitDataDir(Datadir string) {
-	_, err := os.Stat(Datadir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Printf("Data directory '%s' doesn't exist, creating it\n", Datadir)
-			os.Mkdir(Datadir, 0777)
-		}
-	}
-}
-
-func InitLogging(Datadir string, LogFile string, LogLevel int, DebugFile string) {
-	var writer io.Writer
-	if LogFile == "" {
-		writer = os.Stdout
-	} else {
-		writer = openLogFile(Datadir, LogFile)
-	}
-	monklog.AddLogSystem(monklog.NewStdLogSystem(writer, log.LstdFlags, monklog.LogLevel(LogLevel)))
-	if DebugFile != "" {
-		writer = openLogFile(Datadir, DebugFile)
-		monklog.AddLogSystem(monklog.NewStdLogSystem(writer, log.LstdFlags, monklog.DebugLevel))
-	}
-}
-
+// TODO: dwell on this more too
 func InitConfig(ConfigFile string, Datadir string, EnvPrefix string) *monkutil.ConfigManager {
-	InitDataDir(Datadir)
+	utils.InitDataDir(Datadir)
 	return monkutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
 }
 
@@ -130,58 +87,12 @@ func exit(err error) {
 	os.Exit(status)
 }
 
-func NewDatabase(dbName string) monkutil.Database {
-	db, err := monkdb.NewLDBDatabase(dbName)
-	if err != nil {
-		exit(err)
-	}
-	return db
-}
-
-func NewClientIdentity(clientIdentifier, version, customIdentifier string) *monkwire.SimpleClientIdentity {
-	logger.Infoln("identity created")
-	return monkwire.NewSimpleClientIdentity(clientIdentifier, version, customIdentifier)
-}
-
-/*
-func NewThelonious(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Thelonious {
-	ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, usePnp)
-	if err != nil {
-		logger.Fatalln("eth start err:", err)
-	}
-	ethereum.Port = OutboundPort
-	ethereum.MaxPeers = MaxPeer
-	return ethereum
-}*/
-
-/*
-func StartThelonious(ethereum *eth.Thelonious, UseSeed bool) {
-	logger.Infof("Starting %s", ethereum.ClientIdentity())
-	ethereum.Start(UseSeed)
-	RegisterInterrupt(func(sig os.Signal) {
-		ethereum.Stop()
-		monklog.Flush()
-	})
-}*/
-
 func ShowGenesis(ethereum *eth.Thelonious) {
 	logger.Infoln(ethereum.ChainManager().Genesis())
 	exit(nil)
 }
 
-func NewKeyManager(KeyStore string, Datadir string, db monkutil.Database) *monkcrypto.KeyManager {
-	var keyManager *monkcrypto.KeyManager
-	switch {
-	case KeyStore == "db":
-		keyManager = monkcrypto.NewDBKeyManager(db)
-	case KeyStore == "file":
-		keyManager = monkcrypto.NewFileKeyManager(Datadir)
-	default:
-		exit(fmt.Errorf("unknown keystore type: %s", KeyStore))
-	}
-	return keyManager
-}
-
+// TODO: work this baby
 func DefaultAssetPath() string {
 	var assetPath string
 	// If the current working directory is the go-ethereum dir
@@ -207,6 +118,7 @@ func DefaultAssetPath() string {
 	return assetPath
 }
 
+// TODO: use this...
 func KeyTasks(keyManager *monkcrypto.KeyManager, KeyRing string, GenAddr bool, SecretFile string, ExportDir string, NonInteractive bool) {
 
 	var err error
@@ -361,7 +273,11 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	e.ExecuteJobs()
+	epm.ErrMode = epm.ReturnOnErr
+	err = e.ExecuteJobs()
+	if err != nil {
+		return nil, err
+	}
 	e.Commit()
 	chainId, err := m.ChainId()
 	if err != nil {

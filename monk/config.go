@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"io"
 	"io/ioutil"
@@ -181,7 +182,7 @@ func (monk *Monk) thConfig() {
 	// this also uses rakyl/globalconf, but we mostly ignore all that
 	monkutil.Config = &monkutil.ConfigManager{ExecPath: cfg.RootDir, Debug: true, Paranoia: true}
 	// TODO: enhance this with more pkg level control
-	InitLogging(cfg.RootDir, cfg.LogFile, cfg.LogLevel, cfg.DebugFile)
+	utils.InitLogging(cfg.RootDir, cfg.LogFile, cfg.LogLevel, cfg.DebugFile)
 }
 
 // Is there really no way to copy a file in the std lib?
