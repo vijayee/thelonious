@@ -37,14 +37,14 @@ func (t *Test) TestRunLoad() {
 		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
 		fmt.Println("mining addresS", mod.monk.ActiveAddress())
 		mod.Start()
-        go func(){
-            tick := time.Tick(1000 * time.Millisecond)
-            addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
-            amount := "567890"
-            for _ = range tick{
-                mod.Tx(addr, amount)
-            }
-        }()
+		go func() {
+			tick := time.Tick(1000 * time.Millisecond)
+			addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
+			amount := "567890"
+			for _ = range tick {
+				mod.Tx(addr, amount)
+			}
+		}()
 		mod.monk.thelonious.WaitForShutdown()
 	}, 0)
 }
@@ -55,16 +55,16 @@ func (t *Test) TestRunEvent() {
 		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
 		fmt.Println("mining addresS", mod.ActiveAddress())
 		mod.Start()
-        ch := mod.Subscribe("testchannel","newBlock","")
-        ctr := 0
-        for evt := range ch {
-            if ctr > 50 {
-                return
-            }
-            fmt.Println("Received: " + evt.Event)
-            mod.State()
-            ctr++
-        }
+		ch := mod.Subscribe("testchannel", "newBlock", "")
+		ctr := 0
+		for evt := range ch {
+			if ctr > 50 {
+				return
+			}
+			fmt.Println("Received: " + evt.Event)
+			mod.State()
+			ctr++
+		}
 		mod.monk.thelonious.WaitForShutdown()
 	}, 0)
 }

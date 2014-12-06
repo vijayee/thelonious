@@ -113,36 +113,36 @@ func (miner *Miner) receiveTx(tx *monkchain.Transaction) {
 	}
 }
 
-func (miner *Miner) receiveBlock(block *monkchain.Block){
-    //logger.Infoln("Got new block via Reactor")
-    if bytes.Compare(miner.thelonious.ChainManager().CurrentBlockHash(), block.Hash()) == 0 {
-        // TODO: Perhaps continue mining to get some uncle rewards
-        //logger.Infoln("New top block found resetting state")
+func (miner *Miner) receiveBlock(block *monkchain.Block) {
+	//logger.Infoln("Got new block via Reactor")
+	if bytes.Compare(miner.thelonious.ChainManager().CurrentBlockHash(), block.Hash()) == 0 {
+		// TODO: Perhaps continue mining to get some uncle rewards
+		//logger.Infoln("New top block found resetting state")
 
-        // Filter out which Transactions we have that were not in this block
-        var newtxs []*monkchain.Transaction
-        for _, tx := range miner.txs {
-            found := false
-            for _, othertx := range block.Transactions() {
-                if bytes.Compare(tx.Hash(), othertx.Hash()) == 0 {
-                    found = true
-                }
-            }
-            if found == false {
-                newtxs = append(newtxs, tx)
-            }
-        }
-        miner.txs = newtxs
+		// Filter out which Transactions we have that were not in this block
+		var newtxs []*monkchain.Transaction
+		for _, tx := range miner.txs {
+			found := false
+			for _, othertx := range block.Transactions() {
+				if bytes.Compare(tx.Hash(), othertx.Hash()) == 0 {
+					found = true
+				}
+			}
+			if found == false {
+				newtxs = append(newtxs, tx)
+			}
+		}
+		miner.txs = newtxs
 
-        // Setup a fresh state to mine on
-        //miner.block = miner.thelonious.ChainManager().NewBlock(miner.coinbase, miner.txs)
+		// Setup a fresh state to mine on
+		//miner.block = miner.thelonious.ChainManager().NewBlock(miner.coinbase, miner.txs)
 
-    } else {
-        if bytes.Compare(block.PrevHash, miner.thelonious.ChainManager().CurrentBlockPrevHash()) == 0 {
-            logger.Infoln("Adding uncle block")
-            miner.uncles = append(miner.uncles, block)
-        }
-    }
+	} else {
+		if bytes.Compare(block.PrevHash, miner.thelonious.ChainManager().CurrentBlockPrevHash()) == 0 {
+			logger.Infoln("Adding uncle block")
+			miner.uncles = append(miner.uncles, block)
+		}
+	}
 }
 
 func (miner *Miner) Stop() {

@@ -135,46 +135,46 @@ out:
 	for {
 		select {
 		case tx := <-pool.queueChan:
-            if pool.queueTransaction(tx){
-                continue
-            }
+			if pool.queueTransaction(tx) {
+				continue
+			}
 		case <-pool.quit:
 			break out
 		}
 	}
 }
 
-func (pool *TxPool) queueTransaction(tx *Transaction) bool{
+func (pool *TxPool) queueTransaction(tx *Transaction) bool {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 
-    hash := tx.Hash()
-    foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
-        return bytes.Compare(tx.Hash(), hash) == 0
-    })
+	hash := tx.Hash()
+	foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
+		return bytes.Compare(tx.Hash(), hash) == 0
+	})
 
-    if foundTx != nil {
-        return true
-    }
+	if foundTx != nil {
+		return true
+	}
 
-    // Validate the transaction
-    err := pool.ValidateTransaction(tx)
-    if err != nil {
-        txplogger.Debugln("Validating Tx failed", err)
-        pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
-    } else {
-        // Call blocking version.
-        pool.addTransaction(tx)
+	// Validate the transaction
+	err := pool.ValidateTransaction(tx)
+	if err != nil {
+		txplogger.Debugln("Validating Tx failed", err)
+		pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
+	} else {
+		// Call blocking version.
+		pool.addTransaction(tx)
 
-        tmp := make([]byte, 4)
-        copy(tmp, tx.Recipient)
+		tmp := make([]byte, 4)
+		copy(tmp, tx.Recipient)
 
-        txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
+		txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
 
-        // Notify the subscribers
-        pool.Thelonious.Reactor().Post("newTx:pre", tx)
-    }
-    return false
+		// Notify the subscribers
+		pool.Thelonious.Reactor().Post("newTx:pre", tx)
+	}
+	return false
 }
 
 func (pool *TxPool) QueueTransaction(tx *Transaction) {

@@ -53,7 +53,7 @@ func (n *Node) Copy() *Node {
 }
 
 type Cache struct {
-	mut      sync.RWMutex
+	mut     sync.RWMutex
 	nodes   map[string]*Node
 	db      monkutil.Database
 	IsDirty bool

@@ -342,16 +342,16 @@ out:
 
 func (self *BlockPool) punishPeer() {
 	/*
-	                        TODO: fix this peer handling!
-						if self.peer != nil && self.peer.conn != nil {
-							poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
+		                        TODO: fix this peer handling!
+							if self.peer != nil && self.peer.conn != nil {
+								poollogger.Debugf("Punishing peer for supplying bad chain (%v)\n", self.peer.conn.RemoteAddr())
 
-						// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
-						//self.eth.BlacklistPeer(self.peer)
-						//self.peer.StopWithReason(DiscBadPeer)
-	                        self.peer.Stop()
-	                        self.td = monkutil.Big0
-	                        self.peer = nil
-						}*/
+							// This peer gave us bad hashes and made us fetch a bad chain, therefor he shall be punished.
+							//self.eth.BlacklistPeer(self.peer)
+							//self.peer.StopWithReason(DiscBadPeer)
+		                        self.peer.Stop()
+		                        self.td = monkutil.Big0
+		                        self.peer = nil
+							}*/
 
 }
