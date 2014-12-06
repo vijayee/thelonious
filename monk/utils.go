@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"time"
 
 	"bitbucket.org/kardianos/osext"
@@ -231,9 +232,10 @@ func KeyTasks(keyManager *monkcrypto.KeyManager, KeyRing string, GenAddr bool, S
 	}
 }
 
-func StartRpc(ethereum *eth.Thelonious, RpcPort int) {
+func StartRpc(ethereum *eth.Thelonious, RpcHost string, RpcPort int) {
 	var err error
-	ethereum.RpcServer, err = monkrpc.NewJsonRpcServer(monkpipe.NewJSPipe(ethereum), RpcPort)
+	rpcAddr := RpcHost + ":" + strconv.Itoa(RpcPort)
+	ethereum.RpcServer, err = monkrpc.NewJsonRpcServer(monkpipe.NewJSPipe(ethereum), rpcAddr)
 	if err != nil {
 		logger.Errorf("Could not start RPC interface (port %v): %v", RpcPort, err)
 	} else {

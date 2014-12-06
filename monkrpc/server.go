@@ -1,7 +1,6 @@
 package monkrpc
 
 import (
-	"fmt"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
@@ -52,9 +51,8 @@ func (s *JsonRpcServer) Start() {
 	}
 }
 
-func NewJsonRpcServer(pipe *monkpipe.JSPipe, port int) (*JsonRpcServer, error) {
-	sport := fmt.Sprintf(":%d", port)
-	l, err := net.Listen("tcp", sport)
+func NewJsonRpcServer(pipe *monkpipe.JSPipe, addr string) (*JsonRpcServer, error) {
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}

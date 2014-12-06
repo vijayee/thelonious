@@ -69,35 +69,35 @@ func (t *Test) Run() {
 
 // general tester function on a thelonious node
 // note, you ought to call th.Start() somewhere in testing()!
-func (t *Test) tester(name string, testing func(mod *MonkModule), end int){
-    mod := t.mod
-    if mod == nil{
-        mod = NewMonk(nil) 
-        t.mod = mod
-    } 
-    mod.ReadConfig("monk-config.json")
-    fmt.Println("log:", mod.Config.LogLevel)
-    mod.Config.Mining = true
-    mod.Config.DbName = "tests/"+name
-    /*
-    // more trouble than it's worth for now
-    g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
-    g.DougPath = t.genesis // overwrite whatever loads from genesis.json
-    g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
-    mod.SetGenesis(g)
-    t.gendougaddr = g.HexAddr
-    */
-    mod.Init()
+func (t *Test) tester(name string, testing func(mod *MonkModule), end int) {
+	mod := t.mod
+	if mod == nil {
+		mod = NewMonk(nil)
+		t.mod = mod
+	}
+	mod.ReadConfig("monk-config.json")
+	fmt.Println("log:", mod.Config.LogLevel)
+	mod.Config.Mining = mod.Config.Mining
+	mod.Config.DbName = "tests/" + name
+	/*
+	   // more trouble than it's worth for now
+	   g := monkdoug.LoadGenesis(mod.Config.GenesisConfig)
+	   g.DougPath = t.genesis // overwrite whatever loads from genesis.json
+	   g.ByteAddr = []byte("0000000000THISISDOUG") // similarly
+	   mod.SetGenesis(g)
+	   t.gendougaddr = g.HexAddr
+	*/
+	mod.Init()
 
-    t.reactor = mod.monk.thelonious.Reactor()
-    testing(mod)
-    
-    if end > 0{
-        time.Sleep(time.Second*time.Duration(end))
-    }
-    mod.Shutdown()
-    t.mod = nil
-    time.Sleep(time.Second*3)
+	t.reactor = mod.monk.thelonious.Reactor()
+	testing(mod)
+
+	if end > 0 {
+		time.Sleep(time.Second * time.Duration(end))
+	}
+	mod.Shutdown()
+	t.mod = nil
+	time.Sleep(time.Second * 3)
 }
 
 // called by `go test` functions

@@ -53,17 +53,17 @@ type Monk struct {
 	reactor    *monkreact.ReactorEngine
 	started    bool
 
-    chans      map[string]Chan
+	chans map[string]Chan
 	//chans      map[string]chan events.Event
 	//reactchans map[string]chan monkreact.Event
 }
 
-type Chan struct{
-    ch      chan events.Event
-    reactCh chan monkreact.Event
-    name    string
-    event   string
-    target  string
+type Chan struct {
+	ch      chan events.Event
+	reactCh chan monkreact.Event
+	name    string
+	event   string
+	target  string
 }
 
 /*
@@ -92,7 +92,7 @@ func NewMonk(th *thelonious.Thelonious) *MonkModule {
 }
 
 // register the module with the decerver javascript vm
-func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error{
+func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error {
 	return nil
 }
 
@@ -127,7 +127,7 @@ func (mod *MonkModule) Init() error {
 	m.reactor = m.thelonious.Reactor()
 
 	// subscribe to the new block
-    m.chans = make(map[string]Chan)
+	m.chans = make(map[string]Chan)
 	//m.chans = make(map[string]chan events.Event)
 	//m.reactchans = make(map[string]chan monkreact.Event)
 	m.Subscribe("newBlock", "newBlock", "")
@@ -138,7 +138,7 @@ func (mod *MonkModule) Init() error {
 }
 
 // start the thelonious node
-func (mod *MonkModule) Start() error {
+func (mod *MonkModule) Start() (err error) {
 	m := mod.monk
 	m.thelonious.Start(true) // peer seed
 	m.started = true
@@ -146,6 +146,11 @@ func (mod *MonkModule) Start() error {
 	if m.config.Mining {
 		StartMining(m.thelonious)
 	}
+
+	if m.config.ServeRpc {
+		StartRpc(m.thelonious, m.config.RpcHost, m.config.RpcPort)
+	}
+
 	return nil
 }
 
@@ -460,14 +465,14 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 	}
 
 	ch := make(chan events.Event)
-    c := Chan{
-        ch: ch,
-        reactCh: th_ch,
-        name:   name,
-        event:  event,
-        target: target,
-    }
-    monk.chans[name] = c
+	c := Chan{
+		ch:      ch,
+		reactCh: th_ch,
+		name:    name,
+		event:   event,
+		target:  target,
+	}
+	monk.chans[name] = c
 	//monk.chans[name] = ch
 	//monk.reactchans[name] = th_ch
 
@@ -504,12 +509,12 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 }
 
 func (monk *Monk) UnSubscribe(name string) {
-    if c, ok := monk.chans[name]; ok{
-        monk.reactor.Unsubscribe(c.event, c.reactCh) 
-        close(c.reactCh)
-        close(c.ch)
-        delete(monk.chans, name)
-    }
+	if c, ok := monk.chans[name]; ok {
+		monk.reactor.Unsubscribe(c.event, c.reactCh)
+		close(c.reactCh)
+		close(c.ch)
+		delete(monk.chans, name)
+	}
 }
 
 // Mine a block
@@ -624,7 +629,7 @@ func (m *Monk) newThelonious() {
 		log.Fatal("Could not start node: %s\n", err)
 	}
 
-	th.Port = strconv.Itoa(m.config.Port)
+	th.Port = strconv.Itoa(m.config.ListenPort)
 	th.MaxPeers = m.config.MaxPeers
 
 	m.thelonious = th

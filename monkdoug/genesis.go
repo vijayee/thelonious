@@ -98,11 +98,11 @@ func LoadGenesis(file string) *GenesisConfig {
 // if NoGenDoug, simply bankroll the accounts
 func (g *GenesisConfig) Deploy(block *monkchain.Block) {
 	block.Difficulty = monkutil.BigPow(2, g.Difficulty)
-    
-    defer func(b *monkchain.Block){
-        b.State().Update()
-        b.State().Sync()
-    }(block)
+
+	defer func(b *monkchain.Block) {
+		b.State().Update()
+		b.State().Sync()
+	}(block)
 
 	if g.NoGenDoug {
 		// no genesis doug, deploy simple
@@ -191,4 +191,18 @@ func NewPermModel(g *GenesisConfig) (model PermModel) {
 		model = NewYesModel(g) //NewEthModel(g)
 	}
 	return
+}
+
+// A default genesis.json
+// TODO: make a lookup-able suite of these
+var DefaultGenesis = GenesisConfig{
+	NoGenDoug:  true,
+	Difficulty: 15,
+	Accounts: []*Account{
+		&Account{
+			Address:  "0xbbbd0256041f7aed3ce278c56ee61492de96d001",
+			byteAddr: monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001"),
+			Balance:  "1000000000000000000000000000000000000",
+		},
+	},
 }

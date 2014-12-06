@@ -170,6 +170,9 @@ func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.Gen
 		fmt.Println("GenesisConfig already set")
 		return nil
 	}
+	if genConfig.Model() == nil {
+		genConfig.SetModel(monkdoug.NewPermModel(genConfig))
+	}
 	s.genConfig = genConfig
 	s.genModel = genConfig.Model()
 	return s.genModel
