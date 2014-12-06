@@ -1,15 +1,41 @@
 {
     "address":"0000000000THISISDOUG",
+    "pdx":"genblock.pdx",
     "no-gendoug":true,
     "doug":"Genesis DOUG/gendoug-v2.lll",
-    "model":"std",
+    "model":"vm",
+    "unique":false,
+    "private-key":"",
     "consensus":"", 
-    "difficulty":8,
+    "difficulty":15,
     "public:mine":0,
     "public:create":0,
     "public:tx":0,
     "maxgastx":"0xfffffffffffffffffffffffff",
     "blocktime":5,
+    "vm":{
+        "suite-name":"std",
+        "block-verify":{
+            "code-path":"",
+            "doug":false
+        },
+        "tx-verify":{
+            "code-path":"",
+            "doug":false
+        },
+        "permission-verify":{
+            "code-path":"",
+            "doug":false
+        },
+        "compute-difficulty":{
+            "code-path":"",
+            "doug":false
+        },
+        "compute-participate":{
+            "code-path":"",
+            "doug":false
+        }
+    },
     "accounts":
         [
             {
@@ -31,7 +57,7 @@
                 "permissions":
                     {
                         "transact":1,
-                        "mine":1,
+                        "mine":0,
                         "create":1
                     },
                 "stake":3
@@ -43,7 +69,7 @@
                 "permissions":
                     {
                         "transact":1,
-                        "mine":1,
+                        "mine":0,
                         "create":1
                     },
                 "stake":3
@@ -55,7 +81,7 @@
                 "permissions":
                     {
                         "transact":1,
-                        "mine":1,
+                        "mine":0,
                         "create":1
                     },
                 "stake":3

@@ -14,7 +14,10 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
+	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
+	"github.com/eris-ltd/epm-go"
 	eth "github.com/eris-ltd/thelonious"
+	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkdb"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -28,6 +31,8 @@ import (
 // this is basically go-etheruem/utils
 
 // i think for now we only use StartMining, but there's porbably other goodies...
+
+// TODO: use the interupts...
 
 //var logger = monklog.NewLogger("CLI")
 var interruptCallbacks = []func(os.Signal){}
@@ -149,6 +154,7 @@ func NewThelonious(db monkutil.Database, clientIdentity monkwire.ClientIdentity,
 	return ethereum
 }*/
 
+/*
 func StartThelonious(ethereum *eth.Thelonious, UseSeed bool) {
 	logger.Infof("Starting %s", ethereum.ClientIdentity())
 	ethereum.Start(UseSeed)
@@ -156,7 +162,7 @@ func StartThelonious(ethereum *eth.Thelonious, UseSeed bool) {
 		ethereum.Stop()
 		monklog.Flush()
 	})
-}
+}*/
 
 func ShowGenesis(ethereum *eth.Thelonious) {
 	logger.Infoln(ethereum.ChainManager().Genesis())
@@ -336,4 +342,30 @@ func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager) {
 			}
 		}
 	}
+}
+
+// Set the EPM contract root
+func setContractPath(p string) {
+	epm.ContractPath = p
+}
+
+// Deploy a pdx onto a block
+// This is used as a monkdoug deploy function
+func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
+	m := genblock.NewGenBlockModule(block)
+	m.Config.LogLevel = 5
+	m.Init()
+	m.Start()
+	e := epm.NewEPM(m, ".epm-log")
+	err := e.Parse(pkgDef)
+	if err != nil {
+		return nil, err
+	}
+	e.ExecuteJobs()
+	e.Commit()
+	chainId, err := m.ChainId()
+	if err != nil {
+		return nil, err
+	}
+	return chainId, nil
 }

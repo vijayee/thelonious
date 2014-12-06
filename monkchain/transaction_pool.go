@@ -46,10 +46,6 @@ func FindTx(pool *list.List, finder func(*Transaction, *list.Element) bool) *Tra
 	return nil
 }
 
-type TxProcessor interface {
-	ProcessTransaction(tx *Transaction)
-}
-
 // The tx pool a thread safe transaction pool handler. In order to
 // guarantee a non blocking pool we use a queue channel which can be
 // independently read without needing access to the actual pool. If the
@@ -66,8 +62,6 @@ type TxPool struct {
 	quit chan bool
 	// The actual pool
 	pool *list.List
-
-	SecondaryProcessor TxProcessor
 
 	subscribers []chan TxMsg
 }
@@ -90,6 +84,8 @@ func (pool *TxPool) addTransaction(tx *Transaction) {
 	pool.Thelonious.Broadcast(monkwire.MsgTxTy, []interface{}{tx.RlpData()})
 }
 
+// TODO: will this panic on invalid signature? catch that
+//  does not execute evm, just simple checks for adding to pool
 func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	// Get the last block so we can retrieve the sender and receiver from
 	// the merkle trie
@@ -123,9 +119,6 @@ func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 			return fmt.Errorf("[TXPL] Gasprice too low, %s given should be at least %d.", tx.GasPrice, minGasPrice)
 		}
 	}
-
-	// Increment the nonce making each tx valid only once to prevent replay
-	// attacks
 
 	return nil
 }

@@ -130,6 +130,9 @@ func Hex2Bytes(str string) []byte {
 }
 
 func UserHex2Bytes(str string) []byte {
+	if len(str) <= 1 {
+		return nil
+	}
 	if str[:2] == "0x" {
 		str = str[2:]
 	}

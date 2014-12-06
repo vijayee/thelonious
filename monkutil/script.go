@@ -61,7 +61,8 @@ func Compile(script string, silent bool) (ret []byte, err error) {
 
 			return byteCode, nil
 		} else {
-			//
+			// assume it's hex encoded bytecode
+			return UserHex2Bytes(script), nil
 		}
 	}
 
@@ -131,6 +132,18 @@ func PackTxDataArgs2(args ...string) []byte {
 			l := len(x)
 			ret = append(ret, LeftPadBytes(x, 32*((l+31)/32))...)
 		}
+	}
+	return ret
+}
+
+func PackTxDataBytes(args ...[]byte) []byte {
+	ret := *new([]byte)
+	for _, s := range args {
+		l := len(s)
+		if l == 0 {
+			ret = append(ret, LeftPadBytes([]byte{0}, 32)...)
+		}
+		ret = append(ret, LeftPadBytes(s, 32*((l+31)/32))...)
 	}
 	return ret
 }

@@ -23,6 +23,7 @@ type Miner struct {
 	powChan     chan []byte
 	powQuitChan chan monkreact.Event
 	quitChan    chan chan error
+	startChan   chan monkreact.Event
 
 	turbo bool
 }
@@ -52,6 +53,7 @@ func (miner *Miner) Start() {
 	miner.powChan = make(chan []byte, 1)              // This is the channel that receives valid sha hashes for a given block
 	miner.powQuitChan = make(chan monkreact.Event, 1) // This is the channel that can exit the miner thread
 	miner.quitChan = make(chan chan error, 1)
+	miner.startChan = make(chan monkreact.Event)
 
 	// Insert initial TXs in our little miner 'pool'
 	miner.txs = miner.thelonious.TxPool().Flush()
@@ -64,6 +66,7 @@ func (miner *Miner) Start() {
 	reactor := miner.thelonious.Reactor()
 	reactor.Subscribe("newBlock", miner.reactChan)
 	reactor.Subscribe("newTx:pre", miner.reactChan)
+	reactor.Subscribe("chainReady", miner.startChan)
 
 	// We need the quit chan to be a Reactor event.
 	// The POW search method is actually blocking and if we don't
@@ -73,12 +76,16 @@ func (miner *Miner) Start() {
 	reactor.Subscribe("newBlock", miner.powQuitChan)
 	reactor.Subscribe("newTx:pre", miner.powQuitChan)
 
-	logger.Infoln("Started")
-
 	reactor.Post("miner:start", miner)
 }
 
 func (miner *Miner) listener() {
+	// wait for the ready signal
+	if miner.thelonious.ChainManager().WaitingForCheckpoint() {
+		logger.Infoln("Waiting for start signal")
+		<-miner.startChan
+	}
+	logger.Infoln("Started")
 	for {
 		select {
 		case status := <-miner.quitChan:
@@ -176,7 +183,7 @@ func (self *Miner) mineNewBlock() {
 	}
 
 	// check if we should even bother mining (potential energy savings)
-	if !self.thelonious.GenesisModel().StartMining(self.coinbase, parent) {
+	if !self.thelonious.Protocol().Participate(self.coinbase, parent) {
 		return
 	}
 

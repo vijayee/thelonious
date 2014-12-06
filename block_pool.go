@@ -3,7 +3,7 @@ package thelonious
 import (
 	"bytes"
 	"container/list"
-	"fmt"
+	//"fmt"
 	"math"
 	"math/big"
 	"sync"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monklog"
+	"github.com/eris-ltd/thelonious/monkreact"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkwire"
 )
@@ -26,7 +27,7 @@ type block struct {
 }
 
 type BlockPool struct {
-	mut sync.Mutex
+	mut sync.Mutex // TODO: should this be RW?
 
 	eth *Thelonious
 
@@ -42,14 +43,17 @@ type BlockPool struct {
 	ChainLength, BlocksProcessed int
 
 	peer *Peer
+
+	start chan monkreact.Event
 }
 
 func NewBlockPool(eth *Thelonious) *BlockPool {
 	return &BlockPool{
-		eth:  eth,
-		pool: make(map[string]*block),
-		td:   monkutil.Big0,
-		quit: make(chan bool),
+		eth:   eth,
+		pool:  make(map[string]*block),
+		td:    monkutil.Big0,
+		quit:  make(chan bool),
+		start: make(chan monkreact.Event),
 	}
 }
 
@@ -72,7 +76,13 @@ func (self *BlockPool) HasLatestHash() bool {
 }
 
 func (self *BlockPool) HasCommonHash(hash []byte) bool {
-	return self.eth.ChainManager().GetBlock(hash) != nil
+	cman := self.eth.ChainManager()
+	if cman.WaitingForCheckpoint() && cman.IsCheckpoint(hash) {
+		poollogger.Debugln("still waiting for checkpoiny...")
+		return true
+	}
+
+	return cman.GetBlock(hash) != nil
 }
 
 func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
@@ -87,36 +97,74 @@ func (self *BlockPool) Blocks() (blocks monkchain.Blocks) {
 	return
 }
 
+// Add a hash to the hash pool
+// and an empty block obj to block pool
 func (self *BlockPool) AddHash(hash []byte, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
+	//cman := self.eth.ChainManager()
+	// if we are waiting for a checkpoint block and this
+	// isn't it, do nothing
+	/*if cman.WaitingForCheckpoint() && !cman.IsCheckpoint(hash){
+	    poollogger.Debugln("Still waiting for checkpoint and this isn't it!")
+	    return
+	}*/
+
 	if self.pool[string(hash)] == nil {
 		self.pool[string(hash)] = &block{peer, nil, nil, time.Now(), 0}
-
 		self.hashPool = append([][]byte{hash}, self.hashPool...)
 	}
 }
 
+// A block has just come in from a peer
+// If the block is a checkpoint block, pass it to the chain
+// If we are still waiting for a checkpoint, do nothing
+// If the block came before the checkpoint block, ignore it
+// If we have the block already, do nothing
+// If we haven't seen the hash, before, the block is unrequested
+//      If we haven't seen its parents either, ignore it; TODO (better)
+// If we've seen the hash, add the block to the pool
 func (self *BlockPool) Add(b *monkchain.Block, peer *Peer) {
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
 	hash := string(b.Hash())
+	cman := self.eth.ChainManager()
+
+	// if we're still waiting for a checkpoint block,
+	// check if this is it
+	if cman.WaitingForCheckpoint() {
+		if cman.ReceiveCheckPointBlock(b) {
+			poollogger.Infof("Received checkpoint block (#%d) %x from peer", b.Number, b.Hash())
+			self.eth.Broadcast(monkwire.MsgGetStateTy, []interface{}{b.Hash()})
+		}
+		return
+	}
+
+	// if block is before checkpoint, do nothing
+	if b.Number.Uint64() < cman.LatestCheckPointNumber() {
+		return
+	}
+
+	// if we have the block, do nothing
+	if cman.HasBlock(b.Hash()) {
+		return
+	}
 
 	// Note this doesn't check the working tree
 	// Leave it to TestChain to ignore blocks already in forks
 	// Also, we can one day use the information on which/howmany peers
 	//  give us which blocks, in the td calculation. Hold on to your hats!
-	if self.pool[hash] == nil && !self.eth.ChainManager().HasBlock(b.Hash()) {
+	if self.pool[hash] == nil {
 		poollogger.Infof("Got unrequested block (%x...)\n", hash[0:4])
 
 		self.hashPool = append(self.hashPool, b.Hash())
 		self.pool[hash] = &block{peer, peer, b, time.Now(), 0}
 
-		if !self.eth.ChainManager().HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
+		if !cman.HasBlock(b.PrevHash) && self.pool[string(b.PrevHash)] == nil && !self.fetchingHashes {
 			poollogger.Infof("Unknown block, requesting parent (%x...)\n", b.PrevHash[0:4])
-			peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
+			//peer.QueueMessage(monkwire.NewMessage(monkwire.MsgGetBlockHashesTy, []interface{}{b.Hash(), uint32(256)}))
 		}
 	} else if self.pool[hash] != nil {
 		self.pool[hash].block = b
@@ -133,34 +181,9 @@ func (self *BlockPool) Remove(hash []byte) {
 	delete(self.pool, string(hash))
 }
 
-func (self *BlockPool) ProcessCanonical(f func(block *monkchain.Block)) (procAmount int) {
-	blocks := self.Blocks()
-
-	monkchain.BlockBy(monkchain.Number).Sort(blocks)
-	fmt.Println("Len block pool in process canonical: ", len(blocks))
-	if len(blocks) > 0 {
-		fmt.Println("first blocks num:", blocks[0].Number)
-		fmt.Println("last blocks num:", blocks[len(blocks)-1].Number)
-	} else {
-		fmt.Println("no blocks in pool!")
-	}
-	for _, block := range blocks {
-		if self.eth.ChainManager().HasBlock(block.PrevHash) {
-			procAmount++
-
-			f(block)
-
-			self.Remove(block.Hash())
-		} else {
-			fmt.Println("not processed as we don't have prevhash")
-		}
-
-	}
-
-	return
-}
-
+// Distribute pool hashes over peers and fetch them
 func (self *BlockPool) DistributeHashes() {
+	// TODO: can we do better than locking up everything to run this?
 	self.mut.Lock()
 	defer self.mut.Unlock()
 
@@ -170,11 +193,16 @@ func (self *BlockPool) DistributeHashes() {
 		dist    = make(map[*Peer][][]byte)
 	)
 
+	// min (amount, len(pool))
 	num := int(math.Min(float64(amount), float64(len(self.pool))))
-	for i, j := 0, 0; i < len(self.hashPool) && j < num; i++ {
+	for i, j := 0, 0; i < self.Len() && j < num; i++ {
 		hash := self.hashPool[i]
 		item := self.pool[string(hash)]
 
+		// if we have the item but not the block
+		//  - if we have a peer, try to get block
+		//  - if not, find a peer
+		//  - append hash to dist[peer]
 		if item != nil && item.block == nil {
 			var peer *Peer
 			lastFetchFailed := time.Since(item.reqAt) > 5*time.Second
@@ -218,6 +246,7 @@ func (self *BlockPool) DistributeHashes() {
 }
 
 func (self *BlockPool) Start() {
+	self.eth.Reactor().Subscribe("chainReady", self.start)
 	go self.downloadThread()
 	go self.chainThread()
 }
@@ -228,32 +257,61 @@ func (self *BlockPool) Stop() {
 
 func (self *BlockPool) downloadThread() {
 	serviceTimer := time.NewTicker(100 * time.Millisecond)
+	flushedTimer := time.NewTicker(5 * time.Second)
 out:
 	for {
 		select {
 		case <-self.quit:
 			break out
 		case <-serviceTimer.C:
-			// Check if we're catching up. If not distribute the hashes to
-			// the peers and download the blockchain
-			self.fetchingHashes = false
-			self.eth.peerMut.Lock()
-			eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
-				if p.statusKnown && p.FetchingHashes() {
-					self.fetchingHashes = true
+			// If we're not catching up.
+			if !self.areWeFetchingHashes() {
+				// If we're waiting for a checkpoint, request it from
+				// all peers
+				cman := self.eth.ChainManager()
+				if cman.WaitingForCheckpoint() {
+					eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+						p.FetchBlocks([][]byte{cman.LatestCheckPointHash()})
+					})
+				} else {
+					// distribute the hashes to peers
+					// and download the blockchain
+					self.DistributeHashes()
 				}
-			})
-			self.eth.peerMut.Unlock()
-
-			self.DistributeHashes()
-
-			self.mut.Lock()
-			if self.ChainLength < len(self.hashPool) {
-				self.ChainLength = len(self.hashPool)
 			}
-			self.mut.Unlock()
+
+			self.setChainLength()
+		case <-flushedTimer.C:
+			// if pool is empty, get hashes
+			if self.Len() == 0 {
+				eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+					//p.FetchHashes()
+				})
+			}
 		}
 	}
+}
+
+func (self *BlockPool) setChainLength() {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+	if self.ChainLength < len(self.hashPool) {
+		self.ChainLength = len(self.hashPool)
+	}
+}
+
+func (self *BlockPool) areWeFetchingHashes() bool {
+	self.eth.peerMut.Lock()
+	defer self.eth.peerMut.Unlock()
+	fetchingHashes := false
+	eachPeer(self.eth.peers, func(p *Peer, v *list.Element) {
+		if p.statusKnown && p.FetchingHashes() {
+			self.fetchingHashes = true
+		}
+	})
+	self.fetchingHashes = fetchingHashes
+
+	return fetchingHashes
 }
 
 // Sort blocks in pool by number
@@ -264,6 +322,10 @@ out:
 //      or      sum difficulties of fork
 //      and     possibly cause re-org
 func (self *BlockPool) chainThread() {
+	// wait for the start signal from the state
+	if self.eth.ChainManager().WaitingForCheckpoint() {
+		<-self.start
+	}
 	procTimer := time.NewTicker(500 * time.Millisecond)
 out:
 	for {

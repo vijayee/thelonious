@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"math/big"
+	"runtime"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
@@ -52,6 +53,7 @@ type Environment interface {
 	Difficulty() *big.Int
 	Value() *big.Int
 	BlockHash() []byte
+	Doug() []byte
 	DougValidate(addr []byte, role string, state *monkstate.State) error
 }
 
@@ -90,6 +92,9 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 				ret = closure.Return(nil)
 				err = fmt.Errorf("%v", r)
 				vmlogger.Errorln("vm err", err)
+				trace := make([]byte, 2048)
+				count := runtime.Stack(trace, true)
+				fmt.Printf("Stack of %d bytes: %s", count, trace)
 			}
 		}()
 	}
@@ -173,7 +178,6 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		}
 
 		addStepGasUsage(GasStep)
-
 		var newMemSize *big.Int = monkutil.Big0
 		switch op {
 		case STOP:
@@ -700,6 +704,11 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		case GASLIMIT:
 			// TODO
 			stack.Push(big.NewInt(0))
+		case GENDOUG:
+			doug := self.env.Doug()
+			stack.Push(monkutil.BigD(doug))
+
+			self.Printf(" => 0x%x", doug)
 
 			// 0x50 range
 		case PUSH1, PUSH2, PUSH3, PUSH4, PUSH5, PUSH6, PUSH7, PUSH8, PUSH9, PUSH10, PUSH11, PUSH12, PUSH13, PUSH14, PUSH15, PUSH16, PUSH17, PUSH18, PUSH19, PUSH20, PUSH21, PUSH22, PUSH23, PUSH24, PUSH25, PUSH26, PUSH27, PUSH28, PUSH29, PUSH30, PUSH31, PUSH32:
@@ -867,12 +876,13 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			snapshot := self.env.State().Copy()
 
-			var executeAddr []byte
-			if op == CALLSTATELESS {
-				executeAddr = closure.Address()
-			} else {
-				executeAddr = addr.Bytes()
-			}
+			/*	var executeAddr []byte
+				if op == CALLSTATELESS {
+					executeAddr = closure.Address()
+				} else {
+					executeAddr = addr.Bytes()
+				}*/
+			executeAddr := addr.Bytes()
 
 			msg := NewMessage(self, executeAddr, args, gas, closure.Price, value)
 			ret, err := msg.Exec(addr.Bytes(), closure)
@@ -1042,20 +1052,27 @@ func (self *Message) Exec(codeAddr []byte, caller ClosureRef) (ret []byte, err e
 
 		err = fmt.Errorf("Insufficient funds to transfer value. Req %v, has %v", self.value, object.Balance)
 	} else {
-		stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
-		self.object = stateObject
+		baddr := monkutil.BigD(self.address).Bytes()
+		if p := Precompiled[string(baddr)]; p != nil {
+			if self.gas.Cmp(p.Gas) >= 0 {
+				ret = p.Call(self.input)
+				self.vm.Printf("NATIVE_FUNC(%s) => %x", string(self.address), ret)
+			}
+		} else {
+			stateObject := self.vm.env.State().GetOrNewStateObject(self.address)
+			self.object = stateObject
 
-		caller.Object().SubAmount(self.value)
-		stateObject.AddAmount(self.value)
+			caller.Object().SubAmount(self.value)
+			stateObject.AddAmount(self.value)
 
-		// Retrieve the executing code
-		code := self.vm.env.State().GetCode(codeAddr)
+			// Retrieve the executing code
+			code := self.vm.env.State().GetCode(codeAddr)
 
-		// Create a new callable closure
-		c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
-		// Executer the closure and get the return value (if any)
-		ret, _, err = c.Call(self.vm, self.input)
-
+			// Create a new callable closure
+			c := NewClosure(msg, caller, stateObject, code, self.gas, self.price)
+			// Executer the closure and get the return value (if any)
+			ret, _, err = c.Call(self.vm, self.input)
+		}
 		msg.Output = ret
 
 		return ret, err

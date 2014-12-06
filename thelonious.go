@@ -34,13 +34,12 @@ const (
 
 var monklogger = monklog.NewLogger("SERV")
 
+// not thread safe, callback should hold lock
 func eachPeer(peers *list.List, callback func(*Peer, *list.Element)) {
 	// Loop thru the peers and close them (if we had them)
 	for e := peers.Front(); e != nil; e = e.Next() {
-		p := e.Value.(*Peer)
-		p.mut.Lock()
+		//p := e.Value.(*Peer)
 		callback(e.Value.(*Peer), e)
-		p.mut.Unlock()
 	}
 }
 
@@ -99,10 +98,10 @@ type Thelonious struct {
 	// json based config object
 	genConfig *monkdoug.GenesisConfig
 	// model interface for validating actions
-	genModel monkchain.GenDougModel
+	protocol monkchain.Protocol
 }
 
-func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, genConfig *monkdoug.GenesisConfig) (*Thelonious, error) {
+func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, caps Caps, usePnp bool, checkPoint []byte, genConfig *monkdoug.GenesisConfig) (*Thelonious, error) {
 	var err error
 	var nat NAT
 
@@ -133,15 +132,20 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 		filters:        make(map[int]*monkchain.Filter),
 	}
 
-	genModel := th.setGenesis(genConfig)
+	protocol := th.setGenesis(genConfig)
 
 	th.reactor = monkreact.New()
 
 	th.blockPool = NewBlockPool(th)
 	th.txPool = monkchain.NewTxPool(th)
-	th.blockChain = monkchain.NewChainManager(genModel)
+	th.blockChain = monkchain.NewChainManager(protocol)
 	th.blockManager = monkchain.NewBlockManager(th)
 	th.blockChain.SetProcessor(th.blockManager)
+
+	// Set chain's checkpoint
+	if len(checkPoint) > 0 {
+		th.blockChain.CheckPoint(checkPoint)
+	}
 
 	// Start the tx pool
 	th.txPool.Start()
@@ -149,23 +153,13 @@ func New(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManage
 	return th, nil
 }
 
-// Deploy the genesis block from a preconfigured GenesisJSON object
-// if genConfig is nil, this function has no effect, and the genesis block is empty
-func (s *Thelonious) GenesisPointer(block *monkchain.Block) {
-	if s.genConfig != nil {
-		s.genConfig.Deploy(block)
-	} else {
-		fmt.Println("GenesisConfig has not been set. Genesis block will be empty")
-	}
-}
-
-func (s *Thelonious) GenesisModel() monkchain.GenDougModel {
-	return s.genModel
+func (s *Thelonious) Protocol() monkchain.Protocol {
+	return s.protocol
 }
 
 // Loaded from genesis.json, possibly modified
 // Sets the config object and the access model
-func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.GenDougModel {
+func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.Protocol {
 	if s.genConfig != nil {
 		fmt.Println("GenesisConfig already set")
 		return nil
@@ -174,8 +168,8 @@ func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.Gen
 		genConfig.SetModel(monkdoug.NewPermModel(genConfig))
 	}
 	s.genConfig = genConfig
-	s.genModel = genConfig.Model()
-	return s.genModel
+	s.protocol = genConfig.Model()
+	return s.protocol
 }
 
 func (s *Thelonious) Reactor() *monkreact.ReactorEngine {
@@ -437,7 +431,7 @@ func (s *Thelonious) ReapDeadPeerHandler() {
 }
 
 // Start thelonious
-func (s *Thelonious) Start(seed bool) {
+func (s *Thelonious) Start(seed string) {
 	s.reactor.Start()
 	s.blockPool.Start()
 	s.StartListening()
@@ -451,13 +445,13 @@ func (s *Thelonious) Start(seed bool) {
 	go s.update()
 	go s.filterLoop()
 
-	if seed {
-		s.Seed()
+	if seed != "" {
+		s.Seed(seed)
 	}
 	monklogger.Infoln("Server started")
 }
 
-func (s *Thelonious) Seed() {
+func (s *Thelonious) Seed(seed string) {
 	ips := PastPeers()
 	if len(ips) > 0 {
 		for _, ip := range ips {
@@ -465,7 +459,7 @@ func (s *Thelonious) Seed() {
 			s.ConnectToPeer(ip)
 		}
 	}
-	s.ConnectToPeer(seedNodeAddress)
+	s.ConnectToPeer(seed)
 	/* else {
 		monklogger.Debugln("Retrieving seed nodes")
 
