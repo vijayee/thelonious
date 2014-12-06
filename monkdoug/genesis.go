@@ -159,13 +159,19 @@ func LoadGenesis(file string) *GenesisConfig {
 	g.hexAddr = monkutil.Bytes2Hex(g.byteAddr)
 	g.contractPath = path.Join(ErisLtd, "eris-std-lib")
 
+    g.Init()
+
+	return g
+}
+
+// Initialize the Protocol and Deployer for a populated GenesisConfig
+func (g *GenesisConfig) Init(){
 	// set doug model
 	g.protocol = NewProtocol(g)
 
 	// set default deploy function
+    douglogger.Debugln("Hooking default deploy function")
 	g.Deployer = g.Deploy
-
-	return g
 }
 
 // Deploy the genesis block
@@ -424,16 +430,22 @@ func NewPermModel(g *GenesisConfig) (model monkchain.Consensus) {
 
 // A default genesis.json
 // TODO: make a lookup-able suite of these
-var DefaultGenesis = GenesisConfig{
-	NoGenDoug:  true,
-	Difficulty: 15,
-	Accounts: []*Account{
-		&Account{
-			Address:  "0xbbbd0256041f7aed3ce278c56ee61492de96d001",
-			byteAddr: monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001"),
-			Balance:  "1000000000000000000000000000000000000",
-		},
-	},
+var DefaultGenesis = defaultGenesis()
+
+func defaultGenesis() *GenesisConfig{
+    g := &GenesisConfig{
+        NoGenDoug:  true,
+        Difficulty: 15,
+        Accounts: []*Account{
+            &Account{
+                Address:  "0xbbbd0256041f7aed3ce278c56ee61492de96d001",
+                byteAddr: monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001"),
+                Balance:  "1000000000000000000000000000000000000",
+            },
+        },
+    }
+    g.Init()
+    return g
 }
 
 // Contract suites for vm based protocol

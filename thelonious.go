@@ -165,7 +165,7 @@ func (s *Thelonious) setGenesis(genConfig *monkdoug.GenesisConfig) monkchain.Pro
 		return nil
 	}
 	if genConfig.Model() == nil {
-		genConfig.SetModel(monkdoug.NewPermModel(genConfig))
+		genConfig.SetModel()
 	}
 	s.genConfig = genConfig
 	s.protocol = genConfig.Model()
