@@ -326,6 +326,7 @@ func (monk *Monk) Storage(addr string) *modules.Storage {
 	ret := &modules.Storage{make(map[string]string), []string{}}
 	obj.EachStorage(func(k string, v *monkutil.Value) {
 		kk := monkutil.Bytes2Hex([]byte(k))
+        v.Decode()
 		vv := monkutil.Bytes2Hex(v.Bytes())
 		ret.Order = append(ret.Order, kk)
 		ret.Storage[kk] = vv
