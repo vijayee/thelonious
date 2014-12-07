@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"bitbucket.org/kardianos/osext"
@@ -19,6 +20,7 @@ import (
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
+	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkminer"
 	"github.com/eris-ltd/thelonious/monkpipe"
@@ -292,58 +294,71 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 //  - Deploy genesis block and return chainId
 //  - Move .temp/ into ~/.decerver/blockchain/thelonious/chainID
 //  - write name to index file if provided and no conflict
-func DeploySequence(name, genesis, config string) {
+func DeploySequence(name, genesis, config string) error {
 	root := ".temp"
-	chainId := DeployChain(root, genesis, config)
-	InstallChain(root, name, genesis, config, chainId)
-	exit(nil)
+	chainId, err := DeployChain(root, genesis, config)
+	if err != nil {
+		return err
+	}
+	return InstallChain(root, name, genesis, config, chainId)
 }
 
-func DeployChain(root, genesis, config string) string {
+func DeployChain(root, genesis, config string) (string, error) {
 	// startup and deploy
 	m := NewMonk(nil)
 	m.ReadConfig(config)
 	m.Config.RootDir = root
-	m.Config.GenesisConfig = genesis
-	m.Init()
+
+	if strings.HasSuffix(genesis, ".pdx") || strings.HasSuffix(genesis, ".gdx") {
+		m.GenesisConfig = &monkdoug.GenesisConfig{Address: "0000000000THISISDOUG", NoGenDoug: false, Pdx: genesis}
+		m.GenesisConfig.Init()
+	} else {
+		m.Config.GenesisConfig = genesis
+	}
+	if err := m.Init(); err != nil {
+		return "", err
+	}
 	// get the chain id
 	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
 	if err != nil {
-		exit(err)
+		return "", err
 	} else if len(data) == 0 {
-		exit(fmt.Errorf("ChainID is empty!"))
+		return "", fmt.Errorf("ChainID is empty!")
 	}
 	chainId := monkutil.Bytes2Hex(data)
-	return chainId
+	return chainId, nil
 }
 
-func InstallChain(root, name, genesis, config, chainId string) {
-	// move datastore
-	utils.InitDataDir(path.Join(Thelonious, chainId, "datastore"))
-	rename(root, path.Join(Thelonious, chainId, "datastore"))
-	copy(config, path.Join(Thelonious, chainId, "config.json"))
-	copy(genesis, path.Join(Thelonious, chainId, "genesis.json"))
+func InstallChain(root, name, genesis, config, chainId string) error {
+	// move datastore and configs
+	if err := utils.InitDataDir(path.Join(Thelonious, chainId, "datastore")); err != nil {
+		return err
+	}
+	if err := rename(root, path.Join(Thelonious, chainId, "datastore")); err != nil {
+		return err
+	}
+	if err := copy(config, path.Join(Thelonious, chainId, "config.json")); err != nil {
+		return err
+	}
+	if err := copy(genesis, path.Join(Thelonious, chainId, "genesis.json")); err != nil {
+		return err
+	}
 
 	// update refs
 	if name != "" {
-		err := utils.NewChainRef(name, chainId)
+		err := utils.AddRef(chainId, name)
 		if err != nil {
-			exit(err)
+			return err
 		}
 		logger.Infof("Created ref %s to point to chain %s\n", name, chainId)
 	}
+	return nil
 }
 
-func rename(oldpath, newpath string) {
-	err := os.Rename(oldpath, newpath)
-	if err != nil {
-		exit(err)
-	}
+func rename(oldpath, newpath string) error {
+	return os.Rename(oldpath, newpath)
 }
 
-func copy(oldpath, newpath string) {
-	err := utils.Copy(oldpath, newpath)
-	if err != nil {
-		exit(err)
-	}
+func copy(oldpath, newpath string) error {
+	return utils.Copy(oldpath, newpath)
 }
