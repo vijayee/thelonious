@@ -13,29 +13,34 @@ import (
 var logger *monklog.Logger = monklog.NewLogger("CLI")
 
 var (
-	ini     = flag.String("init", ".", "initialize a monkchain config")
+	ini     = flag.Bool("init", false, "initialize a monkchain config")
 	deploy  = flag.Bool("deploy", false, "deploy a monkchain")
-	tester  = flag.String("t", "", "pick a test: basic, tx, traverse, genesis, genesis-msg, get-storage, msg-storage or all")
 	genesis = flag.String("g", "genesis.json", "pick a genesis contract")
 	name    = flag.String("n", "", "name the chain")
 	config  = flag.String("c", "monk-config.json", "pick config file")
-	blocks  = flag.Int("N", 10, "num blocks to wait before shutdown")
-	pure    = flag.Bool("pure", false, "run a pure eth-go node")
+
+	tester = flag.String("t", "", "pick a test: basic, tx, traverse, genesis, genesis-msg, get-storage, msg-storage or all")
+	blocks = flag.Int("N", 10, "num blocks to wait before shutdown")
 )
 
 func main() {
 	flag.Parse()
 
-	err := monk.InitChain(*ini)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// Initialize a chain by ensuring decerver dirs exist
 	// and dropping a chain config and genesis.json in the
 	// specified directory
-	setflags := specifiedFlags()
-	if _, ok := setflags["init"]; ok {
+	if *ini {
+		args := flag.Args()
+		var p string
+		if len(args) == 0 {
+			p = "."
+		} else {
+			p = args[0]
+		}
+		err := monk.InitChain(p)
+		if err != nil {
+			log.Fatal(err)
+		}
 		os.Exit(0)
 	}
 
@@ -56,13 +61,4 @@ func main() {
 
 	T := monk.NewTester(*tester, *genesis, *blocks)
 	T.Run()
-}
-
-func specifiedFlags() map[string]bool {
-	// compute a map of the flags that have been set
-	setFlags := make(map[string]bool)
-	flag.Visit(func(f *flag.Flag) {
-		setFlags[f.Name] = true
-	})
-	return setFlags
 }

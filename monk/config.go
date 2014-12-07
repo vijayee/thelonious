@@ -120,7 +120,7 @@ func InitChain(configPath string) error {
 	if err != nil {
 		return err
 	}
-	err = utils.WriteJson(DefaultConfig, path.Join(configPath, "monk-chain.json"))
+	err = utils.WriteJson(DefaultConfig, path.Join(configPath, "monk-config.json"))
 	if err != nil {
 		return err
 	}
