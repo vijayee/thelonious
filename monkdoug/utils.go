@@ -11,13 +11,11 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"path"
 	"strconv"
 )
 
 var (
-	GoPath  = os.Getenv("GOPATH")
-	ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
+	GoPath = os.Getenv("GOPATH")
 )
 
 /*

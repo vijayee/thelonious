@@ -285,3 +285,36 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 	}
 	return chainId, nil
 }
+
+// Deploy sequence (done through monk interface for simplicity):
+//  - Create .temp/ for database in current dir
+//  - Read genesis.json and populate struct
+//  - Deploy genesis block and return chainId
+//  - Move .temp/ into ~/.decerver/blockchain/thelonious/chainID
+//  - write name to index file if provided and no conflict
+func DeploySequence(name, genesis, config string) {
+	m := NewMonk(nil)
+	m.ReadConfig(config)
+	m.Config.RootDir = ".temp"
+	m.Config.GenesisConfig = genesis
+	m.Init()
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		exit(err)
+	} else if len(data) == 0 {
+		exit(fmt.Errorf("ChainID is empty!"))
+	}
+	chainId := monkutil.Bytes2Hex(data)
+	err = os.Rename(m.Config.RootDir, path.Join(Thelonious, chainId))
+	if err != nil {
+		exit(err)
+	}
+	if name != "" {
+		err := utils.NewChainRef(name, chainId)
+		if err != nil {
+			exit(err)
+		}
+		logger.Infof("Created ref %s to point to chain %s\n", name, chainId)
+	}
+	exit(nil)
+}

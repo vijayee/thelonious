@@ -291,7 +291,6 @@ func (bc *ChainManager) setLastBlock() {
 		}
 		monkutil.Config.Db.Put([]byte("GenesisBlock"), bc.genesisBlock.RlpEncode())
 		monkutil.Config.Db.Put([]byte("ChainID"), chainId[:])
-		fmt.Println("saved chain id", chainId)
 		bc.chainID = chainId
 	}
 
@@ -314,7 +313,8 @@ func (bc *ChainManager) setLastBlock() {
 	bc.TD = monkutil.BigD(monkutil.Config.Db.LastKnownTD())
 
 	chainlogger.Infof("Last block (#%d) %x\n", bc.currentBlockNumber, bc.currentBlock.Hash())
-	chainlogger.Infof("ChainID (%x) and Genesis (%x)\n", bc.chainID, bc.genesisBlock.Hash())
+	chainlogger.Infof("ChainID (%x) \n", bc.chainID)
+	chainlogger.Infof("Genesis (%x) \n", bc.genesisBlock.Hash())
 }
 
 func (bc *ChainManager) Reset() {

@@ -27,11 +27,6 @@ import (
 	"github.com/eris-ltd/thelonious/monkutil"
 )
 
-var (
-	GoPath = os.Getenv("GOPATH")
-	usr, _ = user.Current() // error?!
-)
-
 //Logging
 var logger *monklog.Logger = monklog.NewLogger("MonkChain(decerver)")
 
@@ -55,8 +50,6 @@ type Monk struct {
 	started    bool
 
 	chans map[string]Chan
-	//chans      map[string]chan events.Event
-	//reactchans map[string]chan monkreact.Event
 }
 
 type Chan struct {
@@ -72,21 +65,20 @@ type Chan struct {
 */
 
 // Create a new MonkModule and internal Monk, with default config.
-// Accepts an thelonious instance to yield a new
+// Accepts a thelonious instance to yield a new
 // interface into the same chain.
-// It will not initialize a thelonious object for you,
-// giving you a chance to adjust configs before calling `Init()`
+// It will not initialize the thelonious object for you though,
+// so you can adjust configs before calling `Init()`
 func NewMonk(th *thelonious.Thelonious) *MonkModule {
 	mm := new(MonkModule)
 	m := new(Monk)
 	// Here we load default config and leave it to caller
-	// to read a config file to overwrite
+	// to overwrite with config file or directly
 	mm.Config = DefaultConfig
 	m.config = mm.Config
 	if th != nil {
 		m.thelonious = th
 	}
-
 	m.started = false
 	mm.monk = m
 	return mm
@@ -97,9 +89,25 @@ func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg
 	return nil
 }
 
-// initialize an monkchain
-// it may or may not already have a thelonious instance
-// basically gives you a pipe, local keyMang, and reactor
+func (mod *MonkModule) ConfigureGenesis() {
+	// setup genesis config and genesis deploy handler
+	if mod.GenesisConfig == nil {
+		// fails if can't read json
+		mod.GenesisConfig = mod.LoadGenesis(mod.monk.config.GenesisConfig)
+	}
+	if mod.GenesisConfig.Pdx != "" {
+		// epm deploy through a pdx file
+		mod.GenesisConfig.SetDeployer(func(block *monkchain.Block) ([]byte, error) {
+			// TODO: get full path
+			return epmDeploy(block, mod.GenesisConfig.Pdx)
+		})
+	}
+	mod.monk.genConfig = mod.GenesisConfig
+}
+
+// Initialize a monkchain
+// It may or may not already have a thelonious instance
+// Gives you a pipe, local keyMang, and reactor
 func (mod *MonkModule) Init() error {
 	m := mod.monk
 	// if didn't call NewMonk
@@ -110,17 +118,7 @@ func (mod *MonkModule) Init() error {
 	// set epm contract path
 	setContractPath(m.config.ContractPath)
 
-	// setup genesis config and genesis deploy handler
-	if mod.GenesisConfig == nil {
-		mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
-	}
-	if mod.GenesisConfig.Pdx != "" {
-		mod.GenesisConfig.Deployer = func(block *monkchain.Block) ([]byte, error) {
-			// TODO: get full path
-			return epmDeploy(block, mod.GenesisConfig.Pdx)
-		}
-	}
-	m.genConfig = mod.GenesisConfig
+	mod.ConfigureGenesis()
 
 	if !m.config.UseCheckpoint {
 		m.config.LatestCheckpoint = ""
@@ -134,26 +132,17 @@ func (mod *MonkModule) Init() error {
 		m.newThelonious()
 	}
 
-	// public interface
-	pipe := monkpipe.New(m.thelonious)
-	// load keys from file. genesis block keys. convenient for testing
-
-	m.pipe = pipe
+	m.pipe = monkpipe.New(m.thelonious)
 	m.keyManager = m.thelonious.KeyManager()
 	m.reactor = m.thelonious.Reactor()
 
 	// subscribe to the new block
 	m.chans = make(map[string]Chan)
-	//m.chans = make(map[string]chan events.Event)
-	//m.reactchans = make(map[string]chan monkreact.Event)
-	m.Subscribe("newBlock", "newBlock", "")
-
-	log.Println(m.thelonious.Port)
 
 	return nil
 }
 
-// start the thelonious node
+// Start the thelonious node
 func (mod *MonkModule) Start() (err error) {
 	m := mod.monk
 	remote := m.config.RemoteHost + ":" + strconv.Itoa(m.config.RemotePort)
@@ -171,6 +160,8 @@ func (mod *MonkModule) Start() (err error) {
 	if m.config.ServeRpc {
 		StartRpc(m.thelonious, m.config.RpcHost, m.config.RpcPort)
 	}
+
+	m.Subscribe("newBlock", "newBlock", "")
 
 	return nil
 }

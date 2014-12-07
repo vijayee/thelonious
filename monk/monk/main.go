@@ -2,63 +2,47 @@ package main
 
 import (
 	"flag"
+	"github.com/eris-ltd/thelonious/monk"
+	"github.com/eris-ltd/thelonious/monklog"
 	"log"
 	"net/http"
-	"os"
-	//"github.com/ethereum/eth-go"
-	//"github.com/ethereum/go-ethereum/utils"
-	//"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monk"
 	_ "net/http/pprof"
+	"os"
 )
 
+var logger *monklog.Logger = monklog.NewLogger("CLI")
+
 var (
+	ini     = flag.String("init", ".", "initialize a monkchain config")
+	deploy  = flag.Bool("deploy", false, "deploy a monkchain")
 	tester  = flag.String("t", "", "pick a test: basic, tx, traverse, genesis, genesis-msg, get-storage, msg-storage or all")
-	genesis = flag.String("g", "", "pick a genesis contract:")
-	blocks  = flag.Int("n", 10, "num blocks to wait before shutdown")
+	genesis = flag.String("g", "genesis.json", "pick a genesis contract")
+	name    = flag.String("n", "", "name the chain")
+	config  = flag.String("c", "monk-config.json", "pick config file")
+	blocks  = flag.Int("N", 10, "num blocks to wait before shutdown")
 	pure    = flag.Bool("pure", false, "run a pure eth-go node")
 )
 
-/*
-// this is for running a pure eth-go node
-func NewThelonious() *eth.Thelonious{
-    db := utils.NewDatabase()
-
-    keyManager := utils.NewKeyManager("db", "./datadir", db)
-    keyManager.Init("", 0, true)
-
-    clientIdentity := utils.NewClientIdentity("fucker","0.3", "")
-
-    // create the ethereum obj
-    ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, false)
-
-    if err != nil {
-        log.Fatal("Could not start node: %s\n", err)
-    }
-
-    ethereum.Port = strconv.Itoa(30303)
-    ethereum.MaxPeers = 10
-
-    return ethereum
-}
-
-func Run(){
-    monkutil.ReadConfig(path.Join("./datadir", "config"), "./datadir", "monkchain")
-    // data dir, logfile, log level, debug file
-    utils.InitLogging("./datadir", "", 5, "")
-    e := NewThelonious()
-    e.Start(false)
-    utils.StartMining(e)
-    e.WaitForShutdown()
-}
-*/
-
 func main() {
 	flag.Parse()
-	/*
-	   if *pure{
-	       Run() //blocks until shutdown
-	   }*/
+
+	err := monk.InitChain(*ini)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialize a chain by ensuring decerver dirs exist
+	// and dropping a chain config and genesis.json in the
+	// specified directory
+	setflags := specifiedFlags()
+	if _, ok := setflags["init"]; ok {
+		os.Exit(0)
+	}
+
+	if *deploy {
+		// deploy the genblock, copy into ~/.decerver, exit
+		monk.DeploySequence(*name, *genesis, *config)
+	}
 
 	if *tester == "" {
 		flag.Usage()
@@ -72,4 +56,13 @@ func main() {
 
 	T := monk.NewTester(*tester, *genesis, *blocks)
 	T.Run()
+}
+
+func specifiedFlags() map[string]bool {
+	// compute a map of the flags that have been set
+	setFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		setFlags[f.Name] = true
+	})
+	return setFlags
 }

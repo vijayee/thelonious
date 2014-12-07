@@ -5,15 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eris-ltd/decerver-interfaces/glue/utils"
+	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"io"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path"
 	"reflect"
 )
 
-var ErisLtd = path.Join(GoPath, "src", "github.com", "eris-ltd")
+var (
+	GoPath     = os.Getenv("GOPATH")
+	usr, _     = user.Current() // error?!
+	ErisLtd    = utils.ErisLtd
+	Decerver   = utils.Decerver
+	Thelonious = path.Join(utils.Blockchains, "thelonious")
+)
 
 type ChainConfig struct {
 	// Networking
@@ -26,6 +33,10 @@ type ChainConfig struct {
 	RpcHost    string `json:"rpc_host"`
 	RpcPort    int    `json:"rpc_port"`
 	ServeRpc   bool   `json:"serve_rpc"`
+
+	// ChainId and Name
+	ChainId   string `json:"chain_id"`
+	ChainName string `json:"chain_name"`
 
 	// Local Node
 	Mining           bool   `json:"mining"`
@@ -68,11 +79,15 @@ var DefaultConfig = &ChainConfig{
 	RpcPort:    30304,
 	ServeRpc:   false,
 
+	// ChainId and Name
+	ChainId:   "",
+	ChainName: "monk",
+
 	// Local Node
 	Mining:           false,
 	MaxPeers:         10,
 	ClientIdentifier: "Thelonious(decerver)",
-	Version:          "0.5.17",
+	Version:          "0.7.0",
 	Identifier:       "chainId",
 	KeySession:       "generous",
 	KeyStore:         "file",
@@ -84,16 +99,32 @@ var DefaultConfig = &ChainConfig{
 
 	// Paths
 	ConfigFile:    "config",
-	RootDir:       path.Join(usr.HomeDir, ".monkchain2"),
+	RootDir:       path.Join(Thelonious, "default-chain"),
 	DbName:        "database",
 	LLLPath:       "NETCALL", //path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
 	ContractPath:  path.Join(ErisLtd, "eris-std-lib"),
-	GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis-std.json"),
+	GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis.json"),
 
 	// Log
 	LogFile:   "",
 	DebugFile: "",
 	LogLevel:  5,
+}
+
+func InitChain(configPath string) error {
+	err := utils.InitDecerverDir()
+	if err != nil {
+		return err
+	}
+	err = utils.InitDataDir(Thelonious)
+	if err != nil {
+		return err
+	}
+	err = utils.WriteJson(DefaultConfig, path.Join(configPath, "monk-chain.json"))
+	if err != nil {
+		return err
+	}
+	return utils.WriteJson(monkdoug.DefaultGenesis, path.Join(configPath, "genesis.json"))
 }
 
 // Marshal the current configuration to file in pretty json.
@@ -112,9 +143,8 @@ func (mod *MonkModule) WriteConfig(config_file string) {
 func (mod *MonkModule) ReadConfig(config_file string) {
 	b, err := ioutil.ReadFile(config_file)
 	if err != nil {
-		fmt.Println("could not read config", err)
-		fmt.Println("resorting to defaults")
-		mod.WriteConfig(config_file)
+		logger.Errorln("Could not read config file", err)
+		logger.Errorln("Did you run `monk -init`?")
 		return
 	}
 	var config ChainConfig
@@ -170,40 +200,14 @@ func (monk *Monk) thConfig() {
 
 	// check on data dir
 	// create keys
-	_, err := os.Stat(cfg.RootDir)
+	utils.InitDataDir(cfg.RootDir)
+	_, err := os.Stat(path.Join(cfg.RootDir, cfg.KeySession) + ".prv")
 	if err != nil {
-		os.Mkdir(cfg.RootDir, 0777)
-		_, err := os.Stat(path.Join(cfg.RootDir, cfg.KeySession) + ".prv")
-		if err != nil {
-			Copy(cfg.KeyFile, path.Join(cfg.RootDir, cfg.KeySession)+".prv")
-		}
+		utils.Copy(cfg.KeyFile, path.Join(cfg.RootDir, cfg.KeySession)+".prv")
 	}
 	// a global monkutil.Config object is used for shared global access to the db.
 	// this also uses rakyl/globalconf, but we mostly ignore all that
 	monkutil.Config = &monkutil.ConfigManager{ExecPath: cfg.RootDir, Debug: true, Paranoia: true}
 	// TODO: enhance this with more pkg level control
 	utils.InitLogging(cfg.RootDir, cfg.LogFile, cfg.LogLevel, cfg.DebugFile)
-}
-
-// Is there really no way to copy a file in the std lib?
-func Copy(src, dst string) {
-	r, err := os.Open(src)
-	if err != nil {
-		logger.Errorln(err)
-		return
-	}
-	defer r.Close()
-
-	w, err := os.Create(dst)
-	if err != nil {
-		logger.Errorln(err)
-		return
-	}
-	defer w.Close()
-
-	_, err = io.Copy(w, r)
-	if err != nil {
-		logger.Errorln(err)
-		return
-	}
 }

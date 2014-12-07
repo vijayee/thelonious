@@ -3,6 +3,7 @@ package monkdoug
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monklog"
@@ -86,7 +87,7 @@ type GenesisConfig struct {
 	chainId string
 
 	// so we can register a deployer function (which might import monkdoug)
-	Deployer func(block *monkchain.Block) ([]byte, error)
+	deployer func(block *monkchain.Block) ([]byte, error)
 }
 
 // A protocol level call executed through the vm
@@ -134,6 +135,14 @@ func (g *GenesisConfig) SetModel() {
 	g.protocol = NewProtocol(g)
 }
 
+func (g *GenesisConfig) Deployer(block *monkchain.Block) ([]byte, error) {
+	return g.deployer(block)
+}
+
+func (g *GenesisConfig) SetDeployer(f func(block *monkchain.Block) ([]byte, error)) {
+	g.deployer = f
+}
+
 // Load the genesis block info from genesis.json
 func LoadGenesis(file string) *GenesisConfig {
 	douglogger.Infoln("Loading genesis config:", file)
@@ -157,21 +166,21 @@ func LoadGenesis(file string) *GenesisConfig {
 
 	g.byteAddr = []byte(g.Address)
 	g.hexAddr = monkutil.Bytes2Hex(g.byteAddr)
-	g.contractPath = path.Join(ErisLtd, "eris-std-lib")
+	g.contractPath = path.Join(utils.ErisLtd, "eris-std-lib")
 
-    g.Init()
+	g.Init()
 
 	return g
 }
 
 // Initialize the Protocol and Deployer for a populated GenesisConfig
-func (g *GenesisConfig) Init(){
+func (g *GenesisConfig) Init() {
 	// set doug model
 	g.protocol = NewProtocol(g)
 
 	// set default deploy function
-    douglogger.Debugln("Hooking default deploy function")
-	g.Deployer = g.Deploy
+	douglogger.Debugln("Hooking default deploy function")
+	g.SetDeployer(g.Deploy)
 }
 
 // Deploy the genesis block
@@ -192,7 +201,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	douglogger.Debugf("Using %x for deploy\n", keys.Address())
+	douglogger.Debugf("Using signing address %x for deploy\n", keys.Address())
 
 	// create the genesis doug
 	codePath := path.Join(g.contractPath, g.DougPath)
@@ -255,7 +264,7 @@ func (g *GenesisConfig) bankRollAndPerms(keys *monkcrypto.KeyPair, block *monkch
 			if account.Permissions["mine"] != 0 {
 				SetValue(g.byteAddr, []string{"addminer", account.Name, "0x" + account.Address, "0x" + strconv.Itoa(account.Stake)}, keys, block)
 			}
-			douglogger.Debugln("Setting permissions for", account.Address)
+			douglogger.Debugln("Setting permissions for ", account.Address)
 		}
 	}
 }
@@ -432,20 +441,20 @@ func NewPermModel(g *GenesisConfig) (model monkchain.Consensus) {
 // TODO: make a lookup-able suite of these
 var DefaultGenesis = defaultGenesis()
 
-func defaultGenesis() *GenesisConfig{
-    g := &GenesisConfig{
-        NoGenDoug:  true,
-        Difficulty: 15,
-        Accounts: []*Account{
-            &Account{
-                Address:  "0xbbbd0256041f7aed3ce278c56ee61492de96d001",
-                byteAddr: monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001"),
-                Balance:  "1000000000000000000000000000000000000",
-            },
-        },
-    }
-    g.Init()
-    return g
+func defaultGenesis() *GenesisConfig {
+	g := &GenesisConfig{
+		NoGenDoug:  true,
+		Difficulty: 15,
+		Accounts: []*Account{
+			&Account{
+				Address:  "0xbbbd0256041f7aed3ce278c56ee61492de96d001",
+				byteAddr: monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001"),
+				Balance:  "1000000000000000000000000000000000000",
+			},
+		},
+	}
+	g.Init()
+	return g
 }
 
 // Contract suites for vm based protocol
