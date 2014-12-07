@@ -30,6 +30,10 @@ import (
 //Logging
 var logger *monklog.Logger = monklog.NewLogger("MonkChain(decerver)")
 
+func init() {
+	utils.InitDecerverDir()
+}
+
 // implements decerver-interfaces Module
 type MonkModule struct {
 	monk          *Monk
@@ -644,6 +648,8 @@ func (m *Monk) newThelonious() {
 	if err != nil {
 		log.Fatal("Could not start node: %s\n", err)
 	}
+
+	logger.Infoln("Created thelonious node")
 
 	th.Port = strconv.Itoa(m.config.ListenPort)
 	th.MaxPeers = m.config.MaxPeers

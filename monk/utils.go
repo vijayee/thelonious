@@ -268,14 +268,20 @@ func setContractPath(p string) {
 func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 	m := genblock.NewGenBlockModule(block)
 	m.Config.LogLevel = 5
-	m.Init()
-	m.Start()
-	e := epm.NewEPM(m, ".epm-log")
-	err := e.Parse(pkgDef)
+	err := m.Init()
 	if err != nil {
 		return nil, err
 	}
+	m.Start()
 	epm.ErrMode = epm.ReturnOnErr
+	e, err := epm.NewEPM(m, ".epm-log")
+	if err != nil {
+		return nil, err
+	}
+	err = e.Parse(pkgDef)
+	if err != nil {
+		return nil, err
+	}
 	err = e.ExecuteJobs()
 	if err != nil {
 		return nil, err
