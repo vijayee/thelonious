@@ -97,7 +97,7 @@ func (mod *MonkModule) ConfigureGenesis() {
 		// fails if can't read json
 		mod.GenesisConfig = mod.LoadGenesis(mod.monk.config.GenesisConfig)
 	}
-	if mod.GenesisConfig.Pdx != "" {
+	if mod.GenesisConfig.Pdx != "" && !mod.GenesisConfig.NoGenDoug{
 		// epm deploy through a pdx file
 		mod.GenesisConfig.SetDeployer(func(block *monkchain.Block) ([]byte, error) {
 			// TODO: get full path
