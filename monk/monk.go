@@ -1,20 +1,18 @@
 package monk
 
 import (
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
-	"os/user"
 	"strconv"
 	"time"
 
-	"github.com/eris-ltd/decerver-interfaces/core"
-	"github.com/eris-ltd/decerver-interfaces/events"
-	"github.com/eris-ltd/decerver-interfaces/glue/utils"
-	"github.com/eris-ltd/decerver-interfaces/modules"
+	core "github.com/eris-ltd/decerver-interfaces/core"
+	events "github.com/eris-ltd/decerver-interfaces/events"
+	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
+	utils "github.com/eris-ltd/decerver-interfaces/glue/utils"
+	modules "github.com/eris-ltd/decerver-interfaces/modules"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -28,7 +26,7 @@ import (
 )
 
 //Logging
-var logger *monklog.Logger = monklog.NewLogger("MonkChain(decerver)")
+var logger *monklog.Logger = monklog.NewLogger("MONK")
 
 func init() {
 	utils.InitDecerverDir()
@@ -446,19 +444,22 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 
 func (monk *Monk) Script(file, lang string) (string, error) {
 	var script string
+	var err error
 	if lang == "lll-literal" {
-		script = CompileLLL(file, true)
+		script, err = CompileLLL(file, true)
 	}
 	if lang == "lll" {
-		script = CompileLLL(file, false) // if lll, compile and pass along
-	} else if lang == "mutan" {
-		s, _ := ioutil.ReadFile(file) // if mutan, pass along and pipe will compile
-		script = string(s)
+		script, err = CompileLLL(file, false) // if lll, compile and pass along
 	} else if lang == "serpent" {
-
+		// TODO ...
 	} else {
 		script = file
 	}
+
+	if err != nil {
+		return "", err
+	}
+
 	// messy key system...
 	// monkchain should have an 'active key'
 	keys := monk.fetchKeyPair()
@@ -628,16 +629,16 @@ func (monk *Monk) AddressCount() int {
 // expects thConfig to already have been called!
 // init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
 func (m *Monk) newThelonious() {
-	db := utils.NewDatabase(m.config.DbName)
+	db := mutils.NewDatabase(m.config.DbName)
 
-	keyManager := utils.NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
+	keyManager := mutils.NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 	m.keyManager = keyManager
 
-	clientIdentity := utils.NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
+	clientIdentity := mutils.NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
 	logger.Infoln("Identity created")
 
 	checkpoint := monkutil.UserHex2Bytes(m.config.LatestCheckpoint)
@@ -710,107 +711,4 @@ func (monk *Monk) Stop() {
 	fmt.Println("stopped thelonious")
 	monk = &Monk{config: monk.config}
 	monklog.Reset()
-}
-
-// compile LLL file into evm bytecode
-// returns hex
-func CompileLLL(filename string, literal bool) string {
-	code, err := monkutil.CompileLLL(filename, literal)
-	if err != nil {
-		fmt.Println("error compiling lll!", err)
-		return ""
-	}
-	return "0x" + monkutil.Bytes2Hex(code)
-}
-
-// some convenience functions
-
-// get users home directory
-func homeDir() string {
-	usr, _ := user.Current()
-	return usr.HomeDir
-}
-
-// convert a big int from string to hex
-func BigNumStrToHex(s string) string {
-	bignum := monkutil.Big(s)
-	bignum_bytes := monkutil.BigToBytes(bignum, 16)
-	return monkutil.Bytes2Hex(bignum_bytes)
-}
-
-// takes a string, converts to bytes, returns hex
-func SHA3(tohash string) string {
-	h := monkcrypto.Sha3Bin([]byte(tohash))
-	return monkutil.Bytes2Hex(h)
-}
-
-// pack data into acceptable format for transaction
-// TODO: make sure this is ok ...
-// TODO: this is in two places, clean it up you putz
-func PackTxDataArgs(args ...string) string {
-	//fmt.Println("pack data:", args)
-	ret := *new([]byte)
-	for _, s := range args {
-		if s[:2] == "0x" {
-			t := s[2:]
-			if len(t)%2 == 1 {
-				t = "0" + t
-			}
-			x := monkutil.Hex2Bytes(t)
-			//fmt.Println(x)
-			l := len(x)
-			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
-		} else {
-			x := []byte(s)
-			l := len(x)
-			// TODO: just changed from right to left. yabadabadoooooo take care!
-			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
-		}
-	}
-	return "0x" + monkutil.Bytes2Hex(ret)
-	// return ret
-}
-
-// convert thelonious block to modules block
-func convertBlock(block *monkchain.Block) *modules.Block {
-	if block == nil {
-		return nil
-	}
-	b := &modules.Block{}
-	b.Coinbase = hex.EncodeToString(block.Coinbase)
-	b.Difficulty = block.Difficulty.String()
-	b.GasLimit = block.GasLimit.String()
-	b.GasUsed = block.GasUsed.String()
-	b.Hash = hex.EncodeToString(block.Hash())
-	b.MinGasPrice = block.MinGasPrice.String()
-	b.Nonce = hex.EncodeToString(block.Nonce)
-	b.Number = block.Number.String()
-	b.PrevHash = hex.EncodeToString(block.PrevHash)
-	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction, len(block.Transactions()))
-	for idx, tx := range block.Transactions() {
-		txs[idx] = convertTx(tx)
-	}
-	b.Transactions = txs
-	b.TxRoot = hex.EncodeToString(block.TxSha)
-	b.UncleRoot = hex.EncodeToString(block.UncleSha)
-	b.Uncles = make([]string, len(block.Uncles))
-	for idx, u := range block.Uncles {
-		b.Uncles[idx] = hex.EncodeToString(u.Hash())
-	}
-	return b
-}
-
-// convert thelonious tx to modules tx
-func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
-	tx := &modules.Transaction{}
-	tx.ContractCreation = monkTx.CreatesContract()
-	tx.Gas = monkTx.Gas.String()
-	tx.GasCost = monkTx.GasPrice.String()
-	tx.Hash = hex.EncodeToString(monkTx.Hash())
-	tx.Nonce = fmt.Sprintf("%d", monkTx.Nonce)
-	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
-	tx.Sender = hex.EncodeToString(monkTx.Sender())
-	tx.Value = monkTx.Value.String()
-	return tx
 }

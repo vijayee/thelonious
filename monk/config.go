@@ -56,9 +56,13 @@ type ChainConfig struct {
 	ConfigFile    string `json:"config_file"`
 	RootDir       string `json:"root_dir"`
 	DbName        string `json:"db_name"`
-	LLLPath       string `json:"lll_path"`
 	ContractPath  string `json:"contract_path"`
 	GenesisConfig string `json:"genesis_config"`
+
+	// Language Compilation
+	LLLPath   string `json:"lll_path"`
+	LLLServer string `json:"lll_server"`
+	LLLLocal  bool   `json:"lll_local"`
 
 	// Logs
 	LogFile   string `json:"log_file"`
@@ -101,9 +105,13 @@ var DefaultConfig = &ChainConfig{
 	ConfigFile:    "config",
 	RootDir:       path.Join(Thelonious, "default-chain"),
 	DbName:        "database",
-	LLLPath:       "NETCALL", //path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
 	ContractPath:  path.Join(ErisLtd, "eris-std-lib"),
 	GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis.json"),
+
+	// Language Compilation
+	LLLPath:   path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
+	LLLServer: "http://lllc.erisindustries.com/compile",
+	LLLLocal:  false,
 
 	// Log
 	LogFile:   "",
@@ -194,8 +202,13 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error {
 func (monk *Monk) thConfig() {
 	cfg := monk.config
 	// set lll path
-	if cfg.LLLPath != "" {
-		monkutil.PathToLLL = cfg.LLLPath
+	if cfg.LLLLocal {
+		if cfg.LLLPath != "" {
+			monkutil.PathToLLL = cfg.LLLPath
+		}
+	} else {
+		// TODO: set server address in monkutil...
+		//  (drop NETCALL crap)
 	}
 
 	// check on data dir

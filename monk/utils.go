@@ -1,9 +1,11 @@
 package monk
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/signal"
+	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -14,7 +16,9 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
+	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
 	"github.com/eris-ltd/decerver-interfaces/glue/utils"
+	"github.com/eris-ltd/decerver-interfaces/modules"
 	"github.com/eris-ltd/epm-go"
 
 	eth "github.com/eris-ltd/thelonious"
@@ -300,13 +304,17 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 //  - Deploy genesis block and return chainId
 //  - Move .temp/ into ~/.decerver/blockchain/thelonious/chainID
 //  - write name to index file if provided and no conflict
-func DeploySequence(name, genesis, config string) error {
+func DeploySequence(name, genesis, config string) (string, error) {
 	root := ".temp"
 	chainId, err := DeployChain(root, genesis, config)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return InstallChain(root, name, genesis, config, chainId)
+	if err := InstallChain(root, name, genesis, config, chainId); err != nil {
+		return "", err
+	}
+
+	return chainId, nil
 }
 
 func DeployChain(root, genesis, config string) (string, error) {
@@ -324,6 +332,7 @@ func DeployChain(root, genesis, config string) (string, error) {
 	if err := m.Init(); err != nil {
 		return "", err
 	}
+
 	// get the chain id
 	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
 	if err != nil {
@@ -361,10 +370,126 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 	return nil
 }
 
+func ChainIdFromDb(root string) (string, error) {
+	monkutil.Config = &monkutil.ConfigManager{ExecPath: root, Debug: true, Paranoia: true}
+	db := mutils.NewDatabase("database")
+	monkutil.Config.Db = db
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return "", err
+	}
+	if len(data) == 0 {
+		return "", fmt.Errorf("Empty ChainID!")
+	}
+	return monkutil.Bytes2Hex(data), nil
+}
+
 func rename(oldpath, newpath string) error {
 	return os.Rename(oldpath, newpath)
 }
 
 func copy(oldpath, newpath string) error {
 	return utils.Copy(oldpath, newpath)
+}
+
+// compile LLL file into evm bytecode
+// returns hex
+func CompileLLL(filename string, literal bool) (string, error) {
+	code, err := monkutil.CompileLLL(filename, literal)
+	if err != nil {
+		return "", err
+	}
+	return "0x" + monkutil.Bytes2Hex(code), nil
+}
+
+// some convenience functions
+
+// get users home directory
+func homeDir() string {
+	usr, _ := user.Current()
+	return usr.HomeDir
+}
+
+// convert a big int from string to hex
+func BigNumStrToHex(s string) string {
+	bignum := monkutil.Big(s)
+	bignum_bytes := monkutil.BigToBytes(bignum, 16)
+	return monkutil.Bytes2Hex(bignum_bytes)
+}
+
+// takes a string, converts to bytes, returns hex
+func SHA3(tohash string) string {
+	h := monkcrypto.Sha3Bin([]byte(tohash))
+	return monkutil.Bytes2Hex(h)
+}
+
+// pack data into acceptable format for transaction
+// TODO: make sure this is ok ...
+// TODO: this is in two places, clean it up you putz
+func PackTxDataArgs(args ...string) string {
+	//fmt.Println("pack data:", args)
+	ret := *new([]byte)
+	for _, s := range args {
+		if s[:2] == "0x" {
+			t := s[2:]
+			if len(t)%2 == 1 {
+				t = "0" + t
+			}
+			x := monkutil.Hex2Bytes(t)
+			//fmt.Println(x)
+			l := len(x)
+			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
+		} else {
+			x := []byte(s)
+			l := len(x)
+			// TODO: just changed from right to left. yabadabadoooooo take care!
+			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
+		}
+	}
+	return "0x" + monkutil.Bytes2Hex(ret)
+	// return ret
+}
+
+// convert thelonious block to modules block
+func convertBlock(block *monkchain.Block) *modules.Block {
+	if block == nil {
+		return nil
+	}
+	b := &modules.Block{}
+	b.Coinbase = hex.EncodeToString(block.Coinbase)
+	b.Difficulty = block.Difficulty.String()
+	b.GasLimit = block.GasLimit.String()
+	b.GasUsed = block.GasUsed.String()
+	b.Hash = hex.EncodeToString(block.Hash())
+	b.MinGasPrice = block.MinGasPrice.String()
+	b.Nonce = hex.EncodeToString(block.Nonce)
+	b.Number = block.Number.String()
+	b.PrevHash = hex.EncodeToString(block.PrevHash)
+	b.Time = int(block.Time)
+	txs := make([]*modules.Transaction, len(block.Transactions()))
+	for idx, tx := range block.Transactions() {
+		txs[idx] = convertTx(tx)
+	}
+	b.Transactions = txs
+	b.TxRoot = hex.EncodeToString(block.TxSha)
+	b.UncleRoot = hex.EncodeToString(block.UncleSha)
+	b.Uncles = make([]string, len(block.Uncles))
+	for idx, u := range block.Uncles {
+		b.Uncles[idx] = hex.EncodeToString(u.Hash())
+	}
+	return b
+}
+
+// convert thelonious tx to modules tx
+func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
+	tx := &modules.Transaction{}
+	tx.ContractCreation = monkTx.CreatesContract()
+	tx.Gas = monkTx.Gas.String()
+	tx.GasCost = monkTx.GasPrice.String()
+	tx.Hash = hex.EncodeToString(monkTx.Hash())
+	tx.Nonce = fmt.Sprintf("%d", monkTx.Nonce)
+	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
+	tx.Sender = hex.EncodeToString(monkTx.Sender())
+	tx.Value = monkTx.Value.String()
+	return tx
 }

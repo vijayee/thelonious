@@ -115,8 +115,8 @@ func NewLogger(tag string) *Logger {
 	return &Logger{tag}
 }
 
-func IsNil() bool{
-    return logSystems == nil
+func IsNil() bool {
+	return logSystems == nil
 }
 
 func AddLogSystem(logSystem LogSystem) {

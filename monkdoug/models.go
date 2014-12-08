@@ -24,7 +24,7 @@ func (p *Protocol) Doug() []byte {
 }
 
 func (p *Protocol) Deploy(block *monkchain.Block) ([]byte, error) {
-    // TODO: try deployer, fall back to default deployer
+	// TODO: try deployer, fall back to default deployer
 	return p.g.Deployer(block)
 }
 
