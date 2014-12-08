@@ -253,7 +253,23 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			gas.Set(GasCreate)
 
 			newMemSize = calcMemSize(stack.data[stack.Len()-2], stack.data[stack.Len()-3])
+
+        case RLPDECODE:
+            require(3)
+			size, offset := stack.Peekn()
+            // TODO: be more efficient - we end up running the decode twice!
+			rawrlp := mem.Get(offset.Int64(), size.Int64())
+            decoded, _ := monkutil.Decode(rawrlp, 0)
+            d, ok := decoded.([]interface{})
+            if !ok{
+			    return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
+            }
+            
+            // we need this many more bytes in our memory array
+            n := len(d)*32
+            newMemSize = calcMemSize(stack.data[stack.Len()-3], big.NewInt(int64(n)))
 		}
+
 
 		if newMemSize.Cmp(monkutil.Big0) > 0 {
 			newMemSize.Add(newMemSize, u256(31))
@@ -527,6 +543,42 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(monkutil.BigD(data))
 
 			self.Printf(" => %x", data)
+
+        case RLPDECODE:
+            // TODO: bad rlp will crash the client 
+            //  we need to fix that or else this is too dangerous :(
+
+            // note this will not handle recursion!
+            // if any rlp decode results in nested arrays, the call fails
+            require(3)
+            // where the rlp is located in memory
+			size, offset := stack.Popn()
+            // where to start dropping the decoded values in memory
+            pos := stack.Pop()
+
+            // decode the raw rlp
+            // loop through list
+            // left pad everything to 32 bytes and drop in memory
+			rawrlp := mem.Get(offset.Int64(), size.Int64())
+            decoded, _ := monkutil.Decode(rawrlp, 0)
+            d, ok := decoded.([]interface{})
+            if !ok{
+			    return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
+            }
+            for i, dd := range d{
+                if _, ok := dd.([]interface{}); ok{
+			        return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
+                }
+                b, ok := dd.([]byte)
+                if !ok{
+			        return closure.Return(nil), fmt.Errorf("RlpDecode contains non byte-array %x", dd)
+                }
+                b = monkutil.LeftPadBytes(b, 32)
+                // stick in memory
+			    mem.Set(pos.Int64() + int64(32*i), 32, b)
+            }
+            self.Printf(" => Decoded %d values", len(d))
+
 			// 0x30 range
 		case ADDRESS:
 			stack.Push(monkutil.BigD(closure.Address()))

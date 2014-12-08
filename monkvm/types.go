@@ -39,7 +39,8 @@ const (
 
 const (
 	// 0x20 range - crypto
-	SHA3 = 0x20
+	SHA3 = iota + 0x20
+    RLPDECODE
 )
 
 const (
@@ -203,6 +204,7 @@ var opCodeToString = map[OpCode]string{
 
 	// 0x20 range - crypto
 	SHA3: "SHA3",
+    RLPDECODE: "RLPDECODE",
 
 	// 0x30 range - closure state
 	ADDRESS:       "ADDRESS",
@@ -362,6 +364,7 @@ var OpCodes = map[string]byte{
 
 	// 0x20 range - crypto
 	"SHA3": 0x20,
+    "RLPDECODE": 0x21,
 
 	// 0x30 range - closure state
 	"ADDRESS":       0x30,
