@@ -263,7 +263,7 @@ func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager) {
 }
 
 // Set the EPM contract root
-func setContractPath(p string) {
+func setEpmContractPath(p string) {
 	epm.ContractPath = p
 }
 
@@ -329,6 +329,7 @@ func DeployChain(root, genesis, config string) (string, error) {
 	} else {
 		m.Config.GenesisConfig = genesis
 	}
+
 	if err := m.Init(); err != nil {
 		return "", err
 	}
@@ -345,11 +346,13 @@ func DeployChain(root, genesis, config string) (string, error) {
 }
 
 func InstallChain(root, name, genesis, config, chainId string) error {
+	monkutil.Config.Db.Close()
+
 	// move datastore and configs
-	if err := utils.InitDataDir(path.Join(Thelonious, chainId, "datastore")); err != nil {
+	if err := utils.InitDataDir(path.Join(Thelonious, chainId)); err != nil {
 		return err
 	}
-	if err := rename(root, path.Join(Thelonious, chainId, "datastore")); err != nil {
+	if err := rename(root, path.Join(Thelonious, chainId)); err != nil {
 		return err
 	}
 	if err := copy(config, path.Join(Thelonious, chainId, "config.json")); err != nil {
@@ -367,6 +370,7 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		}
 		logger.Infof("Created ref %s to point to chain %s\n", name, chainId)
 	}
+
 	return nil
 }
 

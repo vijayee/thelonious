@@ -270,6 +270,7 @@ func (bc *ChainManager) setLastBlock() {
 	// check for a genesis block
 	data, _ := monkutil.Config.Db.Get([]byte("GenesisBlock"))
 	if len(data) != 0 {
+		chainlogger.Infoln("Found genesis block")
 		bc.genesisBlock = NewBlockFromBytes(data)
 		data, _ = monkutil.Config.Db.Get([]byte("ChainID"))
 		if len(data) == 0 {
@@ -285,6 +286,7 @@ func (bc *ChainManager) setLastBlock() {
 	} else {
 		// no genesis block found. fire up a deploy
 		// save genesis and chainId to db
+		chainlogger.Infoln("Genesis block not found. Deploying.")
 		chainId, err := bc.protocol.Deploy(bc.genesisBlock)
 		if err != nil {
 			log.Fatal("Genesis deploy failed:", err)

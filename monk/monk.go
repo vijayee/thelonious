@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
@@ -91,13 +92,30 @@ func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg
 	return nil
 }
 
+// Configure the GenesisConfig struct
+// If the chain already exists, use the provided genesis config
+// TODO: move genconfig into db (safer than a config file)
+//          but really we should reconstruct it from the genesis block
 func (mod *MonkModule) ConfigureGenesis() {
+	// first check if this chain already exists (and load genesis config from there)
+	_, err := os.Stat(mod.Config.RootDir)
+	if err == nil {
+		p := path.Join(mod.Config.RootDir, "genesis.json")
+		_, err = os.Stat(p)
+		if err == nil {
+			mod.monk.config.GenesisConfig = p
+			mod.GenesisConfig = mod.LoadGenesis(p)
+		} else {
+			//exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
+		}
+	}
+
 	// setup genesis config and genesis deploy handler
 	if mod.GenesisConfig == nil {
 		// fails if can't read json
 		mod.GenesisConfig = mod.LoadGenesis(mod.monk.config.GenesisConfig)
 	}
-	if mod.GenesisConfig.Pdx != "" && !mod.GenesisConfig.NoGenDoug{
+	if mod.GenesisConfig.Pdx != "" && !mod.GenesisConfig.NoGenDoug {
 		// epm deploy through a pdx file
 		mod.GenesisConfig.SetDeployer(func(block *monkchain.Block) ([]byte, error) {
 			// TODO: get full path
@@ -110,15 +128,21 @@ func (mod *MonkModule) ConfigureGenesis() {
 // Initialize a monkchain
 // It may or may not already have a thelonious instance
 // Gives you a pipe, local keyMang, and reactor
+// NewMonk must have been called first
 func (mod *MonkModule) Init() error {
 	m := mod.monk
 	// if didn't call NewMonk
-	if m.config == nil {
-		m.config = DefaultConfig
+	if m == nil {
+		return fmt.Errorf("NewMonk has not been called")
 	}
 
 	// set epm contract path
-	setContractPath(m.config.ContractPath)
+	setEpmContractPath(m.config.ContractPath)
+
+	// set the root
+	// name > chainId > rootDir > default
+	mod.setRootDir()
+	fmt.Println("root:", mod.Config.RootDir)
 
 	mod.ConfigureGenesis()
 
@@ -460,8 +484,6 @@ func (monk *Monk) Script(file, lang string) (string, error) {
 		return "", err
 	}
 
-	// messy key system...
-	// monkchain should have an 'active key'
 	keys := monk.fetchKeyPair()
 
 	// well isn't this pretty! barf
@@ -711,4 +733,19 @@ func (monk *Monk) Stop() {
 	fmt.Println("stopped thelonious")
 	monk = &Monk{config: monk.config}
 	monklog.Reset()
+}
+
+func (mod *MonkModule) setRootDir() {
+	c := mod.Config
+	// if RootDir is set, we're done
+	if c.RootDir != "" {
+		return
+	}
+
+	root := utils.ResolveChain("thelonious", c.ChainName, c.ChainId)
+	if root == "" {
+		c.RootDir = defaultRoot
+	} else {
+		c.RootDir = root
+	}
 }

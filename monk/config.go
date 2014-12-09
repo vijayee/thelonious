@@ -20,6 +20,8 @@ var (
 	ErisLtd    = utils.ErisLtd
 	Decerver   = utils.Decerver
 	Thelonious = path.Join(utils.Blockchains, "thelonious")
+
+	defaultRoot = path.Join(Thelonious, "default-chain")
 )
 
 type ChainConfig struct {
@@ -85,7 +87,7 @@ var DefaultConfig = &ChainConfig{
 
 	// ChainId and Name
 	ChainId:   "",
-	ChainName: "monk",
+	ChainName: "",
 
 	// Local Node
 	Mining:           false,
@@ -103,7 +105,7 @@ var DefaultConfig = &ChainConfig{
 
 	// Paths
 	ConfigFile:    "config",
-	RootDir:       path.Join(Thelonious, "default-chain"),
+	RootDir:       "",
 	DbName:        "database",
 	ContractPath:  path.Join(ErisLtd, "eris-std-lib"),
 	GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis.json"),
