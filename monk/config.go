@@ -21,7 +21,8 @@ var (
 	Decerver   = utils.Decerver
 	Thelonious = path.Join(utils.Blockchains, "thelonious")
 
-	defaultRoot = path.Join(Thelonious, "default-chain")
+	defaultRoot          = path.Join(Thelonious, "default-chain")
+	defaultGenesisConfig = path.Join(ErisLtd, "thelonious", "monk", "defaults", "genesis.json")
 )
 
 type ChainConfig struct {
@@ -58,6 +59,7 @@ type ChainConfig struct {
 	ConfigFile    string `json:"config_file"`
 	RootDir       string `json:"root_dir"`
 	DbName        string `json:"db_name"`
+	DbMem         bool   `json:"db_mem"`
 	ContractPath  string `json:"contract_path"`
 	GenesisConfig string `json:"genesis_config"`
 
@@ -107,8 +109,9 @@ var DefaultConfig = &ChainConfig{
 	ConfigFile:    "config",
 	RootDir:       "",
 	DbName:        "database",
+	DbMem:         false,
 	ContractPath:  path.Join(ErisLtd, "eris-std-lib"),
-	GenesisConfig: path.Join(ErisLtd, "thelonious", "monk", "genesis.json"),
+	GenesisConfig: defaultGenesisConfig,
 
 	// Language Compilation
 	LLLPath:   path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
@@ -220,6 +223,15 @@ func (monk *Monk) thConfig() {
 	if err != nil {
 		utils.Copy(cfg.KeyFile, path.Join(cfg.RootDir, cfg.KeySession)+".prv")
 	}
+	// if the root dir is the default dir, make sure genesis.json's are available
+	// TODO: handle this better
+	_, err = os.Stat(path.Join(cfg.RootDir, "genesis.json"))
+	fmt.Println(err)
+	if err != nil {
+		fmt.Println("copy!", defaultGenesisConfig)
+		utils.Copy(defaultGenesisConfig, path.Join(cfg.RootDir, "genesis.json"))
+	}
+
 	// a global monkutil.Config object is used for shared global access to the db.
 	// this also uses rakyl/globalconf, but we mostly ignore all that
 	monkutil.Config = &monkutil.ConfigManager{ExecPath: cfg.RootDir, Debug: true, Paranoia: true}

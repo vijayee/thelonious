@@ -103,10 +103,11 @@ func (mod *MonkModule) ConfigureGenesis() {
 		p := path.Join(mod.Config.RootDir, "genesis.json")
 		_, err = os.Stat(p)
 		if err == nil {
-			mod.monk.config.GenesisConfig = p
+			mod.Config.GenesisConfig = p
 			mod.GenesisConfig = mod.LoadGenesis(p)
 		} else {
-			//exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
+			//			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
+			utils.Copy(defaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
 		}
 	}
 
@@ -195,6 +196,10 @@ func (mod *MonkModule) Start() (err error) {
 func (mod *MonkModule) Shutdown() error {
 	mod.monk.Stop()
 	return nil
+}
+
+func (mod *MonkModule) WaitForShutdown() {
+	mod.monk.thelonious.WaitForShutdown()
 }
 
 // ReadConfig and WriteConfig implemented in config.go
@@ -302,6 +307,15 @@ func (mod *MonkModule) NewAddress(set bool) string {
 
 func (mod *MonkModule) AddressCount() int {
 	return mod.monk.AddressCount()
+}
+
+/*
+   Module should satisfy a P2P interface
+   Not in decerver-interfaces yet but prototyping here
+*/
+
+func (mod *MonkModule) Listen(should bool) {
+	mod.monk.Listen(should)
 }
 
 /*
@@ -644,6 +658,19 @@ func (monk *Monk) AddressCount() int {
 }
 
 /*
+   P2P interface
+*/
+
+// Start and stop listening on the port
+func (monk *Monk) Listen(should bool) {
+	if should {
+		monk.StartListening()
+	} else {
+		monk.StopListening()
+	}
+}
+
+/*
    Helper functions
 */
 
@@ -651,7 +678,7 @@ func (monk *Monk) AddressCount() int {
 // expects thConfig to already have been called!
 // init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
 func (m *Monk) newThelonious() {
-	db := mutils.NewDatabase(m.config.DbName)
+	db := mutils.NewDatabase(m.config.DbName, m.config.DbMem)
 
 	keyManager := mutils.NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)

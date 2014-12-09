@@ -29,6 +29,7 @@ import (
 	"github.com/eris-ltd/thelonious/monkminer"
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkrpc"
+	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
 )
 
@@ -376,7 +377,7 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 
 func ChainIdFromDb(root string) (string, error) {
 	monkutil.Config = &monkutil.ConfigManager{ExecPath: root, Debug: true, Paranoia: true}
-	db := mutils.NewDatabase("database")
+	db := mutils.NewDatabase("database", false)
 	monkutil.Config.Db = db
 	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
 	if err != nil {
@@ -496,4 +497,38 @@ func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
 	tx.Sender = hex.EncodeToString(monkTx.Sender())
 	tx.Value = monkTx.Value.String()
 	return tx
+}
+
+func PrettyPrintAccount(obj *monkstate.StateObject) {
+	fmt.Println("Address", monkutil.Bytes2Hex(obj.Address())) //monkutil.Bytes2Hex([]byte(addr)))
+	fmt.Println("\tNonce", obj.Nonce)
+	fmt.Println("\tBalance", obj.Balance)
+	if true { // only if contract, but how?!
+		fmt.Println("\tInit", monkutil.Bytes2Hex(obj.InitCode))
+		fmt.Println("\tCode", monkutil.Bytes2Hex(obj.Code))
+		fmt.Println("\tStorage:")
+		obj.EachStorage(func(key string, val *monkutil.Value) {
+			val.Decode()
+			fmt.Println("\t\t", monkutil.Bytes2Hex([]byte(key)), "\t:\t", monkutil.Bytes2Hex([]byte(val.Str())))
+		})
+	}
+}
+
+// print all accounts and storage in a block
+func PrettyPrintBlockAccounts(block *monkchain.Block) {
+	state := block.State()
+	it := state.Trie.NewIterator()
+	it.Each(func(key string, value *monkutil.Value) {
+		addr := monkutil.Address([]byte(key))
+		//        obj := monkstate.NewStateObjectFromBytes(addr, value.Bytes())
+		obj := block.State().GetAccount(addr)
+		PrettyPrintAccount(obj)
+	})
+}
+
+// print all accounts and storage in the latest block
+func PrettyPrintChainAccounts(mod *MonkModule) {
+	curchain := mod.monk.thelonious.ChainManager()
+	block := curchain.CurrentBlock()
+	PrettyPrintBlockAccounts(block)
 }

@@ -59,6 +59,6 @@ func main() {
 		log.Println(http.ListenAndServe(":6060", nil))
 	}()
 
-	T := monk.NewTester(*tester, *genesis, *blocks)
+	T := NewTester(*tester, *genesis, *blocks)
 	T.Run()
 }
