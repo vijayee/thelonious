@@ -21,8 +21,12 @@ var (
 	Decerver   = utils.Decerver
 	Thelonious = path.Join(utils.Blockchains, "thelonious")
 
-	defaultRoot          = path.Join(Thelonious, "default-chain")
-	defaultGenesisConfig = path.Join(ErisLtd, "thelonious", "monk", "defaults", "genesis.json")
+	DefaultRoot          = path.Join(Thelonious, "default-chain")
+	DefaultGenesisConfig = path.Join(ErisLtd, "thelonious", "monk", "defaults", "genesis.json")
+    DefaultKeyFile = path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt")
+    DefaultLLLPath = path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc")
+    DefaultLLLServer = "http://lllc.erisindustries.com/compile"
+
 )
 
 type ChainConfig struct {
@@ -100,7 +104,7 @@ var DefaultConfig = &ChainConfig{
 	KeySession:       "generous",
 	KeyStore:         "file",
 	KeyCursor:        0,
-	KeyFile:          path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt"),
+	KeyFile:          DefaultKeyFile,
 	Adversary:        0,
 	UseCheckpoint:    false,
 	LatestCheckpoint: "",
@@ -111,11 +115,11 @@ var DefaultConfig = &ChainConfig{
 	DbName:        "database",
 	DbMem:         false,
 	ContractPath:  path.Join(ErisLtd, "eris-std-lib"),
-	GenesisConfig: defaultGenesisConfig,
+	GenesisConfig: DefaultGenesisConfig,
 
 	// Language Compilation
-	LLLPath:   path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc"),
-	LLLServer: "http://lllc.erisindustries.com/compile",
+	LLLPath:  DefaultLLLPath,
+	LLLServer: DefaultLLLServer,
 	LLLLocal:  false,
 
 	// Log
@@ -228,8 +232,8 @@ func (monk *Monk) thConfig() {
 	_, err = os.Stat(path.Join(cfg.RootDir, "genesis.json"))
 	fmt.Println(err)
 	if err != nil {
-		fmt.Println("copy!", defaultGenesisConfig)
-		utils.Copy(defaultGenesisConfig, path.Join(cfg.RootDir, "genesis.json"))
+		fmt.Println("copy!", DefaultGenesisConfig)
+		utils.Copy(DefaultGenesisConfig, path.Join(cfg.RootDir, "genesis.json"))
 	}
 
 	// a global monkutil.Config object is used for shared global access to the db.

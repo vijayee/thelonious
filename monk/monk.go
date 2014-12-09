@@ -107,7 +107,7 @@ func (mod *MonkModule) ConfigureGenesis() {
 			mod.GenesisConfig = mod.LoadGenesis(p)
 		} else {
 			//			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
-			utils.Copy(defaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
+			utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
 		}
 	}
 
@@ -771,7 +771,7 @@ func (mod *MonkModule) setRootDir() {
 
 	root := utils.ResolveChain("thelonious", c.ChainName, c.ChainId)
 	if root == "" {
-		c.RootDir = defaultRoot
+		c.RootDir = DefaultRoot
 	} else {
 		c.RootDir = root
 	}
