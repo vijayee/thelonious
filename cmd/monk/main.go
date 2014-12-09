@@ -10,7 +10,7 @@ import (
 var (
 	listenHost = flag.String("listen-host", "0.0.0.0", "Set listen ip address")
 	listenPort = flag.Int("listen-port", 30303, "Set tcp listen port")
-	listen     = flag.Bool("listen", true, "Listen for incoming connections")
+	listen     = flag.Bool("listen", false, "Listen for incoming connections")
 	remoteHost = flag.String("remote-host", "", "Peer server ip address")
 	remotePort = flag.Int("remote-port", 30303, "Peer server port")
 	useSeed    = flag.Bool("use-seed", false, "Bootstrap p2p through seed node")

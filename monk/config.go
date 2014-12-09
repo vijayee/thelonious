@@ -23,10 +23,9 @@ var (
 
 	DefaultRoot          = path.Join(Thelonious, "default-chain")
 	DefaultGenesisConfig = path.Join(ErisLtd, "thelonious", "monk", "defaults", "genesis.json")
-    DefaultKeyFile = path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt")
-    DefaultLLLPath = path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc")
-    DefaultLLLServer = "http://lllc.erisindustries.com/compile"
-
+	DefaultKeyFile       = path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt")
+	DefaultLLLPath       = path.Join(homeDir(), "cpp-ethereum/build/lllc/lllc")
+	DefaultLLLServer     = "http://lllc.erisindustries.com/compile"
 )
 
 type ChainConfig struct {
@@ -118,7 +117,7 @@ var DefaultConfig = &ChainConfig{
 	GenesisConfig: DefaultGenesisConfig,
 
 	// Language Compilation
-	LLLPath:  DefaultLLLPath,
+	LLLPath:   DefaultLLLPath,
 	LLLServer: DefaultLLLServer,
 	LLLLocal:  false,
 

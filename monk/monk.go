@@ -132,7 +132,7 @@ func (mod *MonkModule) ConfigureGenesis() {
 // NewMonk must have been called first
 func (mod *MonkModule) Init() error {
 	m := mod.monk
-	// if didn't call NewMonk
+
 	if m == nil {
 		return fmt.Errorf("NewMonk has not been called")
 	}
@@ -143,7 +143,6 @@ func (mod *MonkModule) Init() error {
 	// set the root
 	// name > chainId > rootDir > default
 	mod.setRootDir()
-	fmt.Println("root:", mod.Config.RootDir)
 
 	mod.ConfigureGenesis()
 
@@ -171,9 +170,14 @@ func (mod *MonkModule) Init() error {
 
 // Start the thelonious node
 func (mod *MonkModule) Start() (err error) {
+	startChan := mod.Subscribe("chainReady", "chainReady", "")
+
 	m := mod.monk
-	remote := m.config.RemoteHost + ":" + strconv.Itoa(m.config.RemotePort)
-	m.thelonious.Start(remote) // peer seed
+	seed := ""
+	if mod.Config.UseSeed {
+		seed = m.config.RemoteHost + ":" + strconv.Itoa(m.config.RemotePort)
+	}
+	m.thelonious.Start(mod.Config.Listen, seed)
 	RegisterInterrupt(func(sig os.Signal) {
 		m.thelonious.Stop()
 		monklog.Flush()
@@ -189,6 +193,12 @@ func (mod *MonkModule) Start() (err error) {
 	}
 
 	m.Subscribe("newBlock", "newBlock", "")
+
+	// wait for startup to finish
+    // XXX: note for checkpoints this means waiting until
+    //  the entire checkpointed state is loaded from peers...
+	<-startChan
+	mod.UnSubscribe("chainReady")
 
 	return nil
 }

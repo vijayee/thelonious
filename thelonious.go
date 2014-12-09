@@ -431,10 +431,13 @@ func (s *Thelonious) ReapDeadPeerHandler() {
 }
 
 // Start thelonious
-func (s *Thelonious) Start(seed string) {
+func (s *Thelonious) Start(listen bool, seed string) {
 	s.reactor.Start()
 	s.blockPool.Start()
-	s.StartListening()
+	if listen {
+		s.StartListening()
+		monklogger.Infoln("Server started")
+	}
 
 	if s.nat != nil {
 		go s.upnpUpdateThread()
@@ -448,7 +451,7 @@ func (s *Thelonious) Start(seed string) {
 	if seed != "" {
 		s.Seed(seed)
 	}
-	monklogger.Infoln("Server started")
+	monklogger.Infoln("Peer handling started")
 }
 
 func (s *Thelonious) Seed(seed string) {
