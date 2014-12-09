@@ -100,7 +100,7 @@ var DefaultConfig = &ChainConfig{
 	KeySession:       "generous",
 	KeyStore:         "file",
 	KeyCursor:        0,
-	KeyFile:          path.Join(ErisLtd, "thelonious", "monk", "keys.txt"),
+	KeyFile:          path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt"),
 	Adversary:        0,
 	UseCheckpoint:    false,
 	LatestCheckpoint: "",
