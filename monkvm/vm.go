@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	//"reflect"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
 )
+
+// TODO: invalid opcodes for stateless
+// TODO: invalid opcodes in production (LOG)
+// TODO: on chain vs local opcodes
 
 type Debugger interface {
 	BreakHook(step int, op OpCode, mem *Memory, stack *Stack, object *monkstate.StateObject) bool
@@ -269,7 +274,6 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		case RLPDECODE:
 			require(3)
 			size, offset := stack.Peekn()
-			fmt.Println("offset, size:", offset, size)
 			// TODO: be more efficient - we end up running the decode twice!
 			rawrlp := mem.Get(offset.Int64(), size.Int64())
 			decoded, _ := monkutil.Decode(rawrlp, 0)
@@ -311,8 +315,9 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		mem.Resize(newMemSize.Uint64())
 
 		switch op {
-		case LOG:
+		case LOGSTACK:
 			stack.Print()
+		case LOGMEM:
 			mem.Print()
 			// 0x20 range
 		case ADD:
@@ -582,10 +587,13 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 				if _, ok := dd.([]interface{}); ok {
 					return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
 				}
-				b, ok := dd.([]byte)
-				if !ok {
-					return closure.Return(nil), fmt.Errorf("RlpDecode contains non byte-array %x", dd)
-				}
+				b := monkutil.NewValue(dd).Bytes()
+				/*b, ok := dd.([]byte)
+								if !ok {
+				                    k := reflect.ValueOf(&dd).Elem().Kind()
+				                    fmt.Println("Kind:", k)
+									return closure.Return(nil), fmt.Errorf("RlpDecode contains non byte-array %x", dd)
+								}*/
 				b = monkutil.LeftPadBytes(b, 32)
 				// stick in memory
 				mem.Set(pos.Int64()+int64(32*i), 32, b)
@@ -866,6 +874,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(pc)
 		case MSIZE:
 			stack.Push(big.NewInt(int64(mem.Len())))
+			self.Printf(" %d", mem.Len())
 		case GAS:
 			stack.Push(closure.Gas)
 			// 0x60 range

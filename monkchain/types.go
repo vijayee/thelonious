@@ -35,8 +35,8 @@ const (
 	MULMOD = 0x15
 
 	// 0x20 range - crypto
-	SHA3 = 0x20
-    RLPDECODE = 0x21
+	SHA3      = 0x20
+	RLPDECODE = 0x21
 
 	// 0x30 range - closure state
 	ADDRESS       = 0x30
@@ -155,8 +155,9 @@ const (
 	CALLSTATELESS = 0xf4
 
 	// 0x70 range - other
-	LOG     = 0xfe // XXX Unofficial
-	SUICIDE = 0xff
+	LOGSTACK = 0xfd // XXX Unofficial
+	LOGMEM   = 0xfe // XXX Unofficial
+	SUICIDE  = 0xff
 )
 
 // Since the opcodes aren't all in order we can't use a regular slice
@@ -188,8 +189,8 @@ var opCodeToString = map[OpCode]string{
 	MULMOD: "MULMOD",
 
 	// 0x20 range - crypto
-	SHA3: "SHA3",
-    RLPDECODE: "RLPDECODE",
+	SHA3:      "SHA3",
+	RLPDECODE: "RLPDECODE",
 
 	// 0x30 range - closure state
 	ADDRESS:       "ADDRESS",
@@ -308,8 +309,9 @@ var opCodeToString = map[OpCode]string{
 	CALLSTATELESS: "CALLSTATELESS",
 
 	// 0x70 range - other
-	LOG:     "LOG",
-	SUICIDE: "SUICIDE",
+	LOGSTACK: "LOGSTACK",
+	LOGMEM:   "LOGMEM",
+	SUICIDE:  "SUICIDE",
 }
 
 func (o OpCode) String() string {
