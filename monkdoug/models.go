@@ -220,12 +220,14 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		time.Sleep(time.Second * 3)
 		addr := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(addr, state)
-		//sig := block.GetSig()
+		sig := block.GetSig()
 
-		//prevdiff := parent.Difficulty.Bytes()
-		//prevT := big.NewInt(parent.Time).Bytes()
+		block1H := block.Header()
+		block1H = append(block1H, interface{}(sig[:32]))
+		block1H = append(block1H, interface{}(sig[32:64]))
+		block1H = append(block1H, interface{}(monkutil.RightPadBytes(sig[64:], 32)))
 
-		block1rlp := monkutil.Encode(block.Header())
+		block1rlp := monkutil.Encode(block1H)
 		l1 := len(block1rlp)
 		l1bytes := big.NewInt(int64(l1)).Bytes()
 		block2rlp := monkutil.Encode(parent.Header())
@@ -244,7 +246,6 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		}
 		return fmt.Errorf("Permission error")
 	}
-	fmt.Println("FUCK ME")
 	return m.ValidatePerm(block.Coinbase, "mine", block.State())
 }
 
