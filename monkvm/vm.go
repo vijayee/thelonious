@@ -583,6 +583,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			if !ok {
 				return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
 			}
+			var N int
 			for i, dd := range d {
 				if _, ok := dd.([]interface{}); ok {
 					return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
@@ -597,8 +598,11 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 				b = monkutil.LeftPadBytes(b, 32)
 				// stick in memory
 				mem.Set(pos.Int64()+int64(32*i), 32, b)
+				N = i + 1
 			}
 			self.Printf(" => Decoded %d values", len(d))
+
+			stack.Push(big.NewInt(int64(N)))
 
 			// 0x30 range
 		case ADDRESS:
