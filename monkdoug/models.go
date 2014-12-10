@@ -228,17 +228,13 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		block1rlp := monkutil.Encode(block.Header())
 		l1 := len(block1rlp)
 		l1bytes := big.NewInt(int64(l1)).Bytes()
-		ll1bytes := big.NewInt(int64(len(l1bytes))).Bytes()
 		block2rlp := monkutil.Encode(parent.Header())
 		l2 := len(block2rlp)
 		l2bytes := big.NewInt(int64(l2)).Bytes()
-		ll2bytes := big.NewInt(int64(len(l2bytes))).Bytes()
 
 		data := []byte{}
-		data = append(data, monkutil.LeftPadBytes(ll1bytes, 32)...)
 		data = append(data, monkutil.LeftPadBytes(l1bytes, 32)...)
 		data = append(data, block1rlp...)
-		data = append(data, monkutil.LeftPadBytes(ll2bytes, 32)...)
 		data = append(data, monkutil.LeftPadBytes(l2bytes, 32)...)
 		data = append(data, block2rlp...)
 
