@@ -217,27 +217,30 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 	state := parent.State()
 
 	if scall, ok := m.getSysCall("block-verify", state); ok {
+		time.Sleep(time.Second * 3)
 		addr := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(addr, state)
-		// get block args
-		prevhash := block.PrevHash
-		unclesha := block.UncleSha
-		coinbase := block.Coinbase
-		stateroot := monkutil.NewValue(block.GetRoot()).Bytes()
-		txsha := block.TxSha
-		diff := block.Difficulty.Bytes()
-		number := block.Number.Bytes()
-		minGasPrice := block.MinGasPrice.Bytes()
-		gasLim := block.GasLimit.Bytes()
-		gasUsed := block.GasUsed.Bytes()
-		t := big.NewInt(block.Time).Bytes()
-		extra := []byte(block.Extra)
-		sig := block.GetSig()
+		//sig := block.GetSig()
 
-		prevdiff := parent.Difficulty.Bytes()
-		prevT := big.NewInt(parent.Time).Bytes()
+		//prevdiff := parent.Difficulty.Bytes()
+		//prevT := big.NewInt(parent.Time).Bytes()
 
-		data := monkutil.PackTxDataBytes(block.Hash(), prevhash, unclesha, coinbase, stateroot, txsha, diff, prevdiff, number, minGasPrice, gasLim, gasUsed, t, prevT, extra, sig[:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32))
+		block1rlp := monkutil.Encode(block.Header())
+		l1 := len(block1rlp)
+		l1bytes := big.NewInt(int64(l1)).Bytes()
+		ll1bytes := big.NewInt(int64(len(l1bytes))).Bytes()
+		block2rlp := monkutil.Encode(parent.Header())
+		l2 := len(block2rlp)
+		l2bytes := big.NewInt(int64(l2)).Bytes()
+		ll2bytes := big.NewInt(int64(len(l2bytes))).Bytes()
+
+		data := []byte{}
+		data = append(data, monkutil.LeftPadBytes(ll1bytes, 32)...)
+		data = append(data, monkutil.LeftPadBytes(l1bytes, 32)...)
+		data = append(data, block1rlp...)
+		data = append(data, monkutil.LeftPadBytes(ll2bytes, 32)...)
+		data = append(data, monkutil.LeftPadBytes(l2bytes, 32)...)
+		data = append(data, block2rlp...)
 
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
@@ -245,6 +248,7 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		}
 		return fmt.Errorf("Permission error")
 	}
+	fmt.Println("FUCK ME")
 	return m.ValidatePerm(block.Coinbase, "mine", block.State())
 }
 

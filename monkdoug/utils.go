@@ -125,6 +125,8 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, b
 	} else {
 		tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
 	}
+	acc := block.State().GetOrNewStateObject(keys.Address())
+	tx.Nonce = acc.Nonce
 
 	tx.Sign(keys.PrivateKey)
 	receipt, err := SimpleTransitionState(addr, block, tx)

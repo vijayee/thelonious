@@ -317,6 +317,8 @@ const (
 // or else the (TODO: non-secure) builtin defaults
 // Addresses are stored at standard locations in gendoug
 func (g *GenesisConfig) hookVmDeploy(keys *monkcrypto.KeyPair, block *monkchain.Block) {
+	// TODO: add some logs!
+
 	// grab the suite, if any
 	suite := suites["default"]
 	if s, ok := suites[g.Vm.SuiteName]; ok {
@@ -462,7 +464,7 @@ var suites = map[string]*VmConsensus{
 	"std": &VmConsensus{
 		SuiteName:          "std",
 		PermissionVerify:   NewSysCall("", nil),
-		BlockVerify:        NewSysCall("Protocol/block-verify.lll", nil),
+		BlockVerify:        NewSysCall("Protocol/block-verify-rlp.lll", nil),
 		TxVerify:           NewSysCall("Protocol/tx-verify.lll", nil),
 		ComputeDifficulty:  NewSysCall("", nil),
 		ComputeParticipate: NewSysCall("", nil),

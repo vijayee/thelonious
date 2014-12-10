@@ -230,13 +230,15 @@ func (monk *Monk) thConfig() {
 		utils.Copy(cfg.KeyFile, path.Join(cfg.RootDir, cfg.KeySession)+".prv")
 	}
 	// if the root dir is the default dir, make sure genesis.json's are available
+	mod.ConfigureGenesis()
+
 	// TODO: handle this better
-	_, err = os.Stat(path.Join(cfg.RootDir, "genesis.json"))
+	/*_, err = os.Stat(path.Join(cfg.RootDir, "genesis.json"))
 	fmt.Println(err)
 	if err != nil {
 		fmt.Println("copy!", DefaultGenesisConfig)
 		utils.Copy(DefaultGenesisConfig, path.Join(cfg.RootDir, "genesis.json"))
-	}
+	}*/
 
 	// a global monkutil.Config object is used for shared global access to the db.
 	// this also uses rakyl/globalconf, but we mostly ignore all that

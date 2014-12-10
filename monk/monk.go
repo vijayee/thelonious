@@ -139,13 +139,10 @@ func (mod *MonkModule) Init() error {
 
 	// set epm contract path
 	setEpmContractPath(m.config.ContractPath)
-
 	// set the root
 	// name > chainId > rootDir > default
 	mod.setRootDir()
-
     mod.setLLLPath()
-
 	mod.ConfigureGenesis()
 
 	if !m.config.UseCheckpoint {
@@ -156,7 +153,7 @@ func (mod *MonkModule) Init() error {
 
 	// if no thelonious instance
 	if m.thelonious == nil {
-		m.thConfig()
+		mod.thConfig()
 		m.newThelonious()
 	}
 

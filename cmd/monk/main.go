@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/eris-ltd/thelonious/monk"
 	"path"
 )
@@ -96,13 +95,8 @@ func main() {
 	m.Config.DebugFile = *debugFile
 	m.Config.LogLevel = *logLevel
 
-	fmt.Println(m.Config.Mining)
-
 	m.Init()
 	m.Start()
-
-	for {
-		select {}
-	}
+	m.WaitForShutdown()
 
 }
