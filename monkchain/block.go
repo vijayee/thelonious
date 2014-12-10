@@ -421,6 +421,10 @@ func (self *Block) Signer() []byte {
 	return monkcrypto.Sha3Bin(pubkey[1:])[12:]
 }
 
+func (block *Block) Header() []interface{} {
+	return block.header()
+}
+
 func (block *Block) header() []interface{} {
 	return []interface{}{
 		// Sha of the previous block
