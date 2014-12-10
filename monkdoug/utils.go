@@ -189,7 +189,9 @@ func (m *VmModel) EvmCall(code, data []byte, stateObject *monkstate.StateObject,
 	gas := "1000000000000000"
 	price := "10000000"
 
-	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
+	msg := &monkstate.Message{}
+
+	closure := monkvm.NewClosure(msg, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
 	env := NewEnv(state, tx, block, m.g.protocol)
 	vm := monkvm.New(env)
