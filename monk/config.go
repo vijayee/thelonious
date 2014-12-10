@@ -175,7 +175,7 @@ func (mod *MonkModule) ReadConfig(config_file string) {
 }
 
 // Set a field in the config struct.
-func (mod *MonkModule) SetConfig(field string, value interface{}) error {
+func (mod *MonkModule) SetProperty(field string, value interface{}) error {
 	cv := reflect.ValueOf(mod.monk.config).Elem()
 	f := cv.FieldByName(field)
 	kind := f.Kind()
