@@ -1,32 +1,41 @@
 package monk
 
 import (
+	"encoding/hex"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"os/signal"
+	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"bitbucket.org/kardianos/osext"
+	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
+	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
+	"github.com/eris-ltd/decerver-interfaces/glue/utils"
+	"github.com/eris-ltd/decerver-interfaces/modules"
+	"github.com/eris-ltd/epm-go"
+
 	eth "github.com/eris-ltd/thelonious"
+	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
-	"github.com/eris-ltd/thelonious/monkdb"
+	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkminer"
 	"github.com/eris-ltd/thelonious/monkpipe"
 	"github.com/eris-ltd/thelonious/monkrpc"
+	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
-	"github.com/eris-ltd/thelonious/monkwire"
 )
 
 // this is basically go-etheruem/utils
 
-// i think for now we only use StartMining, but there's porbably other goodies...
+// TODO: use the interupts...
 
 //var logger = monklog.NewLogger("CLI")
 var interruptCallbacks = []func(os.Signal){}
@@ -54,22 +63,6 @@ func RunInterruptCallbacks(sig os.Signal) {
 	}
 }
 
-func AbsolutePath(Datadir string, filename string) string {
-	if path.IsAbs(filename) {
-		return filename
-	}
-	return path.Join(Datadir, filename)
-}
-
-func openLogFile(Datadir string, filename string) *os.File {
-	path := AbsolutePath(Datadir, filename)
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))
-	}
-	return file
-}
-
 func confirm(message string) bool {
 	fmt.Println(message, "Are you sure? (y/n)")
 	var r string
@@ -84,32 +77,9 @@ func confirm(message string) bool {
 	return r == "y"
 }
 
-func InitDataDir(Datadir string) {
-	_, err := os.Stat(Datadir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Printf("Data directory '%s' doesn't exist, creating it\n", Datadir)
-			os.Mkdir(Datadir, 0777)
-		}
-	}
-}
-
-func InitLogging(Datadir string, LogFile string, LogLevel int, DebugFile string) {
-	var writer io.Writer
-	if LogFile == "" {
-		writer = os.Stdout
-	} else {
-		writer = openLogFile(Datadir, LogFile)
-	}
-	monklog.AddLogSystem(monklog.NewStdLogSystem(writer, log.LstdFlags, monklog.LogLevel(LogLevel)))
-	if DebugFile != "" {
-		writer = openLogFile(Datadir, DebugFile)
-		monklog.AddLogSystem(monklog.NewStdLogSystem(writer, log.LstdFlags, monklog.DebugLevel))
-	}
-}
-
+// TODO: dwell on this more too
 func InitConfig(ConfigFile string, Datadir string, EnvPrefix string) *monkutil.ConfigManager {
-	InitDataDir(Datadir)
+	utils.InitDataDir(Datadir)
 	return monkutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
 }
 
@@ -124,57 +94,12 @@ func exit(err error) {
 	os.Exit(status)
 }
 
-func NewDatabase(dbName string) monkutil.Database {
-	db, err := monkdb.NewLDBDatabase(dbName)
-	if err != nil {
-		exit(err)
-	}
-	return db
-}
-
-func NewClientIdentity(clientIdentifier, version, customIdentifier string) *monkwire.SimpleClientIdentity {
-	logger.Infoln("identity created")
-	return monkwire.NewSimpleClientIdentity(clientIdentifier, version, customIdentifier)
-}
-
-/*
-func NewThelonious(db monkutil.Database, clientIdentity monkwire.ClientIdentity, keyManager *monkcrypto.KeyManager, usePnp bool, OutboundPort string, MaxPeer int) *eth.Thelonious {
-	ethereum, err := eth.New(db, clientIdentity, keyManager, eth.CapDefault, usePnp)
-	if err != nil {
-		logger.Fatalln("eth start err:", err)
-	}
-	ethereum.Port = OutboundPort
-	ethereum.MaxPeers = MaxPeer
-	return ethereum
-}*/
-
-func StartThelonious(ethereum *eth.Thelonious, UseSeed bool) {
-	logger.Infof("Starting %s", ethereum.ClientIdentity())
-	ethereum.Start(UseSeed)
-	RegisterInterrupt(func(sig os.Signal) {
-		ethereum.Stop()
-		monklog.Flush()
-	})
-}
-
 func ShowGenesis(ethereum *eth.Thelonious) {
 	logger.Infoln(ethereum.ChainManager().Genesis())
 	exit(nil)
 }
 
-func NewKeyManager(KeyStore string, Datadir string, db monkutil.Database) *monkcrypto.KeyManager {
-	var keyManager *monkcrypto.KeyManager
-	switch {
-	case KeyStore == "db":
-		keyManager = monkcrypto.NewDBKeyManager(db)
-	case KeyStore == "file":
-		keyManager = monkcrypto.NewFileKeyManager(Datadir)
-	default:
-		exit(fmt.Errorf("unknown keystore type: %s", KeyStore))
-	}
-	return keyManager
-}
-
+// TODO: work this baby
 func DefaultAssetPath() string {
 	var assetPath string
 	// If the current working directory is the go-ethereum dir
@@ -200,6 +125,7 @@ func DefaultAssetPath() string {
 	return assetPath
 }
 
+// TODO: use this...
 func KeyTasks(keyManager *monkcrypto.KeyManager, KeyRing string, GenAddr bool, SecretFile string, ExportDir string, NonInteractive bool) {
 
 	var err error
@@ -231,9 +157,10 @@ func KeyTasks(keyManager *monkcrypto.KeyManager, KeyRing string, GenAddr bool, S
 	}
 }
 
-func StartRpc(ethereum *eth.Thelonious, RpcPort int) {
+func StartRpc(ethereum *eth.Thelonious, RpcHost string, RpcPort int) {
 	var err error
-	ethereum.RpcServer, err = monkrpc.NewJsonRpcServer(monkpipe.NewJSPipe(ethereum), RpcPort)
+	rpcAddr := RpcHost + ":" + strconv.Itoa(RpcPort)
+	ethereum.RpcServer, err = monkrpc.NewJsonRpcServer(monkpipe.NewJSPipe(ethereum), rpcAddr)
 	if err != nil {
 		logger.Errorf("Could not start RPC interface (port %v): %v", RpcPort, err)
 	} else {
@@ -334,4 +261,274 @@ func CheckZeroBalance(pipe *monkpipe.Pipe, keyMang *monkcrypto.KeyManager) {
 			}
 		}
 	}
+}
+
+// Set the EPM contract root
+func setEpmContractPath(p string) {
+	epm.ContractPath = p
+}
+
+// Deploy a pdx onto a block
+// This is used as a monkdoug deploy function
+func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
+	m := genblock.NewGenBlockModule(block)
+	m.Config.LogLevel = 5
+	err := m.Init()
+	if err != nil {
+		return nil, err
+	}
+	m.Start()
+	epm.ErrMode = epm.ReturnOnErr
+	e, err := epm.NewEPM(m, ".epm-log")
+	if err != nil {
+		return nil, err
+	}
+	err = e.Parse(pkgDef)
+	if err != nil {
+		return nil, err
+	}
+	err = e.ExecuteJobs()
+	if err != nil {
+		return nil, err
+	}
+	e.Commit()
+	chainId, err := m.ChainId()
+	if err != nil {
+		return nil, err
+	}
+	return chainId, nil
+}
+
+// Deploy sequence (done through monk interface for simplicity):
+//  - Create .temp/ for database in current dir
+//  - Read genesis.json and populate struct
+//  - Deploy genesis block and return chainId
+//  - Move .temp/ into ~/.decerver/blockchain/thelonious/chainID
+//  - write name to index file if provided and no conflict
+func DeploySequence(name, genesis, config string) (string, error) {
+	root := ".temp"
+	chainId, err := DeployChain(root, genesis, config)
+	if err != nil {
+		return "", err
+	}
+	if err := InstallChain(root, name, genesis, config, chainId); err != nil {
+		return "", err
+	}
+
+	return chainId, nil
+}
+
+func DeployChain(root, genesis, config string) (string, error) {
+	// startup and deploy
+	m := NewMonk(nil)
+	m.ReadConfig(config)
+	m.Config.RootDir = root
+
+	if strings.HasSuffix(genesis, ".pdx") || strings.HasSuffix(genesis, ".gdx") {
+		m.GenesisConfig = &monkdoug.GenesisConfig{Address: "0000000000THISISDOUG", NoGenDoug: false, Pdx: genesis}
+		m.GenesisConfig.Init()
+	} else {
+		m.Config.GenesisConfig = genesis
+	}
+
+	if err := m.Init(); err != nil {
+		return "", err
+	}
+
+	// get the chain id
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return "", err
+	} else if len(data) == 0 {
+		return "", fmt.Errorf("ChainID is empty!")
+	}
+	chainId := monkutil.Bytes2Hex(data)
+	return chainId, nil
+}
+
+func InstallChain(root, name, genesis, config, chainId string) error {
+	monkutil.Config.Db.Close()
+
+	// move datastore and configs
+	if err := utils.InitDataDir(path.Join(Thelonious, chainId)); err != nil {
+		return err
+	}
+	if err := rename(root, path.Join(Thelonious, chainId)); err != nil {
+		return err
+	}
+	if err := copy(config, path.Join(Thelonious, chainId, "config.json")); err != nil {
+		return err
+	}
+	if err := copy(genesis, path.Join(Thelonious, chainId, "genesis.json")); err != nil {
+		return err
+	}
+
+	// update refs
+	if name != "" {
+		err := utils.AddRef(chainId, name)
+		if err != nil {
+			return err
+		}
+		logger.Infof("Created ref %s to point to chain %s\n", name, chainId)
+	}
+
+	return nil
+}
+
+func ChainIdFromDb(root string) (string, error) {
+	monkutil.Config = &monkutil.ConfigManager{ExecPath: root, Debug: true, Paranoia: true}
+	db := mutils.NewDatabase("database", false)
+	monkutil.Config.Db = db
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return "", err
+	}
+	if len(data) == 0 {
+		return "", fmt.Errorf("Empty ChainID!")
+	}
+	return monkutil.Bytes2Hex(data), nil
+}
+
+func rename(oldpath, newpath string) error {
+	return os.Rename(oldpath, newpath)
+}
+
+func copy(oldpath, newpath string) error {
+	return utils.Copy(oldpath, newpath)
+}
+
+// compile LLL file into evm bytecode
+// returns hex
+func CompileLLL(filename string, literal bool) (string, error) {
+	code, err := monkutil.CompileLLL(filename, literal)
+	if err != nil {
+		return "", err
+	}
+	return "0x" + monkutil.Bytes2Hex(code), nil
+}
+
+// some convenience functions
+
+// get users home directory
+func homeDir() string {
+	usr, _ := user.Current()
+	return usr.HomeDir
+}
+
+// convert a big int from string to hex
+func BigNumStrToHex(s string) string {
+	bignum := monkutil.Big(s)
+	bignum_bytes := monkutil.BigToBytes(bignum, 16)
+	return monkutil.Bytes2Hex(bignum_bytes)
+}
+
+// takes a string, converts to bytes, returns hex
+func SHA3(tohash string) string {
+	h := monkcrypto.Sha3Bin([]byte(tohash))
+	return monkutil.Bytes2Hex(h)
+}
+
+// pack data into acceptable format for transaction
+// TODO: make sure this is ok ...
+// TODO: this is in two places, clean it up you putz
+func PackTxDataArgs(args ...string) string {
+	//fmt.Println("pack data:", args)
+	ret := *new([]byte)
+	for _, s := range args {
+		if s[:2] == "0x" {
+			t := s[2:]
+			if len(t)%2 == 1 {
+				t = "0" + t
+			}
+			x := monkutil.Hex2Bytes(t)
+			//fmt.Println(x)
+			l := len(x)
+			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
+		} else {
+			x := []byte(s)
+			l := len(x)
+			// TODO: just changed from right to left. yabadabadoooooo take care!
+			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
+		}
+	}
+	return "0x" + monkutil.Bytes2Hex(ret)
+	// return ret
+}
+
+// convert thelonious block to modules block
+func convertBlock(block *monkchain.Block) *modules.Block {
+	if block == nil {
+		return nil
+	}
+	b := &modules.Block{}
+	b.Coinbase = hex.EncodeToString(block.Coinbase)
+	b.Difficulty = block.Difficulty.String()
+	b.GasLimit = block.GasLimit.String()
+	b.GasUsed = block.GasUsed.String()
+	b.Hash = hex.EncodeToString(block.Hash())
+	b.MinGasPrice = block.MinGasPrice.String()
+	b.Nonce = hex.EncodeToString(block.Nonce)
+	b.Number = block.Number.String()
+	b.PrevHash = hex.EncodeToString(block.PrevHash)
+	b.Time = int(block.Time)
+	txs := make([]*modules.Transaction, len(block.Transactions()))
+	for idx, tx := range block.Transactions() {
+		txs[idx] = convertTx(tx)
+	}
+	b.Transactions = txs
+	b.TxRoot = hex.EncodeToString(block.TxSha)
+	b.UncleRoot = hex.EncodeToString(block.UncleSha)
+	b.Uncles = make([]string, len(block.Uncles))
+	for idx, u := range block.Uncles {
+		b.Uncles[idx] = hex.EncodeToString(u.Hash())
+	}
+	return b
+}
+
+// convert thelonious tx to modules tx
+func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
+	tx := &modules.Transaction{}
+	tx.ContractCreation = monkTx.CreatesContract()
+	tx.Gas = monkTx.Gas.String()
+	tx.GasCost = monkTx.GasPrice.String()
+	tx.Hash = hex.EncodeToString(monkTx.Hash())
+	tx.Nonce = fmt.Sprintf("%d", monkTx.Nonce)
+	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
+	tx.Sender = hex.EncodeToString(monkTx.Sender())
+	tx.Value = monkTx.Value.String()
+	return tx
+}
+
+func PrettyPrintAccount(obj *monkstate.StateObject) {
+	fmt.Println("Address", monkutil.Bytes2Hex(obj.Address())) //monkutil.Bytes2Hex([]byte(addr)))
+	fmt.Println("\tNonce", obj.Nonce)
+	fmt.Println("\tBalance", obj.Balance)
+	if true { // only if contract, but how?!
+		fmt.Println("\tInit", monkutil.Bytes2Hex(obj.InitCode))
+		fmt.Println("\tCode", monkutil.Bytes2Hex(obj.Code))
+		fmt.Println("\tStorage:")
+		obj.EachStorage(func(key string, val *monkutil.Value) {
+			val.Decode()
+			fmt.Println("\t\t", monkutil.Bytes2Hex([]byte(key)), "\t:\t", monkutil.Bytes2Hex([]byte(val.Str())))
+		})
+	}
+}
+
+// print all accounts and storage in a block
+func PrettyPrintBlockAccounts(block *monkchain.Block) {
+	state := block.State()
+	it := state.Trie.NewIterator()
+	it.Each(func(key string, value *monkutil.Value) {
+		addr := monkutil.Address([]byte(key))
+		//        obj := monkstate.NewStateObjectFromBytes(addr, value.Bytes())
+		obj := block.State().GetAccount(addr)
+		PrettyPrintAccount(obj)
+	})
+}
+
+// print all accounts and storage in the latest block
+func PrettyPrintChainAccounts(mod *MonkModule) {
+	curchain := mod.monk.thelonious.ChainManager()
+	block := curchain.CurrentBlock()
+	PrettyPrintBlockAccounts(block)
 }

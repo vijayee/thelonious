@@ -46,10 +46,6 @@ func FindTx(pool *list.List, finder func(*Transaction, *list.Element) bool) *Tra
 	return nil
 }
 
-type TxProcessor interface {
-	ProcessTransaction(tx *Transaction)
-}
-
 // The tx pool a thread safe transaction pool handler. In order to
 // guarantee a non blocking pool we use a queue channel which can be
 // independently read without needing access to the actual pool. If the
@@ -66,8 +62,6 @@ type TxPool struct {
 	quit chan bool
 	// The actual pool
 	pool *list.List
-
-	SecondaryProcessor TxProcessor
 
 	subscribers []chan TxMsg
 }
@@ -90,6 +84,8 @@ func (pool *TxPool) addTransaction(tx *Transaction) {
 	pool.Thelonious.Broadcast(monkwire.MsgTxTy, []interface{}{tx.RlpData()})
 }
 
+// TODO: will this panic on invalid signature? catch that
+//  does not execute evm, just simple checks for adding to pool
 func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 	// Get the last block so we can retrieve the sender and receiver from
 	// the merkle trie
@@ -124,9 +120,6 @@ func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 		}
 	}
 
-	// Increment the nonce making each tx valid only once to prevent replay
-	// attacks
-
 	return nil
 }
 
@@ -135,46 +128,46 @@ out:
 	for {
 		select {
 		case tx := <-pool.queueChan:
-            if pool.queueTransaction(tx){
-                continue
-            }
+			if pool.queueTransaction(tx) {
+				continue
+			}
 		case <-pool.quit:
 			break out
 		}
 	}
 }
 
-func (pool *TxPool) queueTransaction(tx *Transaction) bool{
+func (pool *TxPool) queueTransaction(tx *Transaction) bool {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 
-    hash := tx.Hash()
-    foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
-        return bytes.Compare(tx.Hash(), hash) == 0
-    })
+	hash := tx.Hash()
+	foundTx := FindTx(pool.pool, func(tx *Transaction, e *list.Element) bool {
+		return bytes.Compare(tx.Hash(), hash) == 0
+	})
 
-    if foundTx != nil {
-        return true
-    }
+	if foundTx != nil {
+		return true
+	}
 
-    // Validate the transaction
-    err := pool.ValidateTransaction(tx)
-    if err != nil {
-        txplogger.Debugln("Validating Tx failed", err)
-        pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
-    } else {
-        // Call blocking version.
-        pool.addTransaction(tx)
+	// Validate the transaction
+	err := pool.ValidateTransaction(tx)
+	if err != nil {
+		txplogger.Debugln("Validating Tx failed", err)
+		pool.Thelonious.Reactor().Post("newTx:pre:fail", &TxFail{tx, err})
+	} else {
+		// Call blocking version.
+		pool.addTransaction(tx)
 
-        tmp := make([]byte, 4)
-        copy(tmp, tx.Recipient)
+		tmp := make([]byte, 4)
+		copy(tmp, tx.Recipient)
 
-        txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
+		txplogger.Debugf("(t) %x => %x (%v) %x\n", tx.Sender()[:4], tmp, tx.Value, tx.Hash())
 
-        // Notify the subscribers
-        pool.Thelonious.Reactor().Post("newTx:pre", tx)
-    }
-    return false
+		// Notify the subscribers
+		pool.Thelonious.Reactor().Post("newTx:pre", tx)
+	}
+	return false
 }
 
 func (pool *TxPool) QueueTransaction(tx *Transaction) {

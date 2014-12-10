@@ -1,7 +1,6 @@
 package monkpipe
 
 import (
-	"fmt"
 	//"strings"
 
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -63,8 +62,6 @@ func (self *Pipe) ExecuteObject(object *Object, data []byte, value, gas, price *
 
 	msg := monkvm.NewMessage(vm, object.Address(), data, gas.BigInt(), price.BigInt(), value.BigInt())
 	ret, err := msg.Exec(object.Address(), initiator)
-
-	fmt.Println("returned from call", ret, err)
 
 	return ret, err
 }
@@ -153,7 +150,6 @@ func (self *Pipe) Transact(key *monkcrypto.KeyPair, rec []byte, value, gas, pric
 		} else {
 			d = []byte(data)
 		}
-		//fmt.Println("data pre tx:", d, len(d))
 		tx = monkchain.NewTransactionMessage(rec, value.BigInt(), gas.BigInt(), price.BigInt(), d)
 	}
 

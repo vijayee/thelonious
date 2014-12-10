@@ -214,20 +214,6 @@ func (p *TheloniousApi) GetStorageAt(args *GetStorageArgs, reply *string) error 
 	return nil
 }
 
-type GetTxCountArgs struct {
-	Address string `json:"address"`
-}
-type GetTxCountRes struct {
-	Nonce int `json:"nonce"`
-}
-
-func (a *GetTxCountArgs) requirements() error {
-	if a.Address == "" {
-		return NewErrorResponse("GetTxCountAt requires an 'address' value as argument")
-	}
-	return nil
-}
-
 type GetPeerCountRes struct {
 	PeerCount int `json:"peerCount"`
 }
@@ -261,6 +247,20 @@ type GetMiningRes struct {
 
 func (p *TheloniousApi) GetIsMining(args *interface{}, reply *string) error {
 	*reply = NewSuccessRes(GetMiningRes{IsMining: p.pipe.IsMining()})
+	return nil
+}
+
+type GetTxCountArgs struct {
+	Address string `json:"address"`
+}
+type GetTxCountRes struct {
+	Nonce int `json:"nonce"`
+}
+
+func (a *GetTxCountArgs) requirements() error {
+	if a.Address == "" {
+		return NewErrorResponse("GetTxCountAt requires an 'address' value as argument")
+	}
 	return nil
 }
 

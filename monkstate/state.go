@@ -146,7 +146,7 @@ func (s *State) Cmp(other *State) bool {
 func (self *State) Copy() *State {
 	if self.Trie != nil {
 		state := New(self.Trie.Copy())
-	    self.mut.Lock()
+		self.mut.Lock()
 		defer self.mut.Unlock()
 		for k, stateObject := range self.stateObjects {
 			state.stateObjects[k] = stateObject.Copy()

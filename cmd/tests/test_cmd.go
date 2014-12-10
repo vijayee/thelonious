@@ -1,8 +1,8 @@
-package monk
+package main
 
 import (
 	"fmt"
-	"github.com/eris-ltd/thelonious/monkchain"
+	"github.com/eris-ltd/thelonious/monk"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"log"
 	"os"
@@ -13,9 +13,9 @@ import (
 
 // start the node, start mining, quit
 func (t *Test) TestBasic() {
-	t.tester("basic", func(mod *MonkModule) {
+	t.tester("basic", func(mod *monk.MonkModule) {
 		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
-		fmt.Println("mining addresS", mod.monk.ActiveAddress())
+		fmt.Println("mining addresS", mod.ActiveAddress())
 		mod.Start()
 		fmt.Println("the node should be running and mining. if not, there are problems. it will stop in 10 seconds ...")
 	}, 10)
@@ -23,54 +23,54 @@ func (t *Test) TestBasic() {
 
 // run a node
 func (t *Test) TestRun() {
-	t.tester("basic", func(mod *MonkModule) {
+	t.tester("basic", func(mod *monk.MonkModule) {
 		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
-		fmt.Println("mining addresS", mod.monk.ActiveAddress())
+		fmt.Println("mining addresS", mod.ActiveAddress())
 		mod.Start()
-		mod.monk.thelonious.WaitForShutdown()
+		mod.WaitForShutdown()
 	}, 0)
 }
 
 // run a node under load
 func (t *Test) TestRunLoad() {
-	t.tester("basic", func(mod *MonkModule) {
+	t.tester("basic", func(mod *monk.MonkModule) {
 		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
-		fmt.Println("mining addresS", mod.monk.ActiveAddress())
+		fmt.Println("mining addresS", mod.ActiveAddress())
 		mod.Start()
-        go func(){
-            tick := time.Tick(1000 * time.Millisecond)
-            addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
-            amount := "567890"
-            for _ = range tick{
-                mod.Tx(addr, amount)
-            }
-        }()
-		mod.monk.thelonious.WaitForShutdown()
+		go func() {
+			tick := time.Tick(1000 * time.Millisecond)
+			addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
+			amount := "567890"
+			for _ = range tick {
+				mod.Tx(addr, amount)
+			}
+		}()
+		mod.WaitForShutdown()
 	}, 0)
 }
 
 // run a node under load
 func (t *Test) TestRunEvent() {
-	t.tester("basic", func(mod *MonkModule) {
+	t.tester("basic", func(mod *monk.MonkModule) {
 		// mod.SetCursor(0) // setting this will invalidate you since this addr isnt in the genesis
 		fmt.Println("mining addresS", mod.ActiveAddress())
 		mod.Start()
-        ch := mod.Subscribe("testchannel","newBlock","")
-        ctr := 0
-        for evt := range ch {
-            if ctr > 50 {
-                return
-            }
-            fmt.Println("Received: " + evt.Event)
-            mod.State()
-            ctr++
-        }
-		mod.monk.thelonious.WaitForShutdown()
+		ch := mod.Subscribe("testchannel", "newBlock", "")
+		ctr := 0
+		for evt := range ch {
+			if ctr > 50 {
+				return
+			}
+			fmt.Println("Received: " + evt.Event)
+			mod.State()
+			ctr++
+		}
+		mod.WaitForShutdown()
 	}, 0)
 }
 
 func (t *Test) TestState() {
-	t.tester("state", func(mod *MonkModule) {
+	t.tester("state", func(mod *monk.MonkModule) {
 		state := mod.State()
 		fmt.Println(state)
 	}, 0)
@@ -78,42 +78,42 @@ func (t *Test) TestState() {
 
 // mine, stop mining, start mining
 func (t *Test) TestStopMining() {
-	t.tester("mining", func(mod *MonkModule) {
-		fmt.Println("mining addresS", mod.monk.ActiveAddress())
+	t.tester("mining", func(mod *monk.MonkModule) {
+		fmt.Println("mining addresS", mod.ActiveAddress())
 		mod.Start()
 		time.Sleep(time.Second * 10)
 		fmt.Println("stopping mining")
-		mod.monk.StopMining()
+		mod.AutoCommit(false)
 		time.Sleep(time.Second * 10)
 		fmt.Println("starting mining again")
-		mod.monk.StartMining()
+		mod.AutoCommit(true)
 	}, 5)
 }
 
 // mine, stop mining, start mining
 func (t *Test) TestStopListening() {
-	t.tester("mining", func(mod *MonkModule) {
-		mod.monk.config.Mining = false
+	t.tester("mining", func(mod *monk.MonkModule) {
+		mod.Config.Mining = false
 		mod.Start()
 		time.Sleep(time.Second * 1)
 		fmt.Println("stopping listening")
-		mod.monk.StopListening()
+		mod.Listen(false)
 		time.Sleep(time.Second * 1)
 		fmt.Println("starting listening again")
-		mod.monk.StartListening()
+		mod.Listen(true)
 	}, 3)
 }
 
 func (t *Test) TestRestart() {
-	mod := NewMonk(nil)
-	mod.monk.config.Mining = true
+	mod := monk.NewMonk(nil)
+	mod.Config.Mining = true
 	mod.Init()
 	mod.Start()
 	time.Sleep(time.Second * 5)
 	mod.Shutdown()
 	time.Sleep(time.Second * 5)
-	mod = NewMonk(nil)
-	mod.monk.config.Mining = true
+	mod = monk.NewMonk(nil)
+	mod.Config.Mining = true
 	mod.Init()
 	mod.Start()
 	time.Sleep(time.Second * 5)
@@ -131,7 +131,7 @@ func (t *Test) TestBig() {
 // doesn't start up a node, just loads from db and traverses to genesis
 /*
 func (t *Test) TestMaxGas(){
-    t.tester("max gas", func(mod *MonkModule){
+    t.tester("max gas", func(mod *monk.MonkModule){
         //mod.Start()
         v := monkchain.DougValue("maxgas", "values", mod.monk.thelonious.ChainManager().CurrentBlock.State())
         fmt.Println(v)
@@ -139,38 +139,21 @@ func (t *Test) TestMaxGas(){
     }, 0)
 }*/
 
-// this one will be in flux for a bit
-// test the validation..
-func (t *Test) TestValidate() {
-	t.tester("validate", func(mod *MonkModule) {
-		PrettyPrintChainAccounts(mod)
-		gen := mod.monk.thelonious.ChainManager().Genesis()
-		a1 := monkutil.Hex2Bytes("bbbd0256041f7aed3ce278c56ee61492de96d001")
-		a2 := monkutil.Hex2Bytes("b9398794cafb108622b07d9a01ecbed3857592d5")
-		a3 := monkutil.Hex2Bytes("cced0756041f7aed3ce278c56ee638bade96d001")
-		fmt.Println(monkchain.DougValidatePerm(a1, "tx", gen.State()))
-		fmt.Println(monkchain.DougValidatePerm(a2, "tx", gen.State()))
-		fmt.Println(monkchain.DougValidatePerm(a3, "tx", gen.State()))
-		fmt.Println(monkchain.DougValidatePerm(a1, "miner", gen.State()))
-		fmt.Println(monkchain.DougValidatePerm(a2, "miner", gen.State()))
-		fmt.Println(monkchain.DougValidatePerm(a3, "miner", gen.State()))
-	}, 0)
-}
-
 // print the genesis state
+/*
+//TODO: fix this...
 func (t *Test) TestGenesisAccounts() {
-	t.tester("genesis contract", func(mod *MonkModule) {
+	t.tester("genesis contract", func(mod *monk.MonkModule) {
 		curchain := mod.monk.thelonious.ChainManager()
 		block := curchain.CurrentBlock()
-		PrettyPrintBlockAccounts(block)
+		monk.PrettyPrintBlockAccounts(block)
 		os.Exit(0)
 	}, 0)
-}
+}*/
 
-// print the genesis state
+/*
 func (t *Test) TestBlockNum() {
-
-	t.tester("block num", func(mod *MonkModule) {
+	t.tester("block num", func(mod *monk.MonkModule) {
 		curchain := mod.monk.thelonious.ChainManager()
 		block := curchain.CurrentBlock()
 		fmt.Println(curchain.CurrentBlockNumber())
@@ -178,16 +161,14 @@ func (t *Test) TestBlockNum() {
 		fmt.Println(curchain.Genesis().Number)
 		os.Exit(0)
 	}, 0)
-}
+}*/
 
 func (t *Test) TestCallStack() {
-	t.tester("callstack", func(mod *MonkModule) {
+	t.tester("callstack", func(mod *monk.MonkModule) {
 		mod.Start()
 		mod.Script(path.Join(t.mod.Config.ContractPath, "lll/callstack.lll"), "lll")
-		t.callback("op: callstack", mod, func() {
-			PrettyPrintChainAccounts(mod)
-		})
-
+		mod.Commit()
+		monk.PrettyPrintChainAccounts(mod)
 	}, 0)
 }
 
@@ -200,7 +181,7 @@ func (t *Test) TestCompression() {
 	for compress, name := range m {
 		monkutil.COMPRESS = compress
 		fmt.Println("compress:", monkutil.COMPRESS)
-		t.tester(name, func(mod *MonkModule) {
+		t.tester(name, func(mod *monk.MonkModule) {
 			contract_addr, err := mod.Script(path.Join(t.mod.Config.ContractPath, "tests/lots-of-stuff.lll"), "lll")
 			if err != nil {
 				log.Fatal(err)
@@ -214,8 +195,8 @@ func (t *Test) TestCompression() {
 				fmt.Println(i)
 			}
 			results_time[name] = time.Since(start)
-			root = mod.monk.config.RootDir
-			db = mod.monk.config.DbName
+			root = mod.Config.RootDir
+			db = mod.Config.DbName
 			f := path.Join(root, db)
 			fi, err := os.Stat(f)
 			if err != nil {

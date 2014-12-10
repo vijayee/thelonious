@@ -1,19 +1,19 @@
 package monk
 
 import (
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
-	"os/user"
+	"path"
 	"strconv"
 	"time"
 
-	"github.com/eris-ltd/decerver-interfaces/core"
-	"github.com/eris-ltd/decerver-interfaces/events"
-	"github.com/eris-ltd/decerver-interfaces/modules"
+	core "github.com/eris-ltd/decerver-interfaces/core"
+	events "github.com/eris-ltd/decerver-interfaces/events"
+	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
+	utils "github.com/eris-ltd/decerver-interfaces/glue/utils"
+	modules "github.com/eris-ltd/decerver-interfaces/modules"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -26,13 +26,12 @@ import (
 	"github.com/eris-ltd/thelonious/monkutil"
 )
 
-var (
-	GoPath = os.Getenv("GOPATH")
-	usr, _ = user.Current() // error?!
-)
-
 //Logging
-var logger *monklog.Logger = monklog.NewLogger("MonkChain(decerver)")
+var logger *monklog.Logger = monklog.NewLogger("MONK")
+
+func init() {
+	utils.InitDecerverDir()
+}
 
 // implements decerver-interfaces Module
 type MonkModule struct {
@@ -53,17 +52,15 @@ type Monk struct {
 	reactor    *monkreact.ReactorEngine
 	started    bool
 
-    chans      map[string]Chan
-	//chans      map[string]chan events.Event
-	//reactchans map[string]chan monkreact.Event
+	chans map[string]Chan
 }
 
-type Chan struct{
-    ch      chan events.Event
-    reactCh chan monkreact.Event
-    name    string
-    event   string
-    target  string
+type Chan struct {
+	ch      chan events.Event
+	reactCh chan monkreact.Event
+	name    string
+	event   string
+	target  string
 }
 
 /*
@@ -71,44 +68,87 @@ type Chan struct{
 */
 
 // Create a new MonkModule and internal Monk, with default config.
-// Accepts an thelonious instance to yield a new
+// Accepts a thelonious instance to yield a new
 // interface into the same chain.
-// It will not initialize a thelonious object for you,
-// giving you a chance to adjust configs before calling `Init()`
+// It will not initialize the thelonious object for you though,
+// so you can adjust configs before calling `Init()`
 func NewMonk(th *thelonious.Thelonious) *MonkModule {
 	mm := new(MonkModule)
 	m := new(Monk)
 	// Here we load default config and leave it to caller
-	// to read a config file to overwrite
+	// to overwrite with config file or directly
 	mm.Config = DefaultConfig
 	m.config = mm.Config
 	if th != nil {
 		m.thelonious = th
 	}
-
 	m.started = false
 	mm.monk = m
 	return mm
 }
 
 // register the module with the decerver javascript vm
-func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error{
+func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error {
 	return nil
 }
 
-// initialize an monkchain
-// it may or may not already have a thelonious instance
-// basically gives you a pipe, local keyMang, and reactor
+// Configure the GenesisConfig struct
+// If the chain already exists, use the provided genesis config
+// TODO: move genconfig into db (safer than a config file)
+//          but really we should reconstruct it from the genesis block
+func (mod *MonkModule) ConfigureGenesis() {
+	// first check if this chain already exists (and load genesis config from there)
+	_, err := os.Stat(mod.Config.RootDir)
+	if err == nil {
+		p := path.Join(mod.Config.RootDir, "genesis.json")
+		_, err = os.Stat(p)
+		if err == nil {
+			mod.Config.GenesisConfig = p
+			mod.GenesisConfig = mod.LoadGenesis(p)
+		} else {
+			//			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
+			utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
+		}
+	}
+
+	// setup genesis config and genesis deploy handler
+	if mod.GenesisConfig == nil {
+		// fails if can't read json
+		mod.GenesisConfig = mod.LoadGenesis(mod.monk.config.GenesisConfig)
+	}
+	if mod.GenesisConfig.Pdx != "" && !mod.GenesisConfig.NoGenDoug {
+		// epm deploy through a pdx file
+		mod.GenesisConfig.SetDeployer(func(block *monkchain.Block) ([]byte, error) {
+			// TODO: get full path
+			return epmDeploy(block, mod.GenesisConfig.Pdx)
+		})
+	}
+	mod.monk.genConfig = mod.GenesisConfig
+}
+
+// Initialize a monkchain
+// It may or may not already have a thelonious instance
+// Gives you a pipe, local keyMang, and reactor
+// NewMonk must have been called first
 func (mod *MonkModule) Init() error {
 	m := mod.monk
-	// if didn't call NewMonk
-	if m.config == nil {
-		m.config = DefaultConfig
+
+	if m == nil {
+		return fmt.Errorf("NewMonk has not been called")
 	}
-	if mod.GenesisConfig == nil {
-		mod.GenesisConfig = mod.LoadGenesis(m.config.GenesisConfig)
+
+	// set epm contract path
+	setEpmContractPath(m.config.ContractPath)
+
+	// set the root
+	// name > chainId > rootDir > default
+	mod.setRootDir()
+
+	mod.ConfigureGenesis()
+
+	if !m.config.UseCheckpoint {
+		m.config.LatestCheckpoint = ""
 	}
-	m.genConfig = mod.GenesisConfig
 
 	monkdoug.Adversary = mod.Config.Adversary
 
@@ -118,40 +158,58 @@ func (mod *MonkModule) Init() error {
 		m.newThelonious()
 	}
 
-	// public interface
-	pipe := monkpipe.New(m.thelonious)
-	// load keys from file. genesis block keys. convenient for testing
-
-	m.pipe = pipe
+	m.pipe = monkpipe.New(m.thelonious)
 	m.keyManager = m.thelonious.KeyManager()
 	m.reactor = m.thelonious.Reactor()
 
 	// subscribe to the new block
-    m.chans = make(map[string]Chan)
-	//m.chans = make(map[string]chan events.Event)
-	//m.reactchans = make(map[string]chan monkreact.Event)
-	m.Subscribe("newBlock", "newBlock", "")
-
-	log.Println(m.thelonious.Port)
+	m.chans = make(map[string]Chan)
 
 	return nil
 }
 
-// start the thelonious node
-func (mod *MonkModule) Start() error {
+// Start the thelonious node
+func (mod *MonkModule) Start() (err error) {
+	startChan := mod.Subscribe("chainReady", "chainReady", "")
+
 	m := mod.monk
-	m.thelonious.Start(true) // peer seed
+	seed := ""
+	if mod.Config.UseSeed {
+		seed = m.config.RemoteHost + ":" + strconv.Itoa(m.config.RemotePort)
+	}
+	m.thelonious.Start(mod.Config.Listen, seed)
+	RegisterInterrupt(func(sig os.Signal) {
+		m.thelonious.Stop()
+		monklog.Flush()
+	})
 	m.started = true
 
 	if m.config.Mining {
 		StartMining(m.thelonious)
 	}
+
+	if m.config.ServeRpc {
+		StartRpc(m.thelonious, m.config.RpcHost, m.config.RpcPort)
+	}
+
+	m.Subscribe("newBlock", "newBlock", "")
+
+	// wait for startup to finish
+    // XXX: note for checkpoints this means waiting until
+    //  the entire checkpointed state is loaded from peers...
+	<-startChan
+	mod.UnSubscribe("chainReady")
+
 	return nil
 }
 
 func (mod *MonkModule) Shutdown() error {
 	mod.monk.Stop()
 	return nil
+}
+
+func (mod *MonkModule) WaitForShutdown() {
+	mod.monk.thelonious.WaitForShutdown()
 }
 
 // ReadConfig and WriteConfig implemented in config.go
@@ -262,6 +320,15 @@ func (mod *MonkModule) AddressCount() int {
 }
 
 /*
+   Module should satisfy a P2P interface
+   Not in decerver-interfaces yet but prototyping here
+*/
+
+func (mod *MonkModule) Listen(should bool) {
+	mod.monk.Listen(should)
+}
+
+/*
    Non-interface functions that otherwise prove useful
     in standalone applications, testing, and debuging
 */
@@ -275,7 +342,7 @@ func (mod *MonkModule) LoadGenesis(file string) *monkdoug.GenesisConfig {
 // Set the genesis json object. This can only be done once
 func (mod *MonkModule) SetGenesis(genJson *monkdoug.GenesisConfig) {
 	// reset the permission model struct (since config may have changed)
-	genJson.SetModel(monkdoug.NewPermModel(genJson))
+	//genJson.SetModel(monkdoug.NewPermModel(genJson))
 	mod.GenesisConfig = genJson
 }
 
@@ -321,6 +388,7 @@ func (monk *Monk) Storage(addr string) *modules.Storage {
 	ret := &modules.Storage{make(map[string]string), []string{}}
 	obj.EachStorage(func(k string, v *monkutil.Value) {
 		kk := monkutil.Bytes2Hex([]byte(k))
+		v.Decode()
 		vv := monkutil.Bytes2Hex(v.Bytes())
 		ret.Order = append(ret.Order, kk)
 		ret.Storage[kk] = vv
@@ -424,21 +492,22 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 
 func (monk *Monk) Script(file, lang string) (string, error) {
 	var script string
+	var err error
 	if lang == "lll-literal" {
-		script = CompileLLL(file, true)
+		script, err = CompileLLL(file, true)
 	}
 	if lang == "lll" {
-		script = CompileLLL(file, false) // if lll, compile and pass along
-	} else if lang == "mutan" {
-		s, _ := ioutil.ReadFile(file) // if mutan, pass along and pipe will compile
-		script = string(s)
+		script, err = CompileLLL(file, false) // if lll, compile and pass along
 	} else if lang == "serpent" {
-
+		// TODO ...
 	} else {
 		script = file
 	}
-	// messy key system...
-	// monkchain should have an 'active key'
+
+	if err != nil {
+		return "", err
+	}
+
 	keys := monk.fetchKeyPair()
 
 	// well isn't this pretty! barf
@@ -460,14 +529,14 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 	}
 
 	ch := make(chan events.Event)
-    c := Chan{
-        ch: ch,
-        reactCh: th_ch,
-        name:   name,
-        event:  event,
-        target: target,
-    }
-    monk.chans[name] = c
+	c := Chan{
+		ch:      ch,
+		reactCh: th_ch,
+		name:    name,
+		event:   event,
+		target:  target,
+	}
+	monk.chans[name] = c
 	//monk.chans[name] = ch
 	//monk.reactchans[name] = th_ch
 
@@ -504,12 +573,12 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 }
 
 func (monk *Monk) UnSubscribe(name string) {
-    if c, ok := monk.chans[name]; ok{
-        monk.reactor.Unsubscribe(c.event, c.reactCh) 
-        close(c.reactCh)
-        close(c.ch)
-        delete(monk.chans, name)
-    }
+	if c, ok := monk.chans[name]; ok {
+		monk.reactor.Unsubscribe(c.event, c.reactCh)
+		close(c.reactCh)
+		close(c.ch)
+		delete(monk.chans, name)
+	}
 }
 
 // Mine a block
@@ -599,6 +668,19 @@ func (monk *Monk) AddressCount() int {
 }
 
 /*
+   P2P interface
+*/
+
+// Start and stop listening on the port
+func (monk *Monk) Listen(should bool) {
+	if should {
+		monk.StartListening()
+	} else {
+		monk.StopListening()
+	}
+}
+
+/*
    Helper functions
 */
 
@@ -606,25 +688,30 @@ func (monk *Monk) AddressCount() int {
 // expects thConfig to already have been called!
 // init db, nat/upnp, thelonious struct, reactorEngine, txPool, blockChain, stateManager
 func (m *Monk) newThelonious() {
-	db := NewDatabase(m.config.DbName)
+	db := mutils.NewDatabase(m.config.DbName, m.config.DbMem)
 
-	keyManager := NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
+	keyManager := mutils.NewKeyManager(m.config.KeyStore, m.config.RootDir, db)
 	err := keyManager.Init(m.config.KeySession, m.config.KeyCursor, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 	m.keyManager = keyManager
 
-	clientIdentity := NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
+	clientIdentity := mutils.NewClientIdentity(m.config.ClientIdentifier, m.config.Version, m.config.Identifier)
+	logger.Infoln("Identity created")
+
+	checkpoint := monkutil.UserHex2Bytes(m.config.LatestCheckpoint)
 
 	// create the thelonious obj
-	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, m.genConfig)
+	th, err := thelonious.New(db, clientIdentity, m.keyManager, thelonious.CapDefault, false, checkpoint, m.genConfig)
 
 	if err != nil {
 		log.Fatal("Could not start node: %s\n", err)
 	}
 
-	th.Port = strconv.Itoa(m.config.Port)
+	logger.Infoln("Created thelonious node")
+
+	th.Port = strconv.Itoa(m.config.ListenPort)
 	th.MaxPeers = m.config.MaxPeers
 
 	m.thelonious = th
@@ -685,105 +772,17 @@ func (monk *Monk) Stop() {
 	monklog.Reset()
 }
 
-// compile LLL file into evm bytecode
-// returns hex
-func CompileLLL(filename string, literal bool) string {
-	code, err := monkutil.CompileLLL(filename, literal)
-	if err != nil {
-		fmt.Println("error compiling lll!", err)
-		return ""
+func (mod *MonkModule) setRootDir() {
+	c := mod.Config
+	// if RootDir is set, we're done
+	if c.RootDir != "" {
+		return
 	}
-	return "0x" + monkutil.Bytes2Hex(code)
-}
 
-// some convenience functions
-
-// get users home directory
-func homeDir() string {
-	usr, _ := user.Current()
-	return usr.HomeDir
-}
-
-// convert a big int from string to hex
-func BigNumStrToHex(s string) string {
-	bignum := monkutil.Big(s)
-	bignum_bytes := monkutil.BigToBytes(bignum, 16)
-	return monkutil.Bytes2Hex(bignum_bytes)
-}
-
-// takes a string, converts to bytes, returns hex
-func SHA3(tohash string) string {
-	h := monkcrypto.Sha3Bin([]byte(tohash))
-	return monkutil.Bytes2Hex(h)
-}
-
-// pack data into acceptable format for transaction
-// TODO: make sure this is ok ...
-// TODO: this is in two places, clean it up you putz
-func PackTxDataArgs(args ...string) string {
-	//fmt.Println("pack data:", args)
-	ret := *new([]byte)
-	for _, s := range args {
-		if s[:2] == "0x" {
-			t := s[2:]
-			if len(t)%2 == 1 {
-				t = "0" + t
-			}
-			x := monkutil.Hex2Bytes(t)
-			//fmt.Println(x)
-			l := len(x)
-			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
-		} else {
-			x := []byte(s)
-			l := len(x)
-			// TODO: just changed from right to left. yabadabadoooooo take care!
-			ret = append(ret, monkutil.LeftPadBytes(x, 32*((l+31)/32))...)
-		}
+	root := utils.ResolveChain("thelonious", c.ChainName, c.ChainId)
+	if root == "" {
+		c.RootDir = DefaultRoot
+	} else {
+		c.RootDir = root
 	}
-	return "0x" + monkutil.Bytes2Hex(ret)
-	// return ret
-}
-
-// convert thelonious block to modules block
-func convertBlock(block *monkchain.Block) *modules.Block {
-	if block == nil {
-		return nil
-	}
-	b := &modules.Block{}
-	b.Coinbase = hex.EncodeToString(block.Coinbase)
-	b.Difficulty = block.Difficulty.String()
-	b.GasLimit = block.GasLimit.String()
-	b.GasUsed = block.GasUsed.String()
-	b.Hash = hex.EncodeToString(block.Hash())
-	b.MinGasPrice = block.MinGasPrice.String()
-	b.Nonce = hex.EncodeToString(block.Nonce)
-	b.Number = block.Number.String()
-	b.PrevHash = hex.EncodeToString(block.PrevHash)
-	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction, len(block.Transactions()))
-	for idx, tx := range block.Transactions() {
-		txs[idx] = convertTx(tx)
-	}
-	b.Transactions = txs
-	b.TxRoot = hex.EncodeToString(block.TxSha)
-	b.UncleRoot = hex.EncodeToString(block.UncleSha)
-	b.Uncles = make([]string, len(block.Uncles))
-	for idx, u := range block.Uncles {
-		b.Uncles[idx] = hex.EncodeToString(u.Hash())
-	}
-	return b
-}
-
-// convert thelonious tx to modules tx
-func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
-	tx := &modules.Transaction{}
-	tx.ContractCreation = monkTx.CreatesContract()
-	tx.Gas = monkTx.Gas.String()
-	tx.GasCost = monkTx.GasPrice.String()
-	tx.Hash = hex.EncodeToString(monkTx.Hash())
-	tx.Nonce = fmt.Sprintf("%d", monkTx.Nonce)
-	tx.Recipient = hex.EncodeToString(monkTx.Recipient)
-	tx.Sender = hex.EncodeToString(monkTx.Sender())
-	tx.Value = monkTx.Value.String()
-	return tx
 }

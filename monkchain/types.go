@@ -61,6 +61,7 @@ const (
 	NUMBER     = 0x43
 	DIFFICULTY = 0x44
 	GASLIMIT   = 0x45
+	GENDOUG    = 0x46
 
 	// 0x50 range - 'storage' and execution
 	POP = 0x50
@@ -210,6 +211,7 @@ var opCodeToString = map[OpCode]string{
 	NUMBER:      "NUMBER",
 	DIFFICULTY:  "DIFFICULTY",
 	GASLIMIT:    "GASLIMIT",
+	GENDOUG:     "GENDOUG",
 	EXTCODESIZE: "EXTCODESIZE",
 	EXTCODECOPY: "EXTCODECOPY",
 

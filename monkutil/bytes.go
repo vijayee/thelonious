@@ -34,7 +34,11 @@ func NumberToBytes(num interface{}, bits int) []byte {
 	err := binary.Write(buf, binary.BigEndian, num)
 	if err != nil {
 		fmt.Println("NumberToBytes failed:", err)
+		return nil
 	}
+	fmt.Println(buf.Bytes())
+	fmt.Println(num, bits)
+	fmt.Println(buf.Len(), bits/8)
 	return buf.Bytes()[buf.Len()-(bits/8):]
 }
 
@@ -130,6 +134,9 @@ func Hex2Bytes(str string) []byte {
 }
 
 func UserHex2Bytes(str string) []byte {
+	if len(str) <= 1 {
+		return nil
+	}
 	if str[:2] == "0x" {
 		str = str[2:]
 	}
@@ -257,7 +264,7 @@ func Coerce2Hex(s string) string {
 	// is int?
 	i, err := strconv.Atoi(s)
 	if err == nil {
-		return "0x" + hex.EncodeToString(NumberToBytes(int32(i), i/256+1))
+		return "0x" + hex.EncodeToString(big.NewInt(int64(i)).Bytes())
 	}
 	// is already prefixed hex?
 	if len(s) > 1 && s[:2] == "0x" {

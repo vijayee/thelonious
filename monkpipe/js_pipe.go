@@ -102,7 +102,8 @@ func (self *JSPipe) BalanceAt(addr string) string {
 }
 
 func (self *JSPipe) TxCountAt(address string) int {
-	return int(self.World().SafeGet(monkutil.Hex2Bytes(address)).Nonce)
+	// return transitional state nonce
+	return int(self.obj.BlockManager().TransState().GetOrNewStateObject(monkutil.Hex2Bytes(address)).Nonce)
 }
 
 func (self *JSPipe) CodeAt(address string) string {
