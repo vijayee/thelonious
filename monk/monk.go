@@ -98,18 +98,21 @@ func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg
 //          but really we should reconstruct it from the genesis block
 func (mod *MonkModule) ConfigureGenesis() {
 	// first check if this chain already exists (and load genesis config from there)
-	_, err := os.Stat(mod.Config.RootDir)
-	if err == nil {
-		p := path.Join(mod.Config.RootDir, "genesis.json")
-		_, err = os.Stat(p)
-		if err == nil {
-			mod.Config.GenesisConfig = p
-			mod.GenesisConfig = mod.LoadGenesis(p)
-		} else {
-			//			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
-			utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
-		}
-	}
+    // (only if not working from a mem db)
+    if !mod.Config.DbMem{
+        _, err := os.Stat(mod.Config.RootDir)
+        if err == nil {
+            p := path.Join(mod.Config.RootDir, "genesis.json")
+            _, err = os.Stat(p)
+            if err == nil {
+                mod.Config.GenesisConfig = p
+                mod.GenesisConfig = mod.LoadGenesis(p)
+            } else {
+                //			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
+                utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
+            }
+        }
+    }
 
 	// setup genesis config and genesis deploy handler
 	if mod.GenesisConfig == nil {
@@ -578,6 +581,8 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 				tx := convertTx(txFail.Tx)
 				tx.Error = txFail.Err.Error()
 				returnEvent.Resource = tx
+            } else if s, ok := resource.(string); ok{
+                returnEvent.Resource = s
 			} else {
 				logger.Errorln("Invalid event resource type", resource)
 			}
