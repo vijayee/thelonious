@@ -195,8 +195,8 @@ func (mod *MonkModule) Start() (err error) {
 	m.Subscribe("newBlock", "newBlock", "")
 
 	// wait for startup to finish
-    // XXX: note for checkpoints this means waiting until
-    //  the entire checkpointed state is loaded from peers...
+	// XXX: note for checkpoints this means waiting until
+	//  the entire checkpointed state is loaded from peers...
 	<-startChan
 	mod.UnSubscribe("chainReady")
 
@@ -269,6 +269,10 @@ func (mod *MonkModule) Msg(addr string, data []string) (string, error) {
 
 func (mod *MonkModule) Script(file, lang string) (string, error) {
 	return mod.monk.Script(file, lang)
+}
+
+func (mod *MonkModule) Transact(addr, value, gas, gasprice, data string) (string, error) {
+	return mod.monk.Transact(addr, value, gas, gasprice, data)
 }
 
 func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event {
@@ -516,6 +520,17 @@ func (monk *Monk) Script(file, lang string) (string, error) {
 		return "", err
 	}
 	return monkutil.Bytes2Hex(contract_addr), nil
+}
+
+func (monk *Monk) Transact(addr, amt, gas, gasprice, data string) (string, error) {
+	keys := monk.fetchKeyPair()
+	addr = monkutil.StripHex(addr)
+	byte_addr := monkutil.Hex2Bytes(addr)
+	hash, err := monk.pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big(gas)), monkutil.NewValue(monkutil.Big(gasprice)), data)
+	if err != nil {
+		return "", err
+	}
+	return monkutil.Bytes2Hex(hash), nil
 }
 
 // returns a chanel that will fire when address is updated

@@ -149,6 +149,18 @@ func TestTx(t *testing.T) {
 	}, 0)
 }
 
+// test tx with gas etc.
+func TestTransaction(t *testing.T) {
+	tester("basic tx", func(mod *MonkModule) {
+		mod.Init()
+		addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
+		amount := "567890"
+		mod.Transact(addr, amount, "1000000", "100000", "")
+		mod.Start()
+		mod.Commit()
+	}, 0)
+}
+
 func TestManyTx(t *testing.T) {
 	tester("many tx", func(mod *MonkModule) {
 		mod.Init()
