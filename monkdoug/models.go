@@ -222,28 +222,32 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		obj, code := m.pickCallObjAndCode(addr, state)
 		sig := block.GetSig()
 
-		block1H := block.Header()
-		block1H = append(block1H, interface{}(sig[:32]))
-		block1H = append(block1H, interface{}(sig[32:64]))
-		block1H = append(block1H, interface{}(monkutil.RightPadBytes(sig[64:], 32)))
+		sigrlp := monkutil.Encode([]interface{}{sig[:32], sig[32:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32)})
+		lsig := len(sigrlp)
+		lsigbytes := big.NewInt(int64(lsig)).Bytes()
 
-		block1rlp := monkutil.Encode(block1H)
+		block1rlp := monkutil.Encode(block.Header())
 		l1 := len(block1rlp)
 		l1bytes := big.NewInt(int64(l1)).Bytes()
 		block2rlp := monkutil.Encode(parent.Header())
 		l2 := len(block2rlp)
 		l2bytes := big.NewInt(int64(l2)).Bytes()
 
+		// data is
+		// (len block 1), (block 1), (len block 2), (block 2), (len sig for block 1), (sig block 1)
 		data := []byte{}
 		data = append(data, monkutil.LeftPadBytes(l1bytes, 32)...)
 		data = append(data, block1rlp...)
 		data = append(data, monkutil.LeftPadBytes(l2bytes, 32)...)
 		data = append(data, block2rlp...)
+		data = append(data, monkutil.LeftPadBytes(lsigbytes, 32)...)
+		data = append(data, sigrlp...)
 
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
+
 		return fmt.Errorf("Permission error")
 	}
 	return m.ValidatePerm(block.Coinbase, "mine", block.State())
