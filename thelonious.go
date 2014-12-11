@@ -452,6 +452,10 @@ func (s *Thelonious) Start(listen bool, seed string) {
 		s.Seed(seed)
 	}
 	monklogger.Infoln("Peer handling started")
+
+    if ! s.ChainManager().WaitingForCheckpoint(){
+        s.Reactor().Post("chainReady", nil)
+    }
 }
 
 func (s *Thelonious) Seed(seed string) {
