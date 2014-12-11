@@ -147,6 +147,8 @@ func (mod *MonkModule) Init() error {
 	// name > chainId > rootDir > default
 	mod.setRootDir()
 
+    mod.setLLLPath()
+
 	mod.ConfigureGenesis()
 
 	if !m.config.UseCheckpoint {
