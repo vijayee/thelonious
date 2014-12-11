@@ -28,12 +28,12 @@ func tester(name string, testing func(mod *MonkModule), end int) {
 	//g.Difficulty = 10 // so we always mine quickly
 	//mod.SetGenesis(g)
 
-	fmt.Println("testing...")
 	testing(mod)
 
 	if end > 0 {
 		time.Sleep(time.Second * time.Duration(end))
 	}
+    PrettyPrintChainAccounts(mod)
 	mod.Shutdown()
 	time.Sleep(time.Second * 3)
 }
@@ -100,8 +100,8 @@ func TestMsgStorage(t *testing.T) {
 		key := "0x21"
 		value := "0x400"
 		time.Sleep(time.Nanosecond) // needed or else subscribe channels block and are skipped ... TODO: why?!
-		fmt.Println("contract account:", mod.Account(contract_addr))
-		fmt.Println("my account:", mod.Account(mod.ActiveAddress()))
+		//fmt.Println("contract account:", mod.Account(contract_addr))
+		//fmt.Println("my account:", mod.Account(mod.ActiveAddress()))
 
 		mod.Msg(contract_addr, []string{key, value})
 

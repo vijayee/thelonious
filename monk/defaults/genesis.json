@@ -1,9 +1,8 @@
 {
     "address":"0000000000THISISDOUG",
     "pdx":"",
-    "doug":"",
-    "no-gendoug":true,
-    "doug":"",
+    "doug":"Genesis Doug/gendoug-v2.lll",
+    "no-gendoug":false,
     "model":"yes",
     "unique":false,
     "private-key":"",

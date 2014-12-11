@@ -1,7 +1,7 @@
 {
     "address":"0000000000THISISDOUG",
     "pdx":"genblock.pdx",
-    "no-gendoug":true,
+    "no-gendoug":false,
     "doug":"Genesis DOUG/gendoug-v2.lll",
     "model":"vm",
     "unique":false,

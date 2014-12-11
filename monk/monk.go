@@ -117,7 +117,7 @@ func (mod *MonkModule) ConfigureGenesis() {
 	// setup genesis config and genesis deploy handler
 	if mod.GenesisConfig == nil {
 		// fails if can't read json
-		mod.GenesisConfig = mod.LoadGenesis(mod.monk.config.GenesisConfig)
+		mod.GenesisConfig = mod.LoadGenesis(mod.Config.GenesisConfig)
 	}
 	if mod.GenesisConfig.Pdx != "" && !mod.GenesisConfig.NoGenDoug {
 		// epm deploy through a pdx file
@@ -781,13 +781,11 @@ func (monk *Monk) FetchPriv() string {
 
 func (monk *Monk) Stop() {
 	if !monk.started {
-		fmt.Println("can't stop: haven't even started...")
+        logger.Infoln("can't stop: haven't even started...")
 		return
 	}
 	monk.StopMining()
-	fmt.Println("stopped mining")
 	monk.thelonious.Stop()
-	fmt.Println("stopped thelonious")
 	monk = &Monk{config: monk.config}
 	monklog.Reset()
 }
