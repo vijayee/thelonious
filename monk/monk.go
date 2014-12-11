@@ -144,6 +144,7 @@ func (mod *MonkModule) Init() error {
 	mod.setRootDir()
     mod.setLLLPath()
 	mod.ConfigureGenesis()
+    logger.Infoln("Loaded genesis configuration from: ", mod.Config.GenesisConfig)
 
 	if !m.config.UseCheckpoint {
 		m.config.LatestCheckpoint = ""

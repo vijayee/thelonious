@@ -562,28 +562,52 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			self.Printf(" => %x", data)
 
 		case RLPDECODE:
-			// TODO: bad rlp will crash the client
-			//  we need to fix that or else this is too dangerous :(
-
 			// note this will not handle recursion!
 			// if any rlp decode results in nested arrays, the call fails
 			require(3)
+
 			// where the rlp is located in memory
 			size, offset := stack.Popn()
 			// where to start dropping the decoded values in memory
 			pos := stack.Pop()
-
+            
 			// decode the raw rlp
 			// loop through list
 			// left pad everything to 32 bytes and drop in memory
 			rawrlp := mem.Get(offset.Int64(), size.Int64())
-			// TODO: catch the panic...
+            fmt.Printf("RAW RLP: %x\n", rawrlp)
 			decoded, _ := monkutil.Decode(rawrlp, 0)
 			d, ok := decoded.([]interface{})
 			if !ok {
 				return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
 			}
-			var N int
+
+            // layout in vm memory
+            // we are fully contiguous on decoding
+            //  but need not be on encoding
+            /* 
+                **** HEAD ******
+                [start] N decoded
+                [start + 32] pointer
+                [start + 64] append(length, type)
+                .
+                .
+                .
+                [start 2*(N-1)*32 + 32] pointer
+                [start 2*(N-1)*32 + 64] append(length, type)
+                
+                **** CHUNKS ****
+                [@p1 : @p1 + l1] chunk 1
+                .
+                 
+            */
+            
+            N := int64(len(d))
+            start := pos.Int64()
+            chunkStart := start + 32*(2*N + 1)
+
+            mem.Set(start, 32, monkutil.LeftPadBytes([]byte{byte(N)}, 32))
+
 			for i, dd := range d {
 				if _, ok := dd.([]interface{}); ok {
 					return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
@@ -595,14 +619,29 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 				                    fmt.Println("Kind:", k)
 									return closure.Return(nil), fmt.Errorf("RlpDecode contains non byte-array %x", dd)
 								}*/
-				b = monkutil.LeftPadBytes(b, 32)
-				// stick in memory
-				mem.Set(pos.Int64()+int64(32*i), 32, b)
-				N = i + 1
-			}
-			self.Printf(" => Decoded %d values", len(d))
 
-			stack.Push(big.NewInt(int64(N)))
+                
+                i64 := int64(i)
+				// set the header values
+                // we still use 32 byte slots for everything
+                pointer := big.NewInt(chunkStart+32*i64)
+                mem.Set(start+32*(2*i64+1), 32, monkutil.LeftPadBytes(pointer.Bytes(), 32))
+
+                // we append type information to the length
+                // since we are in a decode, type info is blank
+                length := big.NewInt(int64(len(b))).Bytes()
+                length = append(length, byte(0))
+                mem.Set(start+32*(2*i64 + 2), 32, monkutil.LeftPadBytes(length, 32))
+
+                // set the actual chunk
+				b = monkutil.LeftPadBytes(b, 32)
+				mem.Set(pointer.Int64(), 32, b)
+
+                fmt.Printf("%d %x %d %x\n", i64, pointer.Bytes(), length, b)
+			}
+			self.Printf(" => Decoded %d values", N)
+
+			stack.Push(big.NewInt(int64(len(d))))
 
 			// 0x30 range
 		case ADDRESS:
@@ -1019,9 +1058,6 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			return closure.Return(nil), nil
 		default:
 			vmlogger.Debugf("(pc) %-3v Invalid opcode %x\n", pc, op)
-
-			//panic(fmt.Sprintf("Invalid opcode %x", op))
-
 			return closure.Return(nil), fmt.Errorf("Invalid opcode %x", op)
 		}
 

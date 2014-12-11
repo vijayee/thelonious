@@ -206,7 +206,7 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error {
 }
 
 func (mod *MonkModule) setLLLPath(){
-    cfg := mod.monk.config
+    cfg := mod.Config
 	// set lll path
 	if cfg.LLLLocal {
 		if cfg.LLLPath != "" {
@@ -216,12 +216,13 @@ func (mod *MonkModule) setLLLPath(){
 		// TODO: set server address in monkutil...
         monkutil.PathToLLL = "NETCALL"
 	}
+    fmt.Println(cfg.LLLLocal, monkutil.PathToLLL)
 }
 
 // Set package global variables (LLLPath, monkutil.Config, logging).
 // Create the root data dir if it doesn't exist, and copy keys if they are available
-func (monk *Monk) thConfig() {
-	cfg := monk.config
+func (mod *MonkModule) thConfig() {
+	cfg := mod.Config
 	// check on data dir
 	// create keys
 	utils.InitDataDir(cfg.RootDir)
