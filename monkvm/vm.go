@@ -285,6 +285,10 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			// we need this many more bytes in our memory array
 			n := len(d) * 32
 			newMemSize = calcMemSize(stack.data[stack.Len()-3], big.NewInt(int64(n)))
+		case RLPENCODE:
+			require(3)
+			// size, offset = stack.Peekn()
+			// TODO: ...
 		}
 
 		if newMemSize.Cmp(monkutil.Big0) > 0 {
@@ -561,6 +565,28 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			self.Printf(" => %x", data)
 
+			/*
+			   RLPDECODE/ENCODE
+			   layout in vm memory
+			   we are fully contiguous on decoding
+			   but need not be on encoding
+
+			    **** HEAD ******
+			    [start] N decoded
+			    [start + 32] pointer
+			    [start + 64] append(length, type)
+			    .
+			    .
+			    .
+			    [start 2*(N-1)*32 + 32] pointer
+			    [start 2*(N-1)*32 + 64] append(length, type)
+
+			    **** CHUNKS ****
+			    [@p1 : @p1 + l1] chunk 1
+			    .
+
+			*/
+
 		case RLPDECODE:
 			// note this will not handle recursion!
 			// if any rlp decode results in nested arrays, the call fails
@@ -570,43 +596,23 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			size, offset := stack.Popn()
 			// where to start dropping the decoded values in memory
 			pos := stack.Pop()
-            
+
 			// decode the raw rlp
 			// loop through list
 			// left pad everything to 32 bytes and drop in memory
 			rawrlp := mem.Get(offset.Int64(), size.Int64())
-            fmt.Printf("RAW RLP: %x\n", rawrlp)
+			//fmt.Printf("RAW RLP: %x\n", rawrlp)
 			decoded, _ := monkutil.Decode(rawrlp, 0)
 			d, ok := decoded.([]interface{})
 			if !ok {
 				return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
 			}
 
-            // layout in vm memory
-            // we are fully contiguous on decoding
-            //  but need not be on encoding
-            /* 
-                **** HEAD ******
-                [start] N decoded
-                [start + 32] pointer
-                [start + 64] append(length, type)
-                .
-                .
-                .
-                [start 2*(N-1)*32 + 32] pointer
-                [start 2*(N-1)*32 + 64] append(length, type)
-                
-                **** CHUNKS ****
-                [@p1 : @p1 + l1] chunk 1
-                .
-                 
-            */
-            
-            N := int64(len(d))
-            start := pos.Int64()
-            chunkStart := start + 32*(2*N + 1)
+			N := int64(len(d))
+			start := pos.Int64()
+			chunkStart := start + 32*(2*N+1)
 
-            mem.Set(start, 32, monkutil.LeftPadBytes([]byte{byte(N)}, 32))
+			mem.Set(start, 32, monkutil.LeftPadBytes([]byte{byte(N)}, 32))
 
 			for i, dd := range d {
 				if _, ok := dd.([]interface{}); ok {
@@ -620,28 +626,63 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 									return closure.Return(nil), fmt.Errorf("RlpDecode contains non byte-array %x", dd)
 								}*/
 
-                
-                i64 := int64(i)
+				i64 := int64(i)
 				// set the header values
-                // we still use 32 byte slots for everything
-                pointer := big.NewInt(chunkStart+32*i64)
-                mem.Set(start+32*(2*i64+1), 32, monkutil.LeftPadBytes(pointer.Bytes(), 32))
+				// we still use 32 byte slots for everything
+				pointer := big.NewInt(chunkStart + 32*i64)
+				mem.Set(start+32*(2*i64+1), 32, monkutil.LeftPadBytes(pointer.Bytes(), 32))
 
-                // we append type information to the length
-                // since we are in a decode, type info is blank
-                length := big.NewInt(int64(len(b))).Bytes()
-                length = append(length, byte(0))
-                mem.Set(start+32*(2*i64 + 2), 32, monkutil.LeftPadBytes(length, 32))
+				// we append type information to the length
+				// since we are in a decode, type info is blank
+				length := big.NewInt(int64(len(b))).Bytes()
+				length = append(length, byte(0))
+				if len(length) == 1 {
+					length = append(length, byte(0))
+				}
+				mem.Set(start+32*(2*i64+2), 32, monkutil.LeftPadBytes(length, 32))
 
-                // set the actual chunk
+				// set the actual chunk
 				b = monkutil.LeftPadBytes(b, 32)
 				mem.Set(pointer.Int64(), 32, b)
 
-                fmt.Printf("%d %x %d %x\n", i64, pointer.Bytes(), length, b)
+				//fmt.Printf("%d %x %d %x\n", i64, pointer.Bytes(), length, b)
 			}
 			self.Printf(" => Decoded %d values", N)
 
 			stack.Push(big.NewInt(int64(len(d))))
+
+		case RLPENCODE:
+			require(3)
+			N, offset := stack.Popn()
+			pos := stack.Pop()
+
+			// this should be location of first pointer
+			start := offset.Int64()
+
+			data := []interface{}{}
+			for i := 0; int64(i) < N.Int64(); i++ {
+				pointer := mem.Get(start+32*2*int64(i), 32)
+				lentype := mem.Get(start+32*(2*int64(i)+1), 32)
+				length := lentype[:len(lentype)-1]
+				//fmt.Printf("pointer, length: %x, %x\n", pointer, length)
+				typ := lentype[len(lentype)-1]
+				if typ != 0 {
+					// use the type to determine length
+				}
+				pointerInt := monkutil.BigD(pointer).Int64()
+				b := mem.Get(pointerInt, 32)
+				if len(b) > 0 {
+					b = b[int64(len(b))-monkutil.BigD(length).Int64():]
+				}
+
+				data = append(data, b)
+			}
+
+			rlpdata := monkutil.Encode(data)
+
+			mem.Set(pos.Int64(), int64(len(rlpdata)), rlpdata)
+
+			stack.Push(big.NewInt(int64(len(rlpdata))))
 
 			// 0x30 range
 		case ADDRESS:
