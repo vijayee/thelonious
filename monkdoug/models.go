@@ -184,35 +184,35 @@ func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
 	if scall, ok := m.getSysCall("compute-difficulty", state); ok {
 		addr := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(addr, state)
-        data := packBlockParent(block, parent)
-        douglogger.Infoln("Calling difficulty contract")
+		data := packBlockParent(block, parent)
+		douglogger.Infoln("Calling difficulty contract")
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
-        //fmt.Println("RETURN DIF:", ret)
+		//fmt.Println("RETURN DIF:", ret)
 		// TODO: check not nil
 		return monkutil.BigD(ret)
 	}
-    r := EthDifficulty(5*60, block, parent)
-    //fmt.Println("RETURN DIF:", r)
-    return r
+	r := EthDifficulty(5*60, block, parent)
+	//fmt.Println("RETURN DIF:", r)
+	return r
 	//return monkutil.BigPow(2, m.g.Difficulty)
 }
 
-func packBlockParent(block, parent *monkchain.Block) []byte{
-		block1rlp := monkutil.Encode(block.Header())
-		l1 := len(block1rlp)
-		l1bytes := big.NewInt(int64(l1)).Bytes()
-		block2rlp := monkutil.Encode(parent.Header())
-		l2 := len(block2rlp)
-		l2bytes := big.NewInt(int64(l2)).Bytes()
+func packBlockParent(block, parent *monkchain.Block) []byte {
+	block1rlp := monkutil.Encode(block.Header())
+	l1 := len(block1rlp)
+	l1bytes := big.NewInt(int64(l1)).Bytes()
+	block2rlp := monkutil.Encode(parent.Header())
+	l2 := len(block2rlp)
+	l2bytes := big.NewInt(int64(l2)).Bytes()
 
-		// data is
-		// (len block 1), (block 1), (len block 2), (block 2), (len sig for block 1), (sig block 1)
-		data := []byte{}
-		data = append(data, monkutil.LeftPadBytes(l1bytes, 32)...)
-		data = append(data, block1rlp...)
-		data = append(data, monkutil.LeftPadBytes(l2bytes, 32)...)
-		data = append(data, block2rlp...)
-        return data
+	// data is
+	// (len block 1), (block 1), (len block 2), (block 2), (len sig for block 1), (sig block 1)
+	data := []byte{}
+	data = append(data, monkutil.LeftPadBytes(l1bytes, 32)...)
+	data = append(data, block1rlp...)
+	data = append(data, monkutil.LeftPadBytes(l2bytes, 32)...)
+	data = append(data, block2rlp...)
+	return data
 }
 
 func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error {
@@ -221,13 +221,13 @@ func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State)
 		contract := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(contract, state)
 		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
-        douglogger.Infoln("Calling permision verify contract")
+		douglogger.Infoln("Calling permision verify contract")
 		ret = m.EvmCall(code, data, obj, state, nil, nil, true)
 	} else {
 		// get perm from doug
 		doug := state.GetStateObject(m.doug)
 		data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
-        douglogger.Infoln("Calling permision verify (GENDOUG) contract")
+		douglogger.Infoln("Calling permision verify (GENDOUG) contract")
 		ret = m.EvmCall(doug.Code, data, doug, state, nil, nil, true)
 	}
 	if monkutil.BigD(ret).Uint64() > 0 {
@@ -251,11 +251,11 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 
 		// data is
 		// (len block 1), (block 1), (len block 2), (block 2), (len sig for block 1), (sig block 1)
-        data := packBlockParent(block, parent)
+		data := packBlockParent(block, parent)
 		data = append(data, monkutil.LeftPadBytes(lsigbytes, 32)...)
 		data = append(data, sigrlp...)
 
-        douglogger.Infoln("Calling block verify contract")
+		douglogger.Infoln("Calling block verify contract")
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
@@ -269,18 +269,11 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 	if scall, ok := m.getSysCall("tx-verify", state); ok {
 		addr := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(addr, state)
-		// get tx args
-		nonce := big.NewInt(int64(tx.Nonce)).Bytes() // TODO: safe cast?
-		rec := tx.Recipient
-		value := tx.Value.Bytes()
-		gas := tx.Gas.Bytes()
-		gasPrice := tx.GasPrice.Bytes()
-		data := tx.Data
-		sig := tx.GetSig()
+		data := tx.RlpEncode()
+		l := big.NewInt(int64(len(data))).Bytes()
+		data = append(monkutil.LeftPadBytes(l, 32), data...)
 
-		data = monkutil.PackTxDataBytes(tx.Hash(), nonce, rec, value, gas, gasPrice, sig[:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32), data)
-
-        douglogger.Infoln("Calling tx verify contract")
+		douglogger.Infoln("Calling tx verify contract")
 		ret := m.EvmCall(code, data, obj, state, tx, nil, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
