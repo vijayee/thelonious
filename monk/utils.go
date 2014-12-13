@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+    "io/ioutil"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+    "encoding/json"
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
@@ -348,18 +350,35 @@ func DeployChain(root, genesis, config string) (string, error) {
 
 func InstallChain(root, name, genesis, config, chainId string) error {
 	monkutil.Config.Db.Close()
-
+    home := path.Join(Thelonious, chainId)
 	// move datastore and configs
-	if err := utils.InitDataDir(path.Join(Thelonious, chainId)); err != nil {
+    // be sure to copy paths into config
+	if err := utils.InitDataDir(home); err != nil {
 		return err
 	}
-	if err := rename(root, path.Join(Thelonious, chainId)); err != nil {
+	if err := rename(root, home); err != nil {
 		return err
 	}
-	if err := copy(config, path.Join(Thelonious, chainId, "config.json")); err != nil {
+
+	b, err := ioutil.ReadFile(config)
+	if err != nil {
 		return err
 	}
-	if err := copy(genesis, path.Join(Thelonious, chainId, "genesis.json")); err != nil {
+	var configT ChainConfig
+	if err = json.Unmarshal(b, &configT); err != nil{
+		return err
+	}
+
+    configT.ChainId = chainId
+    configT.ChainName = name
+    configT.RootDir = home
+    configT.GenesisConfig = path.Join(home, "genesis.json")
+
+    if err := utils.WriteJson(configT, path.Join(home, "config.json")); err != nil{
+        return err
+    }
+
+	if err := copy(genesis, path.Join(home, "genesis.json")); err != nil {
 		return err
 	}
 
