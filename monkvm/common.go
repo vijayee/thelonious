@@ -14,6 +14,7 @@ var (
 	GasSLoad   = big.NewInt(20)
 	GasSStore  = big.NewInt(100)
 	GasBalance = big.NewInt(20)
+	GasNonce   = big.NewInt(20)
 	GasCreate  = big.NewInt(100)
 	GasCall    = big.NewInt(20)
 	GasMemory  = big.NewInt(1)

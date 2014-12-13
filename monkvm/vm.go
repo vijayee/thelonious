@@ -217,6 +217,8 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			gas = new(big.Int).Mul(mult, GasSStore)
 		case BALANCE:
 			gas.Set(GasBalance)
+		case NONCE:
+			gas.Set(GasNonce)
 		case MSTORE:
 			require(2)
 			newMemSize = calcMemSize(stack.Peek(), u256(32))
@@ -616,10 +618,10 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 
 			for i, dd := range d {
 				if dli, ok := dd.([]interface{}); ok {
-                    if _, ok := dd.([]byte); !ok && len(dli) > 0{
-                        fmt.Println("RLPDECODE NESTED LIST!", dd)
-                        return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
-                    }
+					if _, ok := dd.([]byte); !ok && len(dli) > 0 {
+						fmt.Println("RLPDECODE NESTED LIST!", dd)
+						return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
+					}
 				}
 				b := monkutil.NewValue(dd).Bytes()
 				/*b, ok := dd.([]byte)
@@ -701,6 +703,16 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(balance)
 
 			self.Printf(" => %v (%x)", balance, addr)
+		case NONCE:
+			require(1)
+
+			addr := stack.Pop().Bytes()
+			nonce := self.env.State().GetNonce(addr)
+
+			// TODO: this is an unsafe cast!
+			stack.Push(big.NewInt(int64(nonce)))
+
+			self.Printf(" => %v (%x)", nonce, addr)
 		case ORIGIN:
 			origin := self.env.Origin()
 
