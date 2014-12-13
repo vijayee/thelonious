@@ -100,13 +100,10 @@ func (mod *MonkModule) ConfigureGenesis() {
 	// first check if this chain already exists (and load genesis config from there)
     // (only if not working from a mem db)
     if !mod.Config.DbMem{
-        _, err := os.Stat(mod.Config.RootDir)
-        if err == nil {
+        if _, err := os.Stat(mod.Config.RootDir); err == nil{
             p := path.Join(mod.Config.RootDir, "genesis.json")
-            _, err = os.Stat(p)
-            if err == nil {
+            if _, err = os.Stat(p); err == nil{
                 mod.Config.GenesisConfig = p
-                mod.GenesisConfig = mod.LoadGenesis(p)
             } else {
                 //			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
                 utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
