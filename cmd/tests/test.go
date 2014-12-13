@@ -13,6 +13,8 @@ import (
 type Test struct {
 	genesis string
 	blocks  int
+	mine    bool
+	log     int
 	mod     *monk.MonkModule
 
 	// test specific
@@ -27,8 +29,8 @@ type Test struct {
 	failed []string // failed tests
 }
 
-func NewTester(tester, genesis string, blocks int) *Test {
-	return &Test{testerFunc: tester, genesis: genesis, blocks: blocks, failed: []string{}}
+func NewTester(tester, genesis string, mine bool, log int, blocks int) *Test {
+	return &Test{testerFunc: tester, genesis: genesis, mine: mine, log: log, blocks: blocks, failed: []string{}}
 }
 
 // for functions we cant use `go test` on
@@ -71,7 +73,14 @@ func (t *Test) tester(name string, testing func(mod *monk.MonkModule), end int) 
 		t.mod = mod
 	}
 	mod.Config.Mining = mod.Config.Mining
+	if t.mine {
+		mod.Config.Mining = true
+	}
 	mod.Config.DbMem = true
+
+	if mod.Config.LogLevel != t.log {
+		mod.Config.LogLevel = t.log
+	}
 
 	mod.Init()
 
