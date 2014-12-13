@@ -296,13 +296,13 @@ func (g *GenesisConfig) selectKeyPair() (*monkcrypto.KeyPair, error) {
 
 // Set some global values in gendoug
 func (g *GenesisConfig) setValues(keys *monkcrypto.KeyPair, block *monkchain.Block) {
-	SetValue(g.byteAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "difficulty", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "public:mine", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "public:create", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "public:tx", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "blocktime", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "consensus", "single", g.Consensus}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "difficulty", "single", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "public:mine", "single", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "public:create", "single", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "public:tx", "single", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "maxgastx", "single", g.MaxGasTx}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "blocktime", "single", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
 }
 
 // Options for hooking consensus to the vm
