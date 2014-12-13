@@ -142,7 +142,7 @@ func NewVmModel(g *GenesisConfig) monkchain.Consensus {
 }
 
 // TODO:
-//  - enforce read-only option for vm
+//  - enforce read-only option for vm (no SSTORE)
 
 func (m *VmModel) Participate(coinbase []byte, parent *monkchain.Block) bool {
 	state := parent.State()
@@ -184,48 +184,20 @@ func (m *VmModel) Difficulty(block, parent *monkchain.Block) *big.Int {
 	if scall, ok := m.getSysCall("compute-difficulty", state); ok {
 		addr := scall.byteAddr
 		obj, code := m.pickCallObjAndCode(addr, state)
-		coinbase := monkutil.Bytes2Hex(block.Coinbase)
-		data := monkutil.PackTxDataArgs2(coinbase)
+        data := packBlockParent(block, parent)
+        douglogger.Infoln("Calling difficulty contract")
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
+        //fmt.Println("RETURN DIF:", ret)
 		// TODO: check not nil
 		return monkutil.BigD(ret)
 	}
-	return monkutil.BigPow(2, m.g.Difficulty)
+    r := EthDifficulty(5*60, block, parent)
+    //fmt.Println("RETURN DIF:", r)
+    return r
+	//return monkutil.BigPow(2, m.g.Difficulty)
 }
 
-func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error {
-	var ret []byte
-	if scall, ok := m.getSysCall("permission-verify", state); ok {
-		contract := scall.byteAddr
-		obj, code := m.pickCallObjAndCode(contract, state)
-		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
-		ret = m.EvmCall(code, data, obj, state, nil, nil, true)
-	} else {
-		// get perm from doug
-		doug := state.GetStateObject(m.doug)
-		data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
-		ret = m.EvmCall(doug.Code, data, doug, state, nil, nil, true)
-	}
-	if monkutil.BigD(ret).Uint64() > 0 {
-		return nil
-	}
-	return fmt.Errorf("Permission error")
-}
-
-func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error {
-	parent := bc.CurrentBlock()
-	state := parent.State()
-
-	if scall, ok := m.getSysCall("block-verify", state); ok {
-		time.Sleep(time.Second * 3)
-		addr := scall.byteAddr
-		obj, code := m.pickCallObjAndCode(addr, state)
-		sig := block.GetSig()
-
-		sigrlp := monkutil.Encode([]interface{}{sig[:32], sig[32:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32)})
-		lsig := len(sigrlp)
-		lsigbytes := big.NewInt(int64(lsig)).Bytes()
-
+func packBlockParent(block, parent *monkchain.Block) []byte{
 		block1rlp := monkutil.Encode(block.Header())
 		l1 := len(block1rlp)
 		l1bytes := big.NewInt(int64(l1)).Bytes()
@@ -240,14 +212,54 @@ func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManag
 		data = append(data, block1rlp...)
 		data = append(data, monkutil.LeftPadBytes(l2bytes, 32)...)
 		data = append(data, block2rlp...)
+        return data
+}
+
+func (m *VmModel) ValidatePerm(addr []byte, role string, state *monkstate.State) error {
+	var ret []byte
+	if scall, ok := m.getSysCall("permission-verify", state); ok {
+		contract := scall.byteAddr
+		obj, code := m.pickCallObjAndCode(contract, state)
+		data := monkutil.PackTxDataArgs2(monkutil.Bytes2Hex(addr), role)
+        douglogger.Infoln("Calling permision verify contract")
+		ret = m.EvmCall(code, data, obj, state, nil, nil, true)
+	} else {
+		// get perm from doug
+		doug := state.GetStateObject(m.doug)
+		data := monkutil.PackTxDataArgs2("checkperm", role, "0x"+monkutil.Bytes2Hex(addr))
+        douglogger.Infoln("Calling permision verify (GENDOUG) contract")
+		ret = m.EvmCall(doug.Code, data, doug, state, nil, nil, true)
+	}
+	if monkutil.BigD(ret).Uint64() > 0 {
+		return nil
+	}
+	return fmt.Errorf("Permission error")
+}
+
+func (m *VmModel) ValidateBlock(block *monkchain.Block, bc *monkchain.ChainManager) error {
+	parent := bc.CurrentBlock()
+	state := parent.State()
+
+	if scall, ok := m.getSysCall("block-verify", state); ok {
+		addr := scall.byteAddr
+		obj, code := m.pickCallObjAndCode(addr, state)
+		sig := block.GetSig()
+
+		sigrlp := monkutil.Encode([]interface{}{sig[:32], sig[32:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32)})
+		lsig := len(sigrlp)
+		lsigbytes := big.NewInt(int64(lsig)).Bytes()
+
+		// data is
+		// (len block 1), (block 1), (len block 2), (block 2), (len sig for block 1), (sig block 1)
+        data := packBlockParent(block, parent)
 		data = append(data, monkutil.LeftPadBytes(lsigbytes, 32)...)
 		data = append(data, sigrlp...)
 
+        douglogger.Infoln("Calling block verify contract")
 		ret := m.EvmCall(code, data, obj, state, nil, block, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil
 		}
-
 		return fmt.Errorf("Permission error")
 	}
 	return m.ValidatePerm(block.Coinbase, "mine", block.State())
@@ -267,6 +279,8 @@ func (m *VmModel) ValidateTx(tx *monkchain.Transaction, state *monkstate.State) 
 		sig := tx.GetSig()
 
 		data = monkutil.PackTxDataBytes(tx.Hash(), nonce, rec, value, gas, gasPrice, sig[:64], monkutil.RightPadBytes([]byte{sig[64] - 27}, 32), data)
+
+        douglogger.Infoln("Calling tx verify contract")
 		ret := m.EvmCall(code, data, obj, state, tx, nil, true)
 		if monkutil.BigD(ret).Uint64() > 0 {
 			return nil

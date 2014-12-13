@@ -67,6 +67,7 @@ type ChainConfig struct {
 	GenesisConfig string `json:"genesis_config"`
 
 	// Language Compilation
+    // TODO: this ought to be epm level config (not chain specific)
 	LLLPath   string `json:"lll_path"`
 	LLLServer string `json:"lll_server"`
 	LLLLocal  bool   `json:"lll_local"`

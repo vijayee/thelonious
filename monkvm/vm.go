@@ -615,8 +615,11 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			mem.Set(start, 32, monkutil.LeftPadBytes([]byte{byte(N)}, 32))
 
 			for i, dd := range d {
-				if _, ok := dd.([]interface{}); ok {
-					return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
+				if dli, ok := dd.([]interface{}); ok {
+                    if _, ok := dd.([]byte); !ok && len(dli) > 0{
+                        fmt.Println("RLPDECODE NESTED LIST!", dd)
+                        return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
+                    }
 				}
 				b := monkutil.NewValue(dd).Bytes()
 				/*b, ok := dd.([]byte)

@@ -193,7 +193,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 		return g.bankRoll(block)
 	}
 
-	douglogger.Infoln("Deploying GenDoug:", g.Address, g.DougPath)
+	douglogger.Infoln("Deploying GenDoug:", g.Address, " ", g.DougPath)
 
 	// Keys for creating valid txs and for signing
 	// the final gendoug
@@ -347,15 +347,16 @@ func (g *GenesisConfig) hookVmDeploy(keys *monkcrypto.KeyPair, block *monkchain.
 		}
 
 		if mode > 0 {
-			codePath = path.Join(g.contractPath, codePath)
-			tx, _, err := MakeApplyTx(codePath, nil, nil, keys, block)
+			absCodePath := path.Join(g.contractPath, codePath)
+			tx, _, err := MakeApplyTx(absCodePath, nil, nil, keys, block)
 			if err == nil {
 				s := SysCall{
 					byteAddr: tx.CreationAddress(),
-					CodePath: codePath,
+					CodePath: absCodePath,
 				}
 				m.contract[tag] = s
-				SetValue(g.byteAddr, []string{"setvar", tag, "0x" + monkutil.Bytes2Hex(s.byteAddr)}, keys, block)
+                douglogger.Infof("Setting contract address in GENDOUG for %s (%s) : %x\n", tag, codePath, s.byteAddr) 
+				SetValue(g.byteAddr, []string{"initvar", tag, "single", "0x" + monkutil.Bytes2Hex(s.byteAddr)}, keys, block)
 			}
 		}
 	}
@@ -464,9 +465,9 @@ var suites = map[string]*VmConsensus{
 	"std": &VmConsensus{
 		SuiteName:          "std",
 		PermissionVerify:   NewSysCall("", nil),
-		BlockVerify:        NewSysCall("Protocol/block-verify-rlp.lll", nil),
+		BlockVerify:        NewSysCall("Protocol/block-verify.lll", nil),
 		TxVerify:           NewSysCall("Protocol/tx-verify.lll", nil),
-		ComputeDifficulty:  NewSysCall("", nil),
+		ComputeDifficulty:  NewSysCall("Protocol/difficulty.lll", nil),
 		ComputeParticipate: NewSysCall("", nil),
 		Participate:        NewSysCall("", nil),
 		PreCall:            NewSysCall("", nil),
