@@ -23,7 +23,7 @@ func (self *Pipe) World() *World {
 }
 
 func (self *World) State() *monkstate.State {
-	return self.pipe.stateManager.CurrentState()
+	return self.pipe.stateManager.TransState() //CurrentState()
 }
 
 func (self *World) Get(addr []byte) *Object {

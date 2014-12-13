@@ -105,6 +105,7 @@ func (pool *TxPool) ValidateTransaction(tx *Transaction) error {
 
 	// Get the sender
 	//sender := pool.Thelonious.BlockManager().procState.GetAccount(tx.Sender())
+    // TODO: shoudl this be TransState() ?
 	sender := pool.Thelonious.BlockManager().CurrentState().GetAccount(tx.Sender())
 
 	totAmount := new(big.Int).Set(tx.Value)
