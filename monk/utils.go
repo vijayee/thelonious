@@ -351,7 +351,7 @@ func DeployChain(root, genesis, config string) (string, error) {
 func InstallChain(root, name, genesis, config, chainId string) error {
 	monkutil.Config.Db.Close()
 	home := path.Join(Thelonious, chainId)
-	logger.Errorln("Install directory ", home)
+	logger.Infoln("Install directory ", home)
 	// move datastore and configs
 	// be sure to copy paths into config
 	if err := utils.InitDataDir(home); err != nil {
@@ -361,7 +361,7 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		return err
 	}
 
-	logger.Errorln("Loading and setting chainId ", config)
+	logger.Infoln("Loading and setting chainId ", config)
 	// set chainId and rootdir values in config file
 	b, err := ioutil.ReadFile(config)
 	if err != nil {
@@ -389,7 +389,6 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		return err
 	}
 
-	logger.Errorln("Updating refs")
 	// update refs
 	if name != "" {
 		err := utils.AddRef(chainId, name)
