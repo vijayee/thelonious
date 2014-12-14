@@ -21,7 +21,8 @@ var (
 /*
    Functions for updating state without all the weight
    of the standard protocol.
-   Mostly used for setting up the genesis block
+   Mostly used for setting up the genesis block and for running
+   local VM scripts (ie for computing consensus)
 */
 
 // create a new tx from a script, with dummy keypair
@@ -125,6 +126,8 @@ func MakeApplyTx(codePath string, addr, data []byte, keys *monkcrypto.KeyPair, b
 	} else {
 		tx = monkchain.NewTransactionMessage(addr, monkutil.Big("0"), monkutil.Big("10000"), monkutil.Big("10000"), data)
 	}
+	acc := block.State().GetOrNewStateObject(keys.Address())
+	tx.Nonce = acc.Nonce
 
 	tx.Sign(keys.PrivateKey)
 	receipt, err := SimpleTransitionState(addr, block, tx)
@@ -166,6 +169,7 @@ func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkc
 }
 
 func GetValue(addr []byte, query string, state *monkstate.State) []byte {
+	// TODO: get values from gendoug
 	return nil
 }
 
@@ -184,10 +188,12 @@ func SetPermissions(genAddr, addr []byte, permissions map[string]int, block *mon
 
 // Run data through evm code and return value
 func (m *VmModel) EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, dump bool) []byte {
-	gas := "1000000000000000"
+	gas := "10000000000000000000000"
 	price := "10000000"
 
-	closure := monkvm.NewClosure(nil, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
+	msg := &monkstate.Message{}
+
+	closure := monkvm.NewClosure(msg, stateObject, stateObject, code, monkutil.Big(gas), monkutil.Big(price))
 
 	env := NewEnv(state, tx, block, m.g.protocol)
 	vm := monkvm.New(env)
@@ -210,6 +216,7 @@ type VMEnv struct {
 	state    *monkstate.State
 	block    *monkchain.Block
 	tx       *monkchain.Transaction
+	caller   []byte
 }
 
 func NewEnv(state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, protocol monkchain.Protocol) *VMEnv {

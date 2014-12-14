@@ -193,7 +193,7 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 		return g.bankRoll(block)
 	}
 
-	douglogger.Infoln("Deploying GenDoug:", g.Address, g.DougPath)
+	douglogger.Infoln("Deploying GenDoug:", g.Address, " ", g.DougPath)
 
 	// Keys for creating valid txs and for signing
 	// the final gendoug
@@ -296,13 +296,13 @@ func (g *GenesisConfig) selectKeyPair() (*monkcrypto.KeyPair, error) {
 
 // Set some global values in gendoug
 func (g *GenesisConfig) setValues(keys *monkcrypto.KeyPair, block *monkchain.Block) {
-	SetValue(g.byteAddr, []string{"setvar", "consensus", g.Consensus}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "difficulty", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "public:mine", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "public:create", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "public:tx", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "maxgastx", g.MaxGasTx}, keys, block)
-	SetValue(g.byteAddr, []string{"setvar", "blocktime", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "consensus", "single", g.Consensus}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "difficulty", "single", "0x" + monkutil.Bytes2Hex(big.NewInt(int64(g.Difficulty)).Bytes())}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "public:mine", "single", "0x" + strconv.Itoa(g.PublicMine)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "public:create", "single", "0x" + strconv.Itoa(g.PublicCreate)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "public:tx", "single", "0x" + strconv.Itoa(g.PublicTx)}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "maxgastx", "single", g.MaxGasTx}, keys, block)
+	SetValue(g.byteAddr, []string{"initvar", "blocktime", "single", "0x" + strconv.Itoa(g.BlockTime)}, keys, block)
 }
 
 // Options for hooking consensus to the vm
@@ -317,6 +317,8 @@ const (
 // or else the (TODO: non-secure) builtin defaults
 // Addresses are stored at standard locations in gendoug
 func (g *GenesisConfig) hookVmDeploy(keys *monkcrypto.KeyPair, block *monkchain.Block) {
+	// TODO: add some logs!
+
 	// grab the suite, if any
 	suite := suites["default"]
 	if s, ok := suites[g.Vm.SuiteName]; ok {
@@ -345,15 +347,16 @@ func (g *GenesisConfig) hookVmDeploy(keys *monkcrypto.KeyPair, block *monkchain.
 		}
 
 		if mode > 0 {
-			codePath = path.Join(g.contractPath, codePath)
-			tx, _, err := MakeApplyTx(codePath, nil, nil, keys, block)
+			absCodePath := path.Join(g.contractPath, codePath)
+			tx, _, err := MakeApplyTx(absCodePath, nil, nil, keys, block)
 			if err == nil {
 				s := SysCall{
 					byteAddr: tx.CreationAddress(),
-					CodePath: codePath,
+					CodePath: absCodePath,
 				}
 				m.contract[tag] = s
-				SetValue(g.byteAddr, []string{"setvar", tag, "0x" + monkutil.Bytes2Hex(s.byteAddr)}, keys, block)
+				douglogger.Infof("Setting contract address in GENDOUG for %s (%s) : %x\n", tag, codePath, s.byteAddr)
+				SetValue(g.byteAddr, []string{"initvar", tag, "single", "0x" + monkutil.Bytes2Hex(s.byteAddr)}, keys, block)
 			}
 		}
 	}
@@ -464,7 +467,7 @@ var suites = map[string]*VmConsensus{
 		PermissionVerify:   NewSysCall("", nil),
 		BlockVerify:        NewSysCall("Protocol/block-verify.lll", nil),
 		TxVerify:           NewSysCall("Protocol/tx-verify.lll", nil),
-		ComputeDifficulty:  NewSysCall("", nil),
+		ComputeDifficulty:  NewSysCall("Protocol/difficulty.lll", nil),
 		ComputeParticipate: NewSysCall("", nil),
 		Participate:        NewSysCall("", nil),
 		PreCall:            NewSysCall("", nil),

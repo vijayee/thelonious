@@ -1,0 +1,19 @@
+{
+    [0x0](CALLDATASIZE)
+
+    (def 'start 0x100)
+
+    ; mem offset (write to), calldata offset (read from), size
+    (CALLDATACOPY start 0x0 @0x0)
+
+    
+    ; mem offset (read from), size, memoffset (write to)
+    [0x20](RLPDECODE start @0x0 (+ start @0x0))
+
+    
+    [0x0](+ start @0x0) ; where rlp decoded data starts
+    [[0x0]]@ @0x0 ; N
+    [0x40](+ @0x0 (+ (* @@0x0 0x60) 1)) ; top of mem
+    
+    (RLPENCODE (+ @0x0 0x20) @@0x0 @0x40)
+}

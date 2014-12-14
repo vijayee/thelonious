@@ -13,11 +13,13 @@ import (
 var logger *monklog.Logger = monklog.NewLogger("CLI")
 
 var (
-	ini     = flag.Bool("init", false, "initialize a monkchain config")
-	deploy  = flag.Bool("deploy", false, "deploy a monkchain")
-	genesis = flag.String("g", "genesis.json", "pick a genesis contract")
-	name    = flag.String("n", "", "name the chain")
-	config  = flag.String("c", "monk-config.json", "pick config file")
+	ini      = flag.Bool("init", false, "initialize a monkchain config")
+	deploy   = flag.Bool("deploy", false, "deploy a monkchain")
+	genesis  = flag.String("g", "genesis.json", "pick a genesis contract")
+	name     = flag.String("n", "", "name the chain")
+	config   = flag.String("c", "monk-config.json", "pick config file")
+	mine     = flag.Bool("mine", false, "mine blocks")
+	loglevel = flag.Int("log", 5, "log level")
 
 	tester = flag.String("t", "", "pick a test: basic, tx, traverse, genesis, genesis-msg, get-storage, msg-storage or all")
 	blocks = flag.Int("N", 10, "num blocks to wait before shutdown")
@@ -59,6 +61,6 @@ func main() {
 		log.Println(http.ListenAndServe(":6060", nil))
 	}()
 
-	T := NewTester(*tester, *genesis, *blocks)
+	T := NewTester(*tester, *genesis, *mine, *loglevel, *blocks)
 	T.Run()
 }

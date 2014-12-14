@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/eris-ltd/thelonious/monk"
 	"path"
 )
@@ -48,6 +47,8 @@ var (
 	logFile   = flag.String("log-file", "", "Set the log file")
 	debugFile = flag.String("debug-file", "", "Set the debug file")
 	logLevel  = flag.Int("log-level", 5, "Set the logger level")
+
+	test = flag.String("test", "", "Run a test")
 )
 
 func main() {
@@ -96,13 +97,12 @@ func main() {
 	m.Config.DebugFile = *debugFile
 	m.Config.LogLevel = *logLevel
 
-	fmt.Println(m.Config.Mining)
+	if *test != "" {
+		RunTest(m, *test)
+	}
 
 	m.Init()
 	m.Start()
-
-	for {
-		select {}
-	}
+	m.WaitForShutdown()
 
 }

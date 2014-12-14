@@ -2,11 +2,12 @@ package monk
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"os/user"
-    "io/ioutil"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -14,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-    "encoding/json"
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
@@ -350,9 +350,10 @@ func DeployChain(root, genesis, config string) (string, error) {
 
 func InstallChain(root, name, genesis, config, chainId string) error {
 	monkutil.Config.Db.Close()
-    home := path.Join(Thelonious, chainId)
+	home := path.Join(Thelonious, chainId)
+	logger.Errorln("Install directory ", home)
 	// move datastore and configs
-    // be sure to copy paths into config
+	// be sure to copy paths into config
 	if err := utils.InitDataDir(home); err != nil {
 		return err
 	}
@@ -360,28 +361,35 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		return err
 	}
 
+	logger.Errorln("Loading and setting chainId ", config)
+	// set chainId and rootdir values in config file
 	b, err := ioutil.ReadFile(config)
 	if err != nil {
 		return err
 	}
 	var configT ChainConfig
-	if err = json.Unmarshal(b, &configT); err != nil{
+	if err = json.Unmarshal(b, &configT); err != nil {
 		return err
 	}
 
-    configT.ChainId = chainId
-    configT.ChainName = name
-    configT.RootDir = home
-    configT.GenesisConfig = path.Join(home, "genesis.json")
+	configT.ChainId = chainId
+	configT.ChainName = name
+	configT.RootDir = home
+	configT.GenesisConfig = path.Join(home, "genesis.json")
 
-    if err := utils.WriteJson(configT, path.Join(home, "config.json")); err != nil{
-        return err
-    }
-
-	if err := copy(genesis, path.Join(home, "genesis.json")); err != nil {
+	if err := utils.WriteJson(configT, config); err != nil {
 		return err
 	}
 
+	if err := rename(config, path.Join(home, "config.json")); err != nil {
+		return err
+	}
+
+	if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
+		return err
+	}
+
+	logger.Errorln("Updating refs")
 	// update refs
 	if name != "" {
 		err := utils.AddRef(chainId, name)

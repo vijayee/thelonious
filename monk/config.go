@@ -67,6 +67,7 @@ type ChainConfig struct {
 	GenesisConfig string `json:"genesis_config"`
 
 	// Language Compilation
+	// TODO: this ought to be epm level config (not chain specific)
 	LLLPath   string `json:"lll_path"`
 	LLLServer string `json:"lll_server"`
 	LLLLocal  bool   `json:"lll_local"`
@@ -127,7 +128,7 @@ var DefaultConfig = &ChainConfig{
 	LogLevel:  5,
 }
 
-func InitChain(configPath string) error {
+func InitChain() error {
 	err := utils.InitDecerverDir()
 	if err != nil {
 		return err
@@ -136,11 +137,11 @@ func InitChain(configPath string) error {
 	if err != nil {
 		return err
 	}
-	err = utils.WriteJson(DefaultConfig, path.Join(configPath, "monk-config.json"))
+	err = utils.WriteJson(DefaultConfig, path.Join(utils.Blockchains, "config.json"))
 	if err != nil {
 		return err
 	}
-	return utils.WriteJson(monkdoug.DefaultGenesis, path.Join(configPath, "genesis.json"))
+	return utils.WriteJson(monkdoug.DefaultGenesis, path.Join(utils.Blockchains, "genesis.json"))
 }
 
 // Marshal the current configuration to file in pretty json.
@@ -205,8 +206,8 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error {
 	return nil
 }
 
-func (mod *MonkModule) setLLLPath(){
-    cfg := mod.monk.config
+func (mod *MonkModule) setLLLPath() {
+	cfg := mod.Config
 	// set lll path
 	if cfg.LLLLocal {
 		if cfg.LLLPath != "" {
@@ -214,14 +215,15 @@ func (mod *MonkModule) setLLLPath(){
 		}
 	} else {
 		// TODO: set server address in monkutil...
-        monkutil.PathToLLL = "NETCALL"
+		monkutil.PathToLLL = "NETCALL"
 	}
+	fmt.Println(cfg.LLLLocal, monkutil.PathToLLL)
 }
 
 // Set package global variables (LLLPath, monkutil.Config, logging).
 // Create the root data dir if it doesn't exist, and copy keys if they are available
-func (monk *Monk) thConfig() {
-	cfg := monk.config
+func (mod *MonkModule) thConfig() {
+	cfg := mod.Config
 	// check on data dir
 	// create keys
 	utils.InitDataDir(cfg.RootDir)
@@ -230,13 +232,15 @@ func (monk *Monk) thConfig() {
 		utils.Copy(cfg.KeyFile, path.Join(cfg.RootDir, cfg.KeySession)+".prv")
 	}
 	// if the root dir is the default dir, make sure genesis.json's are available
+	mod.ConfigureGenesis()
+
 	// TODO: handle this better
-	_, err = os.Stat(path.Join(cfg.RootDir, "genesis.json"))
+	/*_, err = os.Stat(path.Join(cfg.RootDir, "genesis.json"))
 	fmt.Println(err)
 	if err != nil {
 		fmt.Println("copy!", DefaultGenesisConfig)
 		utils.Copy(DefaultGenesisConfig, path.Join(cfg.RootDir, "genesis.json"))
-	}
+	}*/
 
 	// a global monkutil.Config object is used for shared global access to the db.
 	// this also uses rakyl/globalconf, but we mostly ignore all that

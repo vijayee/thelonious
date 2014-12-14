@@ -33,7 +33,7 @@ func tester(name string, testing func(mod *MonkModule), end int) {
 	if end > 0 {
 		time.Sleep(time.Second * time.Duration(end))
 	}
-    PrettyPrintChainAccounts(mod)
+	PrettyPrintChainAccounts(mod)
 	mod.Shutdown()
 	time.Sleep(time.Second * 3)
 }

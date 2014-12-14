@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	//"reflect"
 
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monkutil"
 )
+
+// TODO: invalid opcodes for stateless
+// TODO: invalid opcodes in production (LOG)
+// TODO: on chain vs local opcodes
 
 type Debugger interface {
 	BreakHook(step int, op OpCode, mem *Memory, stack *Stack, object *monkstate.StateObject) bool
@@ -22,6 +27,8 @@ type Vm struct {
 	env Environment
 
 	Verbose bool
+
+	Dump bool
 
 	logTy  byte
 	logStr string
@@ -138,6 +145,16 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		*self.callStack = (*self.callStack)[:len(*self.callStack)-1]
 		// note that the original callers address will never be removed. is this even an issue? TODO
 		// TODO: deal with POSTs
+
+		if self.Dump {
+			// TODO: can remove this ...
+			fmt.Println("STACK:")
+			fmt.Println("\t", stack)
+			fmt.Println("\nMEM:")
+			for i := 0; i < mem.Len()/32; i++ {
+				fmt.Println("\t", i, monkutil.Bytes2Hex(mem.Get(int64(i*32+137), 32)))
+			}
+		}
 	}()
 
 	for {
@@ -200,6 +217,8 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			gas = new(big.Int).Mul(mult, GasSStore)
 		case BALANCE:
 			gas.Set(GasBalance)
+		case NONCE:
+			gas.Set(GasNonce)
 		case MSTORE:
 			require(2)
 			newMemSize = calcMemSize(stack.Peek(), u256(32))
@@ -253,6 +272,25 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			gas.Set(GasCreate)
 
 			newMemSize = calcMemSize(stack.data[stack.Len()-2], stack.data[stack.Len()-3])
+
+		case RLPDECODE:
+			require(3)
+			size, offset := stack.Peekn()
+			// TODO: be more efficient - we end up running the decode twice!
+			rawrlp := mem.Get(offset.Int64(), size.Int64())
+			decoded, _ := monkutil.Decode(rawrlp, 0)
+			d, ok := decoded.([]interface{})
+			if !ok {
+				return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
+			}
+
+			// we need this many more bytes in our memory array
+			n := len(d) * 32
+			newMemSize = calcMemSize(stack.data[stack.Len()-3], big.NewInt(int64(n)))
+		case RLPENCODE:
+			require(3)
+			// size, offset = stack.Peekn()
+			// TODO: ...
 		}
 
 		if newMemSize.Cmp(monkutil.Big0) > 0 {
@@ -283,8 +321,9 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 		mem.Resize(newMemSize.Uint64())
 
 		switch op {
-		case LOG:
+		case LOGSTACK:
 			stack.Print()
+		case LOGMEM:
 			mem.Print()
 			// 0x20 range
 		case ADD:
@@ -527,6 +566,129 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(monkutil.BigD(data))
 
 			self.Printf(" => %x", data)
+
+			/*
+			   RLPDECODE/ENCODE
+			   layout in vm memory
+			   we are fully contiguous on decoding
+			   but need not be on encoding
+
+			    **** HEAD ******
+			    [start] N decoded
+			    [start + 32] pointer
+			    [start + 64] append(length, type)
+			    .
+			    .
+			    .
+			    [start 2*(N-1)*32 + 32] pointer
+			    [start 2*(N-1)*32 + 64] append(length, type)
+
+			    **** CHUNKS ****
+			    [@p1 : @p1 + l1] chunk 1
+			    .
+
+			*/
+
+		case RLPDECODE:
+			// note this will not handle recursion!
+			// if any rlp decode results in nested arrays, the call fails
+			require(3)
+
+			// where the rlp is located in memory
+			size, offset := stack.Popn()
+			// where to start dropping the decoded values in memory
+			pos := stack.Pop()
+
+			// decode the raw rlp
+			// loop through list
+			// left pad everything to 32 bytes and drop in memory
+			rawrlp := mem.Get(offset.Int64(), size.Int64())
+			//fmt.Printf("RAW RLP: %x\n", rawrlp)
+			decoded, _ := monkutil.Decode(rawrlp, 0)
+			d, ok := decoded.([]interface{})
+			if !ok {
+				return closure.Return(nil), fmt.Errorf("RlpDecode is not a list")
+			}
+
+			N := int64(len(d))
+			start := pos.Int64()
+			chunkStart := start + 32*(2*N+1)
+
+			mem.Set(start, 32, monkutil.LeftPadBytes([]byte{byte(N)}, 32))
+
+			for i, dd := range d {
+				if dli, ok := dd.([]interface{}); ok {
+					if _, ok := dd.([]byte); !ok && len(dli) > 0 {
+						fmt.Println("RLPDECODE NESTED LIST!", dd)
+						return closure.Return(nil), fmt.Errorf("RlpDecode contains nested list")
+					}
+				}
+				b := monkutil.NewValue(dd).Bytes()
+				/*b, ok := dd.([]byte)
+								if !ok {
+				                    k := reflect.ValueOf(&dd).Elem().Kind()
+				                    fmt.Println("Kind:", k)
+									return closure.Return(nil), fmt.Errorf("RlpDecode contains non byte-array %x", dd)
+								}*/
+
+				i64 := int64(i)
+				// set the header values
+				// we still use 32 byte slots for everything
+				pointer := big.NewInt(chunkStart + 32*i64)
+				mem.Set(start+32*(2*i64+1), 32, monkutil.LeftPadBytes(pointer.Bytes(), 32))
+
+				// we append type information to the length
+				// since we are in a decode, type info is blank
+				length := big.NewInt(int64(len(b))).Bytes()
+				length = append(length, byte(0))
+				if len(length) == 1 {
+					length = append(length, byte(0))
+				}
+				mem.Set(start+32*(2*i64+2), 32, monkutil.LeftPadBytes(length, 32))
+
+				// set the actual chunk
+				b = monkutil.LeftPadBytes(b, 32)
+				mem.Set(pointer.Int64(), 32, b)
+
+				//fmt.Printf("%d %x %d %x\n", i64, pointer.Bytes(), length, b)
+			}
+			self.Printf(" => Decoded %d values", N)
+
+			stack.Push(big.NewInt(int64(len(d))))
+
+		case RLPENCODE:
+			require(3)
+			N, offset := stack.Popn()
+			pos := stack.Pop()
+
+			// this should be location of first pointer
+			start := offset.Int64()
+
+			data := []interface{}{}
+			for i := 0; int64(i) < N.Int64(); i++ {
+				pointer := mem.Get(start+32*2*int64(i), 32)
+				lentype := mem.Get(start+32*(2*int64(i)+1), 32)
+				length := lentype[:len(lentype)-1]
+				//fmt.Printf("pointer, length: %x, %x\n", pointer, length)
+				typ := lentype[len(lentype)-1]
+				if typ != 0 {
+					// use the type to determine length
+				}
+				pointerInt := monkutil.BigD(pointer).Int64()
+				b := mem.Get(pointerInt, 32)
+				if len(b) > 0 {
+					b = b[int64(len(b))-monkutil.BigD(length).Int64():]
+				}
+
+				data = append(data, b)
+			}
+
+			rlpdata := monkutil.Encode(data)
+
+			mem.Set(pos.Int64(), int64(len(rlpdata)), rlpdata)
+
+			stack.Push(big.NewInt(int64(len(rlpdata))))
+
 			// 0x30 range
 		case ADDRESS:
 			stack.Push(monkutil.BigD(closure.Address()))
@@ -541,6 +703,16 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(balance)
 
 			self.Printf(" => %v (%x)", balance, addr)
+		case NONCE:
+			require(1)
+
+			addr := stack.Pop().Bytes()
+			nonce := self.env.State().GetNonce(addr)
+
+			// TODO: this is an unsafe cast!
+			stack.Push(big.NewInt(int64(nonce)))
+
+			self.Printf(" => %v (%x)", nonce, addr)
 		case ORIGIN:
 			origin := self.env.Origin()
 
@@ -622,8 +794,8 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			}
 
 			code := closure.Args[cOff : cOff+l]
-
 			mem.Set(mOff, l, code)
+
 		case CODESIZE, EXTCODESIZE:
 			var code []byte
 			if op == EXTCODECOPY {
@@ -801,6 +973,7 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			stack.Push(pc)
 		case MSIZE:
 			stack.Push(big.NewInt(int64(mem.Len())))
+			self.Printf(" %d", mem.Len())
 		case GAS:
 			stack.Push(closure.Gas)
 			// 0x60 range
@@ -941,9 +1114,6 @@ func (self *Vm) RunClosure(closure *Closure) (ret []byte, err error) {
 			return closure.Return(nil), nil
 		default:
 			vmlogger.Debugf("(pc) %-3v Invalid opcode %x\n", pc, op)
-
-			//panic(fmt.Sprintf("Invalid opcode %x", op))
-
 			return closure.Return(nil), fmt.Errorf("Invalid opcode %x", op)
 		}
 

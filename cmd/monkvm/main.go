@@ -45,11 +45,11 @@ func main() {
 	ret := exec(env, monkutil.Hex2Bytes(*script), monkutil.Hex2Bytes(*data))
 	logger.Infof("return: %x\n", ret)
 
+	monklog.Flush()
+
 	if *dump {
 		dumpState(env.state)
 	}
-
-	monklog.Flush()
 }
 
 type VmEnv struct {
