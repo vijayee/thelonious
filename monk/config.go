@@ -67,7 +67,7 @@ type ChainConfig struct {
 	GenesisConfig string `json:"genesis_config"`
 
 	// Language Compilation
-    // TODO: this ought to be epm level config (not chain specific)
+	// TODO: this ought to be epm level config (not chain specific)
 	LLLPath   string `json:"lll_path"`
 	LLLServer string `json:"lll_server"`
 	LLLLocal  bool   `json:"lll_local"`
@@ -128,7 +128,7 @@ var DefaultConfig = &ChainConfig{
 	LogLevel:  5,
 }
 
-func InitChain(configPath string) error {
+func InitChain() error {
 	err := utils.InitDecerverDir()
 	if err != nil {
 		return err
@@ -137,11 +137,11 @@ func InitChain(configPath string) error {
 	if err != nil {
 		return err
 	}
-	err = utils.WriteJson(DefaultConfig, path.Join(configPath, "monk-config.json"))
+	err = utils.WriteJson(DefaultConfig, path.Join(utils.Blockchains, "config.json"))
 	if err != nil {
 		return err
 	}
-	return utils.WriteJson(monkdoug.DefaultGenesis, path.Join(configPath, "genesis.json"))
+	return utils.WriteJson(monkdoug.DefaultGenesis, path.Join(utils.Blockchains, "genesis.json"))
 }
 
 // Marshal the current configuration to file in pretty json.
@@ -206,8 +206,8 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error {
 	return nil
 }
 
-func (mod *MonkModule) setLLLPath(){
-    cfg := mod.Config
+func (mod *MonkModule) setLLLPath() {
+	cfg := mod.Config
 	// set lll path
 	if cfg.LLLLocal {
 		if cfg.LLLPath != "" {
@@ -215,9 +215,9 @@ func (mod *MonkModule) setLLLPath(){
 		}
 	} else {
 		// TODO: set server address in monkutil...
-        monkutil.PathToLLL = "NETCALL"
+		monkutil.PathToLLL = "NETCALL"
 	}
-    fmt.Println(cfg.LLLLocal, monkutil.PathToLLL)
+	fmt.Println(cfg.LLLLocal, monkutil.PathToLLL)
 }
 
 // Set package global variables (LLLPath, monkutil.Config, logging).

@@ -98,18 +98,18 @@ func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg
 //          but really we should reconstruct it from the genesis block
 func (mod *MonkModule) ConfigureGenesis() {
 	// first check if this chain already exists (and load genesis config from there)
-    // (only if not working from a mem db)
-    if !mod.Config.DbMem{
-        if _, err := os.Stat(mod.Config.RootDir); err == nil{
-            p := path.Join(mod.Config.RootDir, "genesis.json")
-            if _, err = os.Stat(p); err == nil{
-                mod.Config.GenesisConfig = p
-            } else {
-                //			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
-                utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
-            }
-        }
-    }
+	// (only if not working from a mem db)
+	if !mod.Config.DbMem {
+		if _, err := os.Stat(mod.Config.RootDir); err == nil {
+			p := path.Join(mod.Config.RootDir, "genesis.json")
+			if _, err = os.Stat(p); err == nil {
+				mod.Config.GenesisConfig = p
+			} else {
+				//			exit(fmt.Errorf("Blockchain exists but missing genesis.json!"))
+				utils.Copy(DefaultGenesisConfig, path.Join(mod.Config.RootDir, "genesis.json"))
+			}
+		}
+	}
 
 	// setup genesis config and genesis deploy handler
 	if mod.GenesisConfig == nil {
@@ -142,9 +142,9 @@ func (mod *MonkModule) Init() error {
 	// set the root
 	// name > chainId > rootDir > default
 	mod.setRootDir()
-    mod.setLLLPath()
+	mod.setLLLPath()
 	mod.ConfigureGenesis()
-    logger.Infoln("Loaded genesis configuration from: ", mod.Config.GenesisConfig)
+	logger.Infoln("Loaded genesis configuration from: ", mod.Config.GenesisConfig)
 
 	if !m.config.UseCheckpoint {
 		m.config.LatestCheckpoint = ""
@@ -578,8 +578,8 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 				tx := convertTx(txFail.Tx)
 				tx.Error = txFail.Err.Error()
 				returnEvent.Resource = tx
-            } else if s, ok := resource.(string); ok{
-                returnEvent.Resource = s
+			} else if s, ok := resource.(string); ok {
+				returnEvent.Resource = s
 			} else {
 				logger.Errorln("Invalid event resource type", resource)
 			}
@@ -778,7 +778,7 @@ func (monk *Monk) FetchPriv() string {
 
 func (monk *Monk) Stop() {
 	if !monk.started {
-        logger.Infoln("can't stop: haven't even started...")
+		logger.Infoln("can't stop: haven't even started...")
 		return
 	}
 	monk.StopMining()

@@ -169,7 +169,7 @@ func SetValue(addr []byte, args []string, keys *monkcrypto.KeyPair, block *monkc
 }
 
 func GetValue(addr []byte, query string, state *monkstate.State) []byte {
-    // TODO: get values from gendoug
+	// TODO: get values from gendoug
 	return nil
 }
 
@@ -216,7 +216,7 @@ type VMEnv struct {
 	state    *monkstate.State
 	block    *monkchain.Block
 	tx       *monkchain.Transaction
-    caller   []byte
+	caller   []byte
 }
 
 func NewEnv(state *monkstate.State, tx *monkchain.Transaction, block *monkchain.Block, protocol monkchain.Protocol) *VMEnv {

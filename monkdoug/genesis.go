@@ -355,7 +355,7 @@ func (g *GenesisConfig) hookVmDeploy(keys *monkcrypto.KeyPair, block *monkchain.
 					CodePath: absCodePath,
 				}
 				m.contract[tag] = s
-                douglogger.Infof("Setting contract address in GENDOUG for %s (%s) : %x\n", tag, codePath, s.byteAddr) 
+				douglogger.Infof("Setting contract address in GENDOUG for %s (%s) : %x\n", tag, codePath, s.byteAddr)
 				SetValue(g.byteAddr, []string{"initvar", tag, "single", "0x" + monkutil.Bytes2Hex(s.byteAddr)}, keys, block)
 			}
 		}
