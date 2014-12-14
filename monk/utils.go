@@ -334,22 +334,30 @@ func splitHostPort(peerServer string) (string, int, error) {
 	return host, port, nil
 }
 
+func CheckGetPackageFile(dappDir string) (*dapps.PackageFile, error) {
+	if _, err := os.Stat(dappDir); err != nil {
+		return nil, fmt.Errorf("Dapp %s not found", dappDir)
+	}
+
+	b, err := ioutil.ReadFile(path.Join(dappDir, "package.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := dapps.NewPackageFileFromJson(b)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 // Deploy a chain from a genesis block but overwrite the chain Id
 // This is someone else's chain we are fetching to catch up with
 func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJson string) error{
 	dappDir := path.Join(utils.Apps, dappName)
 	var err error
 
-	if _, err = os.Stat(dappDir); err != nil {
-		return fmt.Errorf("Dapp %s not found", dappName)
-	}
-
-	b, err := ioutil.ReadFile(path.Join(dappDir, "package.json"))
-	if err != nil {
-		return err
-	}
-
-	p, err := dapps.NewPackageFileFromJson(b)
+	p, err := CheckGetPackageFile(dappDir)
 	if err != nil {
 		return err
 	}
