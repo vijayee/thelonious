@@ -100,7 +100,7 @@ var DefaultConfig = &ChainConfig{
 	MaxPeers:         10,
 	ClientIdentifier: "Thelonious(decerver)",
 	Version:          "0.7.0",
-	Identifier:       "chainId",
+	Identifier:       "",
 	KeySession:       "generous",
 	KeyStore:         "file",
 	KeyCursor:        0,
@@ -110,7 +110,7 @@ var DefaultConfig = &ChainConfig{
 	LatestCheckpoint: "",
 
 	// Paths
-	ConfigFile:    "config",
+	ConfigFile:    "config", // TODO: deprecate this2
 	RootDir:       "",
 	DbName:        "database",
 	DbMem:         false,
@@ -125,7 +125,7 @@ var DefaultConfig = &ChainConfig{
 	// Log
 	LogFile:   "",
 	DebugFile: "",
-	LogLevel:  5,
+	LogLevel:  2,
 }
 
 func InitChain() error {
