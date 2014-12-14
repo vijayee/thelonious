@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
+	"github.com/eris-ltd/decerver-interfaces/dapps"
 	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
 	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
 	"github.com/eris-ltd/decerver-interfaces/glue/utils"
@@ -318,6 +319,89 @@ func DeploySequence(name, genesis, config string) (string, error) {
 	}
 
 	return chainId, nil
+}
+
+func splitHostPort(peerServer string) (string, int, error) {
+	spl := strings.Split(peerServer, ":")
+	if len(spl) < 2 {
+		return "", 0, fmt.Errorf("Impromerly formatted peer server. Should be <host>:<port>")
+	}
+	host := spl[0]
+	port, err := strconv.Atoi(spl[1])
+	if err != nil {
+		return "", 0, fmt.Errorf("Bad port number: ", spl[1])
+	}
+	return host, port, nil
+}
+
+// Deploy a chain from a genesis block but overwrite the chain Id
+// This is someone else's chain we are fetching to catch up with
+func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJson string) error{
+	dappDir := path.Join(utils.Apps, dappName)
+	var err error
+
+	if _, err = os.Stat(dappDir); err != nil {
+		return fmt.Errorf("Dapp %s not found", dappName)
+	}
+
+	b, err := ioutil.ReadFile(path.Join(dappDir, "package.json"))
+	if err != nil {
+		return err
+	}
+
+	p, err := dapps.NewPackageFileFromJson(b)
+	if err != nil {
+		return err
+	}
+
+	var (
+		host    string
+		port    int
+		chainId string
+	)
+	for _, dep := range p.ModuleDependencies {
+		if dep.Name == "monk" {
+			d := &dapps.MonkData{}
+			if err = json.Unmarshal(dep.Data, d); err != nil {
+				return err
+			}
+			host, port, err = splitHostPort(d.PeerServerAddress)
+			if err != nil {
+				return err
+			}
+			chainId = d.ChainId
+		}
+	}
+
+	m := NewMonk(nil)
+
+	m.Config.RootDir = path.Join(Thelonious, chainId)
+	if err := utils.InitDataDir(m.Config.RootDir); err != nil {
+		return err
+	}
+
+	genesisJson := path.Join(dappDir, "genesis.json")
+	if err := utils.Copy(genesisJson, path.Join(m.Config.RootDir, "genesis.json")); err != nil {
+		return err
+	}
+
+	m.Config.UseSeed = true
+	m.Config.GenesisConfig = path.Join(m.Config.RootDir, "genesis.json")
+	m.Config.RemoteHost = host
+	m.Config.RemotePort = port
+
+	if err := utils.WriteJson(m.Config, path.Join(m.Config.RootDir, "config.json")); err != nil {
+		return err
+	}
+
+	err = m.Init()
+	if err != nil {
+		return err
+	}
+
+	monkutil.Config.Db.Put([]byte("ChainID"), monkutil.Hex2Bytes(chainId))
+
+	return nil
 }
 
 func DeployChain(root, genesis, config string) (string, error) {

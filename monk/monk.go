@@ -791,6 +791,9 @@ func (mod *MonkModule) setRootDir() {
 	c := mod.Config
 	// if RootDir is set, we're done
 	if c.RootDir != "" {
+		if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
+			mod.ReadConfig(path.Join(c.RootDir, "config.json"))
+		}
 		return
 	}
 

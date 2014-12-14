@@ -466,6 +466,7 @@ func (s *Thelonious) Seed(seed string) {
 			s.ConnectToPeer(ip)
 		}
 	}
+    monklogger.Infoln("Connecting to peer: ", seed)
 	s.ConnectToPeer(seed)
 	/* else {
 		monklogger.Debugln("Retrieving seed nodes")
