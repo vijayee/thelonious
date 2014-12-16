@@ -472,11 +472,11 @@ func (monk *Monk) Tx(addr, amt string) (string, error) {
 	}
 	byte_addr := monkutil.Hex2Bytes(addr)
 	// note, NewValue will not turn a string int into a big int..
-	start := time.Now()
+	//start := time.Now()
 	//hash, err := monk.pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big("20000000000")), monkutil.NewValue(monkutil.Big("100000")), "")
-	hash, err := monk.pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("0")), "")
-	dif := time.Since(start)
-	fmt.Println("pipe tx took ", dif)
+	hash, err := monk.pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big(amt)), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), "")
+	//dif := time.Since(start)
+	//fmt.Println("pipe tx took ", dif)
 	if err != nil {
 		return "", err
 	}
@@ -489,7 +489,7 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 	keys := monk.fetchKeyPair()
 	addr = monkutil.StripHex(addr)
 	byte_addr := monkutil.Hex2Bytes(addr)
-	hash, err := monk.pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("0")), packed)
+	hash, err := monk.pipe.Transact(keys, byte_addr, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), packed)
 	if err != nil {
 		return "", err
 	}
@@ -517,7 +517,7 @@ func (monk *Monk) Script(file, lang string) (string, error) {
 	keys := monk.fetchKeyPair()
 
 	// well isn't this pretty! barf
-	contract_addr, err := monk.pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("0")), script)
+	contract_addr, err := monk.pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), script)
 	if err != nil {
 		return "", err
 	}

@@ -24,7 +24,7 @@ type TxMsgTy byte
 const (
 	TxPre = iota
 	TxPost
-	minGasPrice = 1000000
+	minGasPrice = 0 //1000000
 )
 
 var MinGasPrice = big.NewInt(0)

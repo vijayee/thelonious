@@ -217,7 +217,6 @@ func (mod *MonkModule) setLLLPath() {
 		// TODO: set server address in monkutil...
 		monkutil.PathToLLL = "NETCALL"
 	}
-	fmt.Println(cfg.LLLLocal, monkutil.PathToLLL)
 }
 
 // Set package global variables (LLLPath, monkutil.Config, logging).

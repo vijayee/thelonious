@@ -22,7 +22,7 @@ import (
 func tester(name string, testing func(mod *MonkModule), end int) {
 	mod := NewMonk(nil)
 	mod.Config.Mining = false
-	mod.Config.LogLevel = 5
+	mod.Config.LogLevel = 3
 	mod.Config.DbMem = true
 	//g := mod.LoadGenesis(mod.Config.GenesisConfig)
 	//g.Difficulty = 10 // so we always mine quickly
@@ -33,7 +33,7 @@ func tester(name string, testing func(mod *MonkModule), end int) {
 	if end > 0 {
 		time.Sleep(time.Second * time.Duration(end))
 	}
-	PrettyPrintChainAccounts(mod)
+	//PrettyPrintChainAccounts(mod)
 	mod.Shutdown()
 	time.Sleep(time.Second * 3)
 }
