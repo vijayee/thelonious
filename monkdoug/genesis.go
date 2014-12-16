@@ -64,6 +64,8 @@ type GenesisConfig struct {
 	PublicTx int `json:"public:tx"`
 	// Max gas per tx
 	MaxGasTx string `json:"maxgastx"`
+	// Proof of work difficulty for transactions/
+	TaPoW int `json:"tapow"`
 	// Target block time (shaky...)
 	BlockTime int `json:"blocktime"`
 
@@ -179,7 +181,7 @@ func (g *GenesisConfig) Init() {
 	g.protocol = NewProtocol(g)
 
 	// set default deploy function
-	douglogger.Debugln("Hooking default deploy function")
+	douglogger.Debugf("Setting Doug Deployer: NoGenDoug=%v, ModelName=%s, Path=%s", g.NoGenDoug, g.ModelName, g.DougPath)
 	g.SetDeployer(g.Deploy)
 }
 
@@ -188,20 +190,23 @@ func (g *GenesisConfig) Init() {
 func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 	block.Difficulty = monkutil.BigPow(2, g.Difficulty)
 
-	if g.NoGenDoug {
-		// simple bankroll accounts
-		return g.bankRoll(block)
-	}
-
-	douglogger.Infoln("Deploying GenDoug:", g.Address, " ", g.DougPath)
-
 	// Keys for creating valid txs and for signing
-	// the final gendoug
+	// the final genblock. Will also give us uniqueness
 	keys, err := g.selectKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	douglogger.Debugf("Using signing address %x for deploy\n", keys.Address())
+
+	if g.NoGenDoug {
+		// simple bankroll accounts
+		g.bankRoll(block)
+		chainId := g.chainIdFromBlock(block, keys)
+		block.State().Update()
+		block.State().Sync()
+		return chainId, nil
+	}
+
+	douglogger.Infoln("Deploying GenDoug:", g.Address, " ", g.DougPath)
 
 	// create the genesis doug
 	codePath := path.Join(g.contractPath, g.DougPath)
@@ -224,17 +229,22 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 		g.hookVmDeploy(keys, block)
 	}
 
-	// ChainId is leading 20 bytes of SHA3 of 65-byte ecdsa sig
-	// Note this means verification requires provision of pubkey
-	// We choose 20 bytes so the hashes can be keys on mainline DHT
-	sig := block.Sign(keys.PrivateKey)
-	chainId := monkcrypto.Sha3Bin(sig)[:20]
-	g.chainId = monkutil.Bytes2Hex(chainId)
-
+	chainId := g.chainIdFromBlock(block, keys)
 	block.State().Update()
 	block.State().Sync()
 
 	return chainId, nil
+}
+
+func (g *GenesisConfig) chainIdFromBlock(block *monkchain.Block, keys *monkcrypto.KeyPair) []byte {
+	// ChainId is leading 20 bytes of SHA3 of 65-byte ecdsa sig
+	// Note this means verification requires provision of pubkey
+	// We choose 20 bytes so the hashes can be keys on mainline DHT
+	douglogger.Debugf("Using signing address %x for deploy\n", keys.Address())
+	sig := block.Sign(keys.PrivateKey)
+	chainId := monkcrypto.Sha3Bin(sig)[:20]
+	g.chainId = monkutil.Bytes2Hex(chainId)
+	return chainId
 }
 
 /*
@@ -242,15 +252,12 @@ func (g *GenesisConfig) Deploy(block *monkchain.Block) ([]byte, error) {
 */
 
 // bankroll the accounts
-func (g *GenesisConfig) bankRoll(block *monkchain.Block) ([]byte, error) {
+func (g *GenesisConfig) bankRoll(block *monkchain.Block) {
 	// no genesis doug, deploy simple
 	for _, account := range g.Accounts {
 		// direct state modification to create accounts and balances
 		AddAccount(account.byteAddr, account.Balance, block)
 	}
-	block.State().Update()
-	block.State().Sync()
-	return block.Hash(), nil
 }
 
 // Bank roll accounts and add permissions and stake
@@ -446,6 +453,7 @@ var DefaultGenesis = defaultGenesis()
 
 func defaultGenesis() *GenesisConfig {
 	g := &GenesisConfig{
+		Address:    "0000000000THISISDOUG",
 		NoGenDoug:  true,
 		Difficulty: 15,
 		Accounts: []*Account{
