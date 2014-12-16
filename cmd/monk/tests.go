@@ -18,7 +18,7 @@ func TestRunLoad(m *monk.MonkModule) {
 	go func() {
 		tick := time.Tick(1000 * time.Millisecond)
 		addr := "b9398794cafb108622b07d9a01ecbed3857592d5"
-		amount := "567890"
+		amount := "0" //"567890"
 		for _ = range tick {
 			m.Tx(addr, amount)
 		}
