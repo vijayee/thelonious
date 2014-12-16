@@ -475,7 +475,7 @@ var suites = map[string]*VmConsensus{
 		PermissionVerify:   NewSysCall("", nil),
 		BlockVerify:        NewSysCall("Protocol/block-verify.lll", nil),
 		TxVerify:           NewSysCall("Protocol/tx-verify.lll", nil),
-		ComputeDifficulty:  NewSysCall("Protocol/difficulty.lll", nil),
+		ComputeDifficulty:  NewSysCall("Protocol/compute-difficulty.lll", nil),
 		ComputeParticipate: NewSysCall("", nil),
 		Participate:        NewSysCall("", nil),
 		PreCall:            NewSysCall("", nil),
