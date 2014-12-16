@@ -194,6 +194,17 @@ func TestManyTx(t *testing.T) {
 	}, 0)
 }
 
+func TestSetProperty(t *testing.T) {
+	m := NewMonk(nil)
+	value := "somechainid"
+	m.SetProperty("ChainId", value)
+	m.Init()
+	if m.Config.ChainId != value {
+		t.Error("got:", m.Config.ChainId, "expected:", value)
+	}
+
+}
+
 /*
 func receiveModule(m modules.Module) {
 }
