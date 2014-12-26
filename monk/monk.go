@@ -12,8 +12,9 @@ import (
 	core "github.com/eris-ltd/decerver-interfaces/core"
 	events "github.com/eris-ltd/decerver-interfaces/events"
 	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
-	utils "github.com/eris-ltd/decerver-interfaces/glue/utils"
 	modules "github.com/eris-ltd/decerver-interfaces/modules"
+	utils "github.com/eris-ltd/epm-go/utils"
+	chains "github.com/eris-ltd/epm-go/chains"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -789,17 +790,19 @@ func (monk *Monk) Stop() {
 	monklog.Reset()
 }
 
+// Set the root. If it's already set, check if the 
 func (mod *MonkModule) setRootDir() {
 	c := mod.Config
 	// if RootDir is set, we're done
 	if c.RootDir != "" {
+        /*
 		if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
 			mod.ReadConfig(path.Join(c.RootDir, "config.json"))
-		}
+		}*/
 		return
 	}
 
-	root, _ := utils.ResolveChain("thelonious", c.ChainName, c.ChainId)
+	root, _ := chains.ResolveChain("thelonious", c.ChainName, c.ChainId)
 	if root == "" {
 		c.RootDir = DefaultRoot
 	} else {

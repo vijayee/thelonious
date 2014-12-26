@@ -18,11 +18,12 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/dapps"
-	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
+	//"github.com/eris-ltd/decerver-interfaces/glue/genblock"
 	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
-	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/decerver-interfaces/modules"
-	"github.com/eris-ltd/epm-go"
+	"github.com/eris-ltd/epm-go/epm"
+	"github.com/eris-ltd/epm-go/utils"
+	"github.com/eris-ltd/epm-go/chains"
 
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -274,6 +275,8 @@ func setEpmContractPath(p string) {
 // Deploy a pdx onto a block
 // This is used as a monkdoug deploy function
 func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
+    // TODO: use epm here
+    /*
 	m := genblock.NewGenBlockModule(block)
 	m.Config.LogLevel = 5
 	err := m.Init()
@@ -300,6 +303,8 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 		return nil, err
 	}
 	return chainId, nil
+    */
+    return nil, nil
 }
 
 // Deploy sequence (done through monk interface for simplicity):
@@ -340,7 +345,7 @@ func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJs
 	dappDir := path.Join(utils.Apps, dappName)
 	var err error
 
-	p, err := utils.CheckGetPackageFile(dappDir)
+	p, err := chains.CheckGetPackageFile(dappDir)
 	if err != nil {
 		return err
 	}
@@ -466,7 +471,7 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 
 	// update refs
 	if name != "" {
-		err := utils.AddRef(chainId, name)
+		err := chains.AddRef(chainId, name)
 		if err != nil {
 			return err
 		}
