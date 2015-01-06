@@ -148,24 +148,28 @@ func InitChain() error {
 }
 
 // Marshal the current configuration to file in pretty json.
-func (mod *MonkModule) WriteConfig(config_file string) {
+func (mod *MonkModule) WriteConfig(config_file string) error{
 	b, err := json.Marshal(mod.monk.config)
 	if err != nil {
 		fmt.Println("error marshalling config:", err)
-		return
+		return err
 	}
 	var out bytes.Buffer
 	json.Indent(&out, b, "", "\t")
-	ioutil.WriteFile(config_file, out.Bytes(), 0600)
+	err = ioutil.WriteFile(config_file, out.Bytes(), 0600)
+    if err != nil{
+        return err
+    }
+    return nil
 }
 
 // Unmarshal the configuration file into module's config struct.
-func (mod *MonkModule) ReadConfig(config_file string) {
+func (mod *MonkModule) ReadConfig(config_file string) error {
 	b, err := ioutil.ReadFile(config_file)
 	if err != nil {
 		logger.Errorln("Could not read config file", err)
 		logger.Errorln("Did you run `monk -init`?")
-		return
+		return err
 	}
 	var config ChainConfig
 	err = json.Unmarshal(b, &config)
@@ -173,9 +177,10 @@ func (mod *MonkModule) ReadConfig(config_file string) {
 		fmt.Println("error unmarshalling config from file:", err)
 		fmt.Println("resorting to defaults")
 		//mod.monk.config = DefaultConfig
-		return
+		return err
 	}
 	*(mod.Config) = config
+    return nil
 }
 
 // Set a field in the config struct.

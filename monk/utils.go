@@ -400,6 +400,8 @@ func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJs
 	return nil
 }
 
+// Read config, set deployment root, config genesis block,
+// init, return chainId
 func DeployChain(root, genesis, config string) (string, error) {
 	// startup and deploy
 	m := NewMonk(nil)
@@ -418,16 +420,10 @@ func DeployChain(root, genesis, config string) (string, error) {
 	}
 
 	// get the chain id
-	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
-	if err != nil {
-		return "", err
-	} else if len(data) == 0 {
-		return "", fmt.Errorf("ChainID is empty!")
-	}
-	chainId := monkutil.Bytes2Hex(data)
-	return chainId, nil
+    return m.ChainId()
 }
 
+// Copy files and deploy directory into global tree. Set configuration values for root dir and chain id.
 func InstallChain(root, name, genesis, config, chainId string) error {
 	monkutil.Config.Db.Close()
 	home := path.Join(Thelonious, chainId)

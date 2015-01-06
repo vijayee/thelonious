@@ -210,6 +210,10 @@ func (mod *MonkModule) Shutdown() error {
 	return nil
 }
 
+func (mod *MonkModule) ChainId() (string, error) {
+    return mod.monk.ChainId()
+}
+
 func (mod *MonkModule) WaitForShutdown() {
 	mod.monk.thelonious.WaitForShutdown()
 }
@@ -359,6 +363,18 @@ func (mod *MonkModule) MonkState() *monkstate.State {
 /*
    Implement Blockchain
 */
+
+func (monk *Monk) ChainId() (string, error) {
+    // get the chain id
+    data, err := monkutil.Config.Db.Get([]byte("ChainID"))                              
+    if err != nil {
+        return "", err                                                                  
+    } else if len(data) == 0 {
+        return "", fmt.Errorf("ChainID is empty!")                                      
+    }
+    chainId := monkutil.Bytes2Hex(data)  
+    return chainId, nil
+}   
 
 func (monk *Monk) WorldState() *modules.WorldState {
 	state := monk.pipe.World().State()
