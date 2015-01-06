@@ -12,8 +12,9 @@ import (
 	core "github.com/eris-ltd/decerver-interfaces/core"
 	events "github.com/eris-ltd/decerver-interfaces/events"
 	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
-	utils "github.com/eris-ltd/decerver-interfaces/glue/utils"
 	modules "github.com/eris-ltd/decerver-interfaces/modules"
+	utils "github.com/eris-ltd/epm-go/utils"
+	chains "github.com/eris-ltd/epm-go/chains"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -209,6 +210,10 @@ func (mod *MonkModule) Shutdown() error {
 	return nil
 }
 
+func (mod *MonkModule) ChainId() (string, error) {
+    return mod.monk.ChainId()
+}
+
 func (mod *MonkModule) WaitForShutdown() {
 	mod.monk.thelonious.WaitForShutdown()
 }
@@ -358,6 +363,18 @@ func (mod *MonkModule) MonkState() *monkstate.State {
 /*
    Implement Blockchain
 */
+
+func (monk *Monk) ChainId() (string, error) {
+    // get the chain id
+    data, err := monkutil.Config.Db.Get([]byte("ChainID"))                              
+    if err != nil {
+        return "", err                                                                  
+    } else if len(data) == 0 {
+        return "", fmt.Errorf("ChainID is empty!")                                      
+    }
+    chainId := monkutil.Bytes2Hex(data)  
+    return chainId, nil
+}   
 
 func (monk *Monk) WorldState() *modules.WorldState {
 	state := monk.pipe.World().State()
@@ -789,17 +806,19 @@ func (monk *Monk) Stop() {
 	monklog.Reset()
 }
 
+// Set the root. If it's already set, check if the 
 func (mod *MonkModule) setRootDir() {
 	c := mod.Config
 	// if RootDir is set, we're done
 	if c.RootDir != "" {
+        /*
 		if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
 			mod.ReadConfig(path.Join(c.RootDir, "config.json"))
-		}
+		}*/
 		return
 	}
 
-	root, _ := utils.ResolveChain("thelonious", c.ChainName, c.ChainId)
+	root, _ := chains.ResolveChainDir("thelonious", c.ChainName, c.ChainId)
 	if root == "" {
 		c.RootDir = DefaultRoot
 	} else {

@@ -18,11 +18,12 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/dapps"
-	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
+	//"github.com/eris-ltd/decerver-interfaces/glue/genblock"
 	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
-	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/decerver-interfaces/modules"
-	"github.com/eris-ltd/epm-go"
+	"github.com/eris-ltd/epm-go/epm"
+	"github.com/eris-ltd/epm-go/utils"
+	"github.com/eris-ltd/epm-go/chains"
 
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -274,6 +275,8 @@ func setEpmContractPath(p string) {
 // Deploy a pdx onto a block
 // This is used as a monkdoug deploy function
 func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
+    // TODO: use epm here
+    /*
 	m := genblock.NewGenBlockModule(block)
 	m.Config.LogLevel = 5
 	err := m.Init()
@@ -300,6 +303,8 @@ func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
 		return nil, err
 	}
 	return chainId, nil
+    */
+    return nil, nil
 }
 
 // Deploy sequence (done through monk interface for simplicity):
@@ -340,7 +345,7 @@ func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJs
 	dappDir := path.Join(utils.Apps, dappName)
 	var err error
 
-	p, err := utils.CheckGetPackageFile(dappDir)
+	p, err := chains.CheckGetPackageFile(dappDir)
 	if err != nil {
 		return err
 	}
@@ -395,6 +400,8 @@ func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJs
 	return nil
 }
 
+// Read config, set deployment root, config genesis block,
+// init, return chainId
 func DeployChain(root, genesis, config string) (string, error) {
 	// startup and deploy
 	m := NewMonk(nil)
@@ -413,16 +420,10 @@ func DeployChain(root, genesis, config string) (string, error) {
 	}
 
 	// get the chain id
-	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
-	if err != nil {
-		return "", err
-	} else if len(data) == 0 {
-		return "", fmt.Errorf("ChainID is empty!")
-	}
-	chainId := monkutil.Bytes2Hex(data)
-	return chainId, nil
+    return m.ChainId()
 }
 
+// Copy files and deploy directory into global tree. Set configuration values for root dir and chain id.
 func InstallChain(root, name, genesis, config, chainId string) error {
 	monkutil.Config.Db.Close()
 	home := path.Join(Thelonious, chainId)
@@ -460,13 +461,13 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		return err
 	}
 
-	if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
+	/*if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
 		return err
-	}
+	}*/
 
 	// update refs
 	if name != "" {
-		err := utils.AddRef(chainId, name)
+		err := chains.AddRef("thelonious", chainId, name)
 		if err != nil {
 			return err
 		}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/eris-ltd/decerver-interfaces/glue/utils"
+	"github.com/eris-ltd/epm-go/utils"
 	"github.com/eris-ltd/thelonious/monkdoug"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"io/ioutil"
@@ -28,6 +28,8 @@ var (
 	DefaultLLLServer     = "http://lllc.erisindustries.com/compile"
 )
 
+// main configuration struct for
+// starting a blockchain module
 type ChainConfig struct {
 	// Networking
 	ListenHost string `json:"local_host"`
@@ -67,7 +69,8 @@ type ChainConfig struct {
 	GenesisConfig string `json:"genesis_config"`
 
 	// Language Compilation
-	// TODO: this ought to be epm level config (not chain specific)
+	// TODO: this ought to be in an epm
+	// level compilation module (not chain specific)
 	LLLPath   string `json:"lll_path"`
 	LLLServer string `json:"lll_server"`
 	LLLLocal  bool   `json:"lll_local"`
@@ -145,24 +148,28 @@ func InitChain() error {
 }
 
 // Marshal the current configuration to file in pretty json.
-func (mod *MonkModule) WriteConfig(config_file string) {
+func (mod *MonkModule) WriteConfig(config_file string) error{
 	b, err := json.Marshal(mod.monk.config)
 	if err != nil {
 		fmt.Println("error marshalling config:", err)
-		return
+		return err
 	}
 	var out bytes.Buffer
 	json.Indent(&out, b, "", "\t")
-	ioutil.WriteFile(config_file, out.Bytes(), 0600)
+	err = ioutil.WriteFile(config_file, out.Bytes(), 0600)
+    if err != nil{
+        return err
+    }
+    return nil
 }
 
 // Unmarshal the configuration file into module's config struct.
-func (mod *MonkModule) ReadConfig(config_file string) {
+func (mod *MonkModule) ReadConfig(config_file string) error {
 	b, err := ioutil.ReadFile(config_file)
 	if err != nil {
 		logger.Errorln("Could not read config file", err)
 		logger.Errorln("Did you run `monk -init`?")
-		return
+		return err
 	}
 	var config ChainConfig
 	err = json.Unmarshal(b, &config)
@@ -170,30 +177,22 @@ func (mod *MonkModule) ReadConfig(config_file string) {
 		fmt.Println("error unmarshalling config from file:", err)
 		fmt.Println("resorting to defaults")
 		//mod.monk.config = DefaultConfig
-		return
+		return err
 	}
 	*(mod.Config) = config
+    return nil
 }
 
 // Set a field in the config struct.
 func (mod *MonkModule) SetProperty(field string, value interface{}) error {
 	cv := reflect.ValueOf(mod.monk.config).Elem()
+	return utils.SetProperty(cv, field, value)
+}
+
+func (mod *MonkModule) Property(field string) interface{} {
+	cv := reflect.ValueOf(mod.monk.config).Elem()
 	f := cv.FieldByName(field)
-	kind := f.Kind()
-
-	k := reflect.ValueOf(value).Kind()
-	if kind != k {
-		return fmt.Errorf("Invalid kind. Expected %s, received %s", kind, k)
-	}
-
-	if kind == reflect.String {
-		f.SetString(value.(string))
-	} else if kind == reflect.Int {
-		f.SetInt(int64(value.(int)))
-	} else if kind == reflect.Bool {
-		f.SetBool(value.(bool))
-	}
-	return nil
+	return f.Interface()
 }
 
 // Set the config object directly
