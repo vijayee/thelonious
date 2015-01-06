@@ -1,6 +1,7 @@
 package monkrpc
 
 import (
+    "fmt" 
 	"encoding/json"
 	"errors"
 	"math/big"
@@ -272,6 +273,25 @@ func (p *TheloniousApi) GetTxCountAt(args *GetTxCountArgs, reply *string) error 
 	state := p.pipe.TxCountAt(args.Address)
 	*reply = NewSuccessRes(GetTxCountRes{Nonce: state})
 	return nil
+}
+
+type ChainIdArgs struct {
+}
+
+type ChainIdRes struct{
+    ChainId string `json:"chain_id"`
+}
+
+func (p *TheloniousApi) ChainId(args *ChainIdArgs, reply *string) error{
+    data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+    if err != nil {
+        return  err                                                                  
+    } else if len(data) == 0 {
+        return fmt.Errorf("ChainID is empty!")                                      
+    }
+    chainId := monkutil.Bytes2Hex(data)  
+	*reply = NewSuccessRes(ChainIdRes{ChainId: chainId})
+    return nil
 }
 
 type GetBalanceArgs struct {
