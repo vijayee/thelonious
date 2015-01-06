@@ -461,13 +461,13 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		return err
 	}
 
-	if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
+	/*if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
 		return err
-	}
+	}*/
 
 	// update refs
 	if name != "" {
-		err := chains.AddRef(chainId, name)
+		err := chains.AddRef("thelonious", chainId, name)
 		if err != nil {
 			return err
 		}

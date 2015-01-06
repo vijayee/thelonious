@@ -818,7 +818,7 @@ func (mod *MonkModule) setRootDir() {
 		return
 	}
 
-	root, _ := chains.ResolveChain("thelonious", c.ChainName, c.ChainId)
+	root, _ := chains.ResolveChainDir("thelonious", c.ChainName, c.ChainId)
 	if root == "" {
 		c.RootDir = DefaultRoot
 	} else {
