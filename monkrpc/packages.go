@@ -210,7 +210,8 @@ func (p *TheloniousApi) GetStorageAt(args *GetStorageArgs, reply *string) error 
 	}
 	logger.Debugf("GetStorageAt(%s, %s)\n", args.Address, hx)
 	value := state.Storage(monkutil.Hex2Bytes(hx))
-	*reply = NewSuccessRes(GetStorageAtRes{Address: args.Address, Key: args.Key, Value: value.Str()})
+	v := fmt.Sprintf("%x", value.Str())
+	*reply = NewSuccessRes(GetStorageAtRes{Address: args.Address, Key: args.Key, Value: v})
 	return nil
 }
 
@@ -297,6 +298,19 @@ func (p *TheloniousApi) ChainId(args *ChainIdArgs, reply *string) error {
 	// *reply = ChainIdRes{Id: chainId}
 	*reply = chainId
 
+	return nil
+}
+
+type LatestBlockHashArgs struct {
+}
+
+func (a *LatestBlockHashArgs) requirements() error {
+	return nil
+}
+
+func (p *TheloniousApi) LatestBlockHash(args *LatestBlockHashArgs, reply *string) error {
+	jsblock := p.pipe.BlockByNumber(-1)
+	*reply = jsblock.Hash
 	return nil
 }
 
