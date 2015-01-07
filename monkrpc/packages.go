@@ -1,9 +1,9 @@
 package monkrpc
 
 import (
-    "fmt" 
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -140,7 +140,6 @@ func (p *TheloniousApi) Create(args *NewTxArgs, reply *string) error {
 	if err != nil {
 		return err
 	}
-
 	result, _ := p.pipe.Transact(p.pipe.Key().PrivateKey, "", args.Value, args.Gas, args.GasPrice, args.Body)
 	*reply = NewSuccessRes(result)
 	return nil
@@ -150,7 +149,7 @@ type PushTxArgs struct {
 	Tx string
 }
 
-func (a *PushTxArgs) requirementsPushTx() error {
+func (a *PushTxArgs) requirements() error {
 	if a.Tx == "" {
 		return NewErrorResponse("PushTx requires a 'tx' as argument")
 	}
@@ -158,7 +157,7 @@ func (a *PushTxArgs) requirementsPushTx() error {
 }
 
 func (p *TheloniousApi) PushTx(args *PushTxArgs, reply *string) error {
-	err := args.requirementsPushTx()
+	err := args.requirements()
 	if err != nil {
 		return err
 	}
@@ -278,20 +277,27 @@ func (p *TheloniousApi) GetTxCountAt(args *GetTxCountArgs, reply *string) error 
 type ChainIdArgs struct {
 }
 
-type ChainIdRes struct{
-    ChainId string `json:"chain_id"`
+type ChainIdRes struct {
+	Id string `json:"chain_id"`
 }
 
-func (p *TheloniousApi) ChainId(args *ChainIdArgs, reply *string) error{
-    data, err := monkutil.Config.Db.Get([]byte("ChainID"))
-    if err != nil {
-        return  err                                                                  
-    } else if len(data) == 0 {
-        return fmt.Errorf("ChainID is empty!")                                      
-    }
-    chainId := monkutil.Bytes2Hex(data)  
-	*reply = NewSuccessRes(ChainIdRes{ChainId: chainId})
-    return nil
+func (a *ChainIdArgs) requirements() error {
+	return nil
+}
+
+func (p *TheloniousApi) ChainId(args *ChainIdArgs, reply *string) error {
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return err
+	} else if len(data) == 0 {
+		return fmt.Errorf("ChainID is empty!")
+	}
+	chainId := monkutil.Bytes2Hex(data)
+	//*reply = NewSuccessRes(ChainIdRes{Id: chainId})
+	// *reply = ChainIdRes{Id: chainId}
+	*reply = chainId
+
+	return nil
 }
 
 type GetBalanceArgs struct {
