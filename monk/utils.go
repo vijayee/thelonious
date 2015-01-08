@@ -18,8 +18,8 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/dapps"
-	//"github.com/eris-ltd/decerver-interfaces/glue/genblock"
-	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
+	//"github.com/eris-ltd/modules/genblock"
+	mutils "github.com/eris-ltd/modules/monkutils"
 	"github.com/eris-ltd/decerver-interfaces/modules"
 	"github.com/eris-ltd/epm-go/epm"
 	"github.com/eris-ltd/epm-go/utils"

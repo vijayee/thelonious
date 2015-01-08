@@ -11,7 +11,7 @@ import (
 
 	core "github.com/eris-ltd/decerver-interfaces/core"
 	events "github.com/eris-ltd/decerver-interfaces/events"
-	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
+	mutils "github.com/eris-ltd/modules/monkutils"
 	modules "github.com/eris-ltd/decerver-interfaces/modules"
 	utils "github.com/eris-ltd/epm-go/utils"
 	chains "github.com/eris-ltd/epm-go/chains"
