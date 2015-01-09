@@ -19,11 +19,11 @@ import (
 	"bitbucket.org/kardianos/osext"
 	"github.com/eris-ltd/decerver-interfaces/dapps"
 	//"github.com/eris-ltd/modules/genblock"
-	mutils "github.com/eris-ltd/modules/monkutils"
 	"github.com/eris-ltd/decerver-interfaces/modules"
+	"github.com/eris-ltd/epm-go/chains"
 	"github.com/eris-ltd/epm-go/epm"
 	"github.com/eris-ltd/epm-go/utils"
-	"github.com/eris-ltd/epm-go/chains"
+	mutils "github.com/eris-ltd/modules/monkutils"
 
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -275,36 +275,36 @@ func setEpmContractPath(p string) {
 // Deploy a pdx onto a block
 // This is used as a monkdoug deploy function
 func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
-    // TODO: use epm here
-    /*
-	m := genblock.NewGenBlockModule(block)
-	m.Config.LogLevel = 5
-	err := m.Init()
-	if err != nil {
-		return nil, err
-	}
-	m.Start()
-	epm.ErrMode = epm.ReturnOnErr
-	e, err := epm.NewEPM(m, ".epm-log")
-	if err != nil {
-		return nil, err
-	}
-	err = e.Parse(pkgDef)
-	if err != nil {
-		return nil, err
-	}
-	err = e.ExecuteJobs()
-	if err != nil {
-		return nil, err
-	}
-	e.Commit()
-	chainId, err := m.ChainId()
-	if err != nil {
-		return nil, err
-	}
-	return chainId, nil
-    */
-    return nil, nil
+	// TODO: use epm here
+	/*
+		m := genblock.NewGenBlockModule(block)
+		m.Config.LogLevel = 5
+		err := m.Init()
+		if err != nil {
+			return nil, err
+		}
+		m.Start()
+		epm.ErrMode = epm.ReturnOnErr
+		e, err := epm.NewEPM(m, ".epm-log")
+		if err != nil {
+			return nil, err
+		}
+		err = e.Parse(pkgDef)
+		if err != nil {
+			return nil, err
+		}
+		err = e.ExecuteJobs()
+		if err != nil {
+			return nil, err
+		}
+		e.Commit()
+		chainId, err := m.ChainId()
+		if err != nil {
+			return nil, err
+		}
+		return chainId, nil
+	*/
+	return nil, nil
 }
 
 // Deploy sequence (done through monk interface for simplicity):
@@ -420,7 +420,7 @@ func DeployChain(root, genesis, config string) (string, error) {
 	}
 
 	// get the chain id
-    return m.ChainId()
+	return m.ChainId()
 }
 
 // Copy files and deploy directory into global tree. Set configuration values for root dir and chain id.
@@ -501,13 +501,13 @@ func copy(oldpath, newpath string) error {
 
 // compile LLL file into evm bytecode
 // returns hex
-func CompileLLL(filename string, literal bool) (string, error) {
+/*func CompileLLL(filename string, literal bool) (string, error) {
 	code, err := monkutil.CompileLLL(filename, literal)
 	if err != nil {
 		return "", err
 	}
 	return "0x" + monkutil.Bytes2Hex(code), nil
-}
+}*/
 
 // some convenience functions
 

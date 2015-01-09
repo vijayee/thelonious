@@ -8,7 +8,7 @@ import (
 	"github.com/eris-ltd/thelonious/monktrie"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkvm"
-	"io/ioutil"
+	"github.com/project-douglas/lllc-server"
 	"math/big"
 	"os"
 	"strconv"
@@ -29,18 +29,7 @@ var (
 // creates tx but does not sign!
 func NewContract(scriptFile string) (*monkchain.Transaction, error) {
 	// if mutan, load the script. else, pass file name
-	var s string
-	if scriptFile[len(scriptFile)-3:] == ".mu" {
-		r, err := ioutil.ReadFile(scriptFile)
-		if err != nil {
-			fmt.Println("could not load contract!", scriptFile, err)
-			return nil, err
-		}
-		s = string(r)
-	} else {
-		s = scriptFile
-	}
-	script, err := monkutil.Compile(string(s), false)
+	script, err := lllcserver.Compile(scriptFile)
 	if err != nil {
 		fmt.Println("failed compile", err)
 		return nil, err

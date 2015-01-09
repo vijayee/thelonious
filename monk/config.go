@@ -148,7 +148,7 @@ func InitChain() error {
 }
 
 // Marshal the current configuration to file in pretty json.
-func (mod *MonkModule) WriteConfig(config_file string) error{
+func (mod *MonkModule) WriteConfig(config_file string) error {
 	b, err := json.Marshal(mod.monk.config)
 	if err != nil {
 		fmt.Println("error marshalling config:", err)
@@ -157,10 +157,10 @@ func (mod *MonkModule) WriteConfig(config_file string) error{
 	var out bytes.Buffer
 	json.Indent(&out, b, "", "\t")
 	err = ioutil.WriteFile(config_file, out.Bytes(), 0600)
-    if err != nil{
-        return err
-    }
-    return nil
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Unmarshal the configuration file into module's config struct.
@@ -180,7 +180,7 @@ func (mod *MonkModule) ReadConfig(config_file string) error {
 		return err
 	}
 	*(mod.Config) = config
-    return nil
+	return nil
 }
 
 // Set a field in the config struct.
@@ -205,6 +205,7 @@ func (mod *MonkModule) SetConfigObj(config interface{}) error {
 	return nil
 }
 
+/*
 func (mod *MonkModule) setLLLPath() {
 	cfg := mod.Config
 	// set lll path
@@ -216,7 +217,7 @@ func (mod *MonkModule) setLLLPath() {
 		// TODO: set server address in monkutil...
 		monkutil.PathToLLL = "NETCALL"
 	}
-}
+}*/
 
 // Set package global variables (LLLPath, monkutil.Config, logging).
 // Create the root data dir if it doesn't exist, and copy keys if they are available
