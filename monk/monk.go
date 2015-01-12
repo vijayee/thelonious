@@ -144,7 +144,6 @@ func (mod *MonkModule) Init() error {
 	// name > chainId > rootDir > default
 	mod.setRootDir()
 	logger.Infoln("Root directory ", mod.Config.RootDir)
-	//mod.setLLLPath()
 	mod.ConfigureGenesis()
 	logger.Infoln("Loaded genesis configuration from: ", mod.Config.GenesisConfig)
 
@@ -514,23 +513,6 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 }
 
 func (monk *Monk) Script(code string) (string, error) {
-	/*
-		var err error
-		if lang == "lll-literal" {
-			script, err = CompileLLL(file, true)
-		}
-		if lang == "lll" {
-			script, err = CompileLLL(file, false) // if lll, compile and pass along
-		} else if lang == "serpent" {
-			// TODO ...
-		} else {
-			script = file
-		}
-
-		if err != nil {
-			return "", err
-		}*/
-
 	code = monkutil.StripHex(code)
 
 	keys := monk.fetchKeyPair()
