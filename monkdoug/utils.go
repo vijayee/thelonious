@@ -2,13 +2,13 @@ package monkdoug
 
 import (
 	"fmt"
+	"github.com/eris-ltd/lllc-server"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monkstate"
 	"github.com/eris-ltd/thelonious/monktrie"
 	"github.com/eris-ltd/thelonious/monkutil"
 	"github.com/eris-ltd/thelonious/monkvm"
-	"github.com/project-douglas/lllc-server"
 	"math/big"
 	"os"
 	"strconv"
