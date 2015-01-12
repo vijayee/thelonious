@@ -127,10 +127,12 @@ func (self *Pipe) Transact(key *monkcrypto.KeyPair, rec []byte, value, gas, pric
 			script := monkutil.Hex2Bytes(data[2:])
 			tx = monkchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
 		} else {
-			script, err := monkutil.Compile(data, false)
-			if err != nil {
-				return nil, err
-			}
+			/*
+				script, err := monkutil.Compile(data, false)
+				if err != nil {
+					return nil, err
+				}*/
+			script := monkutil.Hex2Bytes(data)
 			tx = monkchain.NewContractCreationTx(value.BigInt(), gas.BigInt(), price.BigInt(), script)
 		}
 	} else {
@@ -176,13 +178,4 @@ func (self *Pipe) PushTx(tx *monkchain.Transaction) ([]byte, error) {
 		return tx.CreationAddress(), nil
 	}
 	return tx.Hash(), nil
-}
-
-func (self *Pipe) CompileMutan(code string) ([]byte, error) {
-	data, err := monkutil.Compile(code, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
 }

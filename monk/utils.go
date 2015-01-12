@@ -499,16 +499,6 @@ func copy(oldpath, newpath string) error {
 	return utils.Copy(oldpath, newpath)
 }
 
-// compile LLL file into evm bytecode
-// returns hex
-func CompileLLL(filename string, literal bool) (string, error) {
-	code, err := monkutil.CompileLLL(filename, literal)
-	if err != nil {
-		return "", err
-	}
-	return "0x" + monkutil.Bytes2Hex(code), nil
-}
-
 // some convenience functions
 
 // get users home directory

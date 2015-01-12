@@ -246,15 +246,6 @@ func (self *JSPipe) PushTx(txStr string) (*JSReceipt, error) {
 	return NewJSReciept(tx.CreatesContract(), tx.CreationAddress(), tx.Hash(), tx.Sender()), nil
 }
 
-func (self *JSPipe) CompileMutan(code string) string {
-	data, err := self.Pipe.CompileMutan(code)
-	if err != nil {
-		return err.Error()
-	}
-
-	return monkutil.Bytes2Hex(data)
-}
-
 func ToJSMessages(messages monkstate.Messages) *monkutil.List {
 	var msgs []JSMessage
 	for _, m := range messages {

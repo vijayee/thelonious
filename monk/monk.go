@@ -11,10 +11,10 @@ import (
 
 	core "github.com/eris-ltd/decerver-interfaces/core"
 	events "github.com/eris-ltd/decerver-interfaces/events"
-	mutils "github.com/eris-ltd/modules/monkutils"
 	modules "github.com/eris-ltd/decerver-interfaces/modules"
-	utils "github.com/eris-ltd/epm-go/utils"
 	chains "github.com/eris-ltd/epm-go/chains"
+	utils "github.com/eris-ltd/epm-go/utils"
+	mutils "github.com/eris-ltd/modules/monkutils"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -144,7 +144,6 @@ func (mod *MonkModule) Init() error {
 	// name > chainId > rootDir > default
 	mod.setRootDir()
 	logger.Infoln("Root directory ", mod.Config.RootDir)
-	mod.setLLLPath()
 	mod.ConfigureGenesis()
 	logger.Infoln("Loaded genesis configuration from: ", mod.Config.GenesisConfig)
 
@@ -211,7 +210,7 @@ func (mod *MonkModule) Shutdown() error {
 }
 
 func (mod *MonkModule) ChainId() (string, error) {
-    return mod.monk.ChainId()
+	return mod.monk.ChainId()
 }
 
 func (mod *MonkModule) WaitForShutdown() {
@@ -273,8 +272,8 @@ func (mod *MonkModule) Msg(addr string, data []string) (string, error) {
 	return mod.monk.Msg(addr, data)
 }
 
-func (mod *MonkModule) Script(file, lang string) (string, error) {
-	return mod.monk.Script(file, lang)
+func (mod *MonkModule) Script(code string) (string, error) {
+	return mod.monk.Script(code)
 }
 
 func (mod *MonkModule) Transact(addr, value, gas, gasprice, data string) (string, error) {
@@ -365,16 +364,16 @@ func (mod *MonkModule) MonkState() *monkstate.State {
 */
 
 func (monk *Monk) ChainId() (string, error) {
-    // get the chain id
-    data, err := monkutil.Config.Db.Get([]byte("ChainID"))                              
-    if err != nil {
-        return "", err                                                                  
-    } else if len(data) == 0 {
-        return "", fmt.Errorf("ChainID is empty!")                                      
-    }
-    chainId := monkutil.Bytes2Hex(data)  
-    return chainId, nil
-}   
+	// get the chain id
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return "", err
+	} else if len(data) == 0 {
+		return "", fmt.Errorf("ChainID is empty!")
+	}
+	chainId := monkutil.Bytes2Hex(data)
+	return chainId, nil
+}
 
 func (monk *Monk) WorldState() *modules.WorldState {
 	state := monk.pipe.World().State()
@@ -513,28 +512,13 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 	return monkutil.Bytes2Hex(hash), nil
 }
 
-func (monk *Monk) Script(file, lang string) (string, error) {
-	var script string
-	var err error
-	if lang == "lll-literal" {
-		script, err = CompileLLL(file, true)
-	}
-	if lang == "lll" {
-		script, err = CompileLLL(file, false) // if lll, compile and pass along
-	} else if lang == "serpent" {
-		// TODO ...
-	} else {
-		script = file
-	}
-
-	if err != nil {
-		return "", err
-	}
+func (monk *Monk) Script(code string) (string, error) {
+	code = monkutil.StripHex(code)
 
 	keys := monk.fetchKeyPair()
 
 	// well isn't this pretty! barf
-	contract_addr, err := monk.pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), script)
+	contract_addr, err := monk.pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), code)
 	if err != nil {
 		return "", err
 	}
@@ -806,15 +790,15 @@ func (monk *Monk) Stop() {
 	monklog.Reset()
 }
 
-// Set the root. If it's already set, check if the 
+// Set the root. If it's already set, check if the
 func (mod *MonkModule) setRootDir() {
 	c := mod.Config
 	// if RootDir is set, we're done
 	if c.RootDir != "" {
-        /*
-		if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
-			mod.ReadConfig(path.Join(c.RootDir, "config.json"))
-		}*/
+		/*
+			if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
+				mod.ReadConfig(path.Join(c.RootDir, "config.json"))
+			}*/
 		return
 	}
 
