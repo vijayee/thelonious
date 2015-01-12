@@ -17,13 +17,13 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
-	"github.com/eris-ltd/decerver-interfaces/dapps"
+	"github.com/eris-ltd/decerver/interfaces/dapps"
 	//"github.com/eris-ltd/modules/genblock"
-	"github.com/eris-ltd/decerver-interfaces/modules"
 	"github.com/eris-ltd/epm-go/chains"
 	"github.com/eris-ltd/epm-go/epm"
 	"github.com/eris-ltd/epm-go/utils"
 	mutils "github.com/eris-ltd/modules/monkutils"
+	"github.com/eris-ltd/modules/types"
 
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -548,11 +548,11 @@ func PackTxDataArgs(args ...string) string {
 }
 
 // convert thelonious block to modules block
-func convertBlock(block *monkchain.Block) *modules.Block {
+func convertBlock(block *monkchain.Block) *types.Block {
 	if block == nil {
 		return nil
 	}
-	b := &modules.Block{}
+	b := &types.Block{}
 	b.Coinbase = hex.EncodeToString(block.Coinbase)
 	b.Difficulty = block.Difficulty.String()
 	b.GasLimit = block.GasLimit.String()
@@ -563,7 +563,7 @@ func convertBlock(block *monkchain.Block) *modules.Block {
 	b.Number = block.Number.String()
 	b.PrevHash = hex.EncodeToString(block.PrevHash)
 	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction, len(block.Transactions()))
+	txs := make([]*types.Transaction, len(block.Transactions()))
 	for idx, tx := range block.Transactions() {
 		txs[idx] = convertTx(tx)
 	}
@@ -578,8 +578,8 @@ func convertBlock(block *monkchain.Block) *modules.Block {
 }
 
 // convert thelonious tx to modules tx
-func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
-	tx := &modules.Transaction{}
+func convertTx(monkTx *monkchain.Transaction) *types.Transaction {
+	tx := &types.Transaction{}
 	tx.ContractCreation = monkTx.CreatesContract()
 	tx.Gas = monkTx.Gas.String()
 	tx.GasCost = monkTx.GasPrice.String()

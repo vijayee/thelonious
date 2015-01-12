@@ -9,12 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	core "github.com/eris-ltd/decerver-interfaces/core"
-	events "github.com/eris-ltd/decerver-interfaces/events"
-	modules "github.com/eris-ltd/decerver-interfaces/modules"
 	chains "github.com/eris-ltd/epm-go/chains"
 	utils "github.com/eris-ltd/epm-go/utils"
 	mutils "github.com/eris-ltd/modules/monkutils"
+	types "github.com/eris-ltd/modules/types"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -34,7 +32,7 @@ func init() {
 	utils.InitDecerverDir()
 }
 
-// implements decerver-interfaces Module
+// implements epm.Blockchain
 type MonkModule struct {
 	monk          *Monk
 	Config        *ChainConfig
@@ -57,7 +55,7 @@ type Monk struct {
 }
 
 type Chan struct {
-	ch      chan events.Event
+	ch      chan types.Event
 	reactCh chan monkreact.Event
 	name    string
 	event   string
@@ -86,11 +84,6 @@ func NewMonk(th *thelonious.Thelonious) *MonkModule {
 	m.started = false
 	mm.monk = m
 	return mm
-}
-
-// register the module with the decerver javascript vm
-func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error {
-	return nil
 }
 
 // Configure the GenesisConfig struct
@@ -228,19 +221,19 @@ func (mod *MonkModule) Name() string {
    Wrapper so module satisfies Blockchain
 */
 
-func (mod *MonkModule) WorldState() *modules.WorldState {
+func (mod *MonkModule) WorldState() *types.WorldState {
 	return mod.monk.WorldState()
 }
 
-func (mod *MonkModule) State() *modules.State {
+func (mod *MonkModule) State() *types.State {
 	return mod.monk.State()
 }
 
-func (mod *MonkModule) Storage(target string) *modules.Storage {
+func (mod *MonkModule) Storage(target string) *types.Storage {
 	return mod.monk.Storage(target)
 }
 
-func (mod *MonkModule) Account(target string) *modules.Account {
+func (mod *MonkModule) Account(target string) *types.Account {
 	return mod.monk.Account(target)
 }
 
@@ -256,7 +249,7 @@ func (mod *MonkModule) LatestBlock() string {
 	return mod.monk.LatestBlock()
 }
 
-func (mod *MonkModule) Block(hash string) *modules.Block {
+func (mod *MonkModule) Block(hash string) *types.Block {
 	return mod.monk.Block(hash)
 }
 
@@ -280,7 +273,7 @@ func (mod *MonkModule) Transact(addr, value, gas, gasprice, data string) (string
 	return mod.monk.Transact(addr, value, gas, gasprice, data)
 }
 
-func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event {
+func (mod *MonkModule) Subscribe(name, event, target string) chan types.Event {
 	return mod.monk.Subscribe(name, event, target)
 }
 
@@ -375,9 +368,9 @@ func (monk *Monk) ChainId() (string, error) {
 	return chainId, nil
 }
 
-func (monk *Monk) WorldState() *modules.WorldState {
+func (monk *Monk) WorldState() *types.WorldState {
 	state := monk.pipe.World().State()
-	stateMap := &modules.WorldState{make(map[string]*modules.Account), []string{}}
+	stateMap := &types.WorldState{make(map[string]*types.Account), []string{}}
 
 	trieIterator := state.Trie.NewIterator()
 	trieIterator.Each(func(addr string, acct *monkutil.Value) {
@@ -389,9 +382,9 @@ func (monk *Monk) WorldState() *modules.WorldState {
 	return stateMap
 }
 
-func (monk *Monk) State() *modules.State {
+func (monk *Monk) State() *types.State {
 	state := monk.pipe.World().State()
-	stateMap := &modules.State{make(map[string]*modules.Storage), []string{}}
+	stateMap := &types.State{make(map[string]*types.Storage), []string{}}
 
 	trieIterator := state.Trie.NewIterator()
 	trieIterator.Each(func(addr string, acct *monkutil.Value) {
@@ -403,10 +396,10 @@ func (monk *Monk) State() *modules.State {
 	return stateMap
 }
 
-func (monk *Monk) Storage(addr string) *modules.Storage {
+func (monk *Monk) Storage(addr string) *types.Storage {
 	w := monk.pipe.World()
 	obj := w.SafeGet(monkutil.UserHex2Bytes(addr)).StateObject
-	ret := &modules.Storage{make(map[string]string), []string{}}
+	ret := &types.Storage{make(map[string]string), []string{}}
 	obj.EachStorage(func(k string, v *monkutil.Value) {
 		kk := monkutil.Bytes2Hex([]byte(k))
 		v.Decode()
@@ -417,7 +410,7 @@ func (monk *Monk) Storage(addr string) *modules.Storage {
 	return ret
 }
 
-func (monk *Monk) Account(target string) *modules.Account {
+func (monk *Monk) Account(target string) *types.Account {
 	w := monk.pipe.World()
 	obj := w.SafeGet(monkutil.UserHex2Bytes(target)).StateObject
 
@@ -427,7 +420,7 @@ func (monk *Monk) Account(target string) *modules.Account {
 	storage := monk.Storage(target)
 	isscript := len(storage.Order) > 0 || len(script) > 0
 
-	return &modules.Account{
+	return &types.Account{
 		Address:  target,
 		Balance:  bal,
 		Nonce:    strconv.Itoa(int(nonce)),
@@ -463,7 +456,7 @@ func (monk *Monk) LatestBlock() string {
 	return monkutil.Bytes2Hex(monk.thelonious.ChainManager().CurrentBlockHash())
 }
 
-func (monk *Monk) Block(hash string) *modules.Block {
+func (monk *Monk) Block(hash string) *types.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
 	block := monk.thelonious.ChainManager().GetBlock(hashBytes)
 	return convertBlock(block)
@@ -537,7 +530,7 @@ func (monk *Monk) Transact(addr, amt, gas, gasprice, data string) (string, error
 }
 
 // returns a chanel that will fire when address is updated
-func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
+func (monk *Monk) Subscribe(name, event, target string) chan types.Event {
 	th_ch := make(chan monkreact.Event, 1)
 	if target != "" {
 		addr := string(monkutil.Hex2Bytes(target))
@@ -546,7 +539,7 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 		monk.reactor.Subscribe(event, th_ch)
 	}
 
-	ch := make(chan events.Event)
+	ch := make(chan types.Event)
 	c := Chan{
 		ch:      ch,
 		reactCh: th_ch,
@@ -565,7 +558,7 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 			if !more {
 				break
 			}
-			returnEvent := events.Event{
+			returnEvent := types.Event{
 				Event:     event,
 				Target:    target,
 				Source:    "monk",
