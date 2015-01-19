@@ -31,7 +31,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event/filter"
 	"github.com/eris-ltd/new-thelonious/javascript"
 	"github.com/eris-ltd/new-thelonious/miner"
@@ -106,7 +106,7 @@ func (self *UiLib) LookupDomain(domain string) string {
 func (self *UiLib) LookupName(addr string) string {
 	var (
 		nameReg = self.World().Config().Get("NameReg")
-		lookup  = nameReg.Storage(ethutil.Hex2Bytes(addr))
+		lookup  = nameReg.Storage(monkutil.Hex2Bytes(addr))
 	)
 
 	if lookup.Len() != 0 {
@@ -119,23 +119,23 @@ func (self *UiLib) LookupName(addr string) string {
 func (self *UiLib) LookupAddress(name string) string {
 	var (
 		nameReg = self.World().Config().Get("NameReg")
-		lookup  = nameReg.Storage(ethutil.RightPadBytes([]byte(name), 32))
+		lookup  = nameReg.Storage(monkutil.RightPadBytes([]byte(name), 32))
 	)
 
 	if lookup.Len() != 0 {
-		return ethutil.Bytes2Hex(lookup.Bytes())
+		return monkutil.Bytes2Hex(lookup.Bytes())
 	}
 
 	return ""
 }
 
-func (self *UiLib) PastPeers() *ethutil.List {
-	return ethutil.NewList([]string{})
-	//return ethutil.NewList(eth.PastPeers())
+func (self *UiLib) PastPeers() *monkutil.List {
+	return monkutil.NewList([]string{})
+	//return monkutil.NewList(eth.PastPeers())
 }
 
 func (self *UiLib) ImportTx(rlpTx string) {
-	tx := types.NewTransactionFromBytes(ethutil.Hex2Bytes(rlpTx))
+	tx := types.NewTransactionFromBytes(monkutil.Hex2Bytes(rlpTx))
 	err := self.eth.TxPool().Add(tx)
 	if err != nil {
 		guilogger.Infoln("import tx failed ", err)
@@ -210,9 +210,9 @@ func (ui *UiLib) AssetPath(p string) string {
 
 func (self *UiLib) StartDbWithContractAndData(contractHash, data string) {
 	dbWindow := NewDebuggerWindow(self)
-	object := self.eth.ChainManager().State().GetStateObject(ethutil.Hex2Bytes(contractHash))
+	object := self.eth.ChainManager().State().GetStateObject(monkutil.Hex2Bytes(contractHash))
 	if len(object.Code) > 0 {
-		dbWindow.SetCode("0x" + ethutil.Bytes2Hex(object.Code))
+		dbWindow.SetCode("0x" + monkutil.Bytes2Hex(object.Code))
 	}
 	dbWindow.SetData("0x" + data)
 
@@ -245,12 +245,12 @@ func (self *UiLib) Transact(params map[string]interface{}) (string, error) {
 }
 
 func (self *UiLib) Compile(code string) (string, error) {
-	bcode, err := ethutil.Compile(code, false)
+	bcode, err := monkutil.Compile(code, false)
 	if err != nil {
 		return err.Error(), err
 	}
 
-	return ethutil.Bytes2Hex(bcode), err
+	return monkutil.Bytes2Hex(bcode), err
 }
 
 func (self *UiLib) Call(params map[string]interface{}) (string, error) {
@@ -267,8 +267,8 @@ func (self *UiLib) Call(params map[string]interface{}) (string, error) {
 
 func (self *UiLib) AddLocalTransaction(to, data, gas, gasPrice, value string) int {
 	return self.miner.AddLocalTx(&miner.LocalTx{
-		To:       ethutil.Hex2Bytes(to),
-		Data:     ethutil.Hex2Bytes(data),
+		To:       monkutil.Hex2Bytes(to),
+		Data:     monkutil.Hex2Bytes(data),
 		Gas:      gas,
 		GasPrice: gasPrice,
 		Value:    value,
@@ -280,7 +280,7 @@ func (self *UiLib) RemoveLocalTransaction(id int) {
 }
 
 func (self *UiLib) SetGasPrice(price string) {
-	self.miner.MinAcceptedGasPrice = ethutil.Big(price)
+	self.miner.MinAcceptedGasPrice = monkutil.Big(price)
 }
 
 func (self *UiLib) SetExtra(extra string) {
@@ -300,7 +300,7 @@ func (self *UiLib) ToggleMining() bool {
 }
 
 func (self *UiLib) ToHex(data string) string {
-	return "0x" + ethutil.Bytes2Hex([]byte(data))
+	return "0x" + monkutil.Bytes2Hex([]byte(data))
 }
 
 func (self *UiLib) ToAscii(data string) string {
@@ -308,7 +308,7 @@ func (self *UiLib) ToAscii(data string) string {
 	if len(data) > 1 && data[0:2] == "0x" {
 		start = 2
 	}
-	return string(ethutil.Hex2Bytes(data[start:]))
+	return string(monkutil.Hex2Bytes(data[start:]))
 }
 
 /// Ethereum filter methods
@@ -334,7 +334,7 @@ func (self *UiLib) NewFilterString(typ string) (id int) {
 	return id
 }
 
-func (self *UiLib) Messages(id int) *ethutil.List {
+func (self *UiLib) Messages(id int) *monkutil.List {
 	filter := self.filterManager.GetFilter(id)
 	if filter != nil {
 		messages := xeth.ToJSMessages(filter.Find())
@@ -342,7 +342,7 @@ func (self *UiLib) Messages(id int) *ethutil.List {
 		return messages
 	}
 
-	return ethutil.EmptyList()
+	return monkutil.EmptyList()
 }
 
 func (self *UiLib) UninstallFilter(id int) {
@@ -376,14 +376,14 @@ func mapToTxParams(object map[string]interface{}) map[string]string {
 	}
 
 	for _, str := range data {
-		if ethutil.IsHex(str) {
+		if monkutil.IsHex(str) {
 			str = str[2:]
 
 			if len(str) != 64 {
-				str = ethutil.LeftPadString(str, 64)
+				str = monkutil.LeftPadString(str, 64)
 			}
 		} else {
-			str = ethutil.Bytes2Hex(ethutil.LeftPadBytes(ethutil.Big(str).Bytes(), 32))
+			str = monkutil.Bytes2Hex(monkutil.LeftPadBytes(monkutil.Big(str).Bytes(), 32))
 		}
 
 		dataStr += str

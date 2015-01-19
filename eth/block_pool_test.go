@@ -11,7 +11,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	ethlogger "github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/pow"
 )
@@ -362,7 +362,7 @@ func (self *peerTester) AddBlocks(indexes ...int) {
 	fmt.Printf("adding blocks %v \n", indexes[1:])
 	for i := 1; i < len(hashes); i++ {
 		fmt.Printf("adding block %v %x\n", indexes[i], hashes[i][:4])
-		self.blockPool.AddBlock(&types.Block{HeaderHash: ethutil.Bytes(hashes[i]), ParentHeaderHash: ethutil.Bytes(hashes[i-1])}, self.id)
+		self.blockPool.AddBlock(&types.Block{HeaderHash: monkutil.Bytes(hashes[i]), ParentHeaderHash: monkutil.Bytes(hashes[i-1])}, self.id)
 	}
 }
 

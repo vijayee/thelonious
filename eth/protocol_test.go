@@ -11,7 +11,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	ethlogger "github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/p2p"
 )
@@ -225,7 +225,7 @@ func (self *ethProtocolTester) run() {
 func TestStatusMsgErrors(t *testing.T) {
 	logInit()
 	eth := newEth(t)
-	td := ethutil.Big1
+	td := monkutil.Big1
 	currentBlock := []byte{1}
 	genesis := []byte{2}
 	eth.chainManager.status = func() (*big.Int, []byte, []byte) { return td, currentBlock, genesis }

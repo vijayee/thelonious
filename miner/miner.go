@@ -28,7 +28,7 @@ import (
 	"sort"
 
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/pow"
 	"github.com/eris-ltd/new-thelonious/pow/ezp"
 	"github.com/eris-ltd/new-thelonious/state"
@@ -208,7 +208,7 @@ func (self *Miner) mine() {
 	// Accumulate the rewards included for this block
 	blockProcessor.AccumelateRewards(state, block, parent)
 
-	state.Update(ethutil.Big0)
+	state.Update(monkutil.Big0)
 	block.SetRoot(state.Root())
 
 	minerlogger.Infof("Mining on block. Includes %v transactions", len(transactions))
@@ -240,7 +240,7 @@ func (self *Miner) finiliseTxs() types.Transactions {
 	// XXX This has to change. Coinbase is, for new, same as key.
 	key := self.eth.KeyManager()
 	for i, ltx := range self.localTxs {
-		tx := types.NewTransactionMessage(ltx.To, ethutil.Big(ltx.Value), ethutil.Big(ltx.Gas), ethutil.Big(ltx.GasPrice), ltx.Data)
+		tx := types.NewTransactionMessage(ltx.To, monkutil.Big(ltx.Value), monkutil.Big(ltx.Gas), monkutil.Big(ltx.GasPrice), ltx.Data)
 		tx.SetNonce(state.GetNonce(self.Coinbase))
 		state.SetNonce(self.Coinbase, tx.Nonce()+1)
 

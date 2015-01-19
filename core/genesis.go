@@ -5,7 +5,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -16,16 +16,16 @@ import (
 var ZeroHash256 = make([]byte, 32)
 var ZeroHash160 = make([]byte, 20)
 var ZeroHash512 = make([]byte, 64)
-var EmptyShaList = crypto.Sha3(ethutil.Encode([]interface{}{}))
-var EmptyListRoot = crypto.Sha3(ethutil.Encode(""))
+var EmptyShaList = crypto.Sha3(monkutil.Encode([]interface{}{}))
+var EmptyListRoot = crypto.Sha3(monkutil.Encode(""))
 
-func GenesisBlock(db ethutil.Database) *types.Block {
+func GenesisBlock(db monkutil.Database) *types.Block {
 	genesis := types.NewBlock(ZeroHash256, ZeroHash160, nil, big.NewInt(131072), crypto.Sha3(big.NewInt(42).Bytes()), "")
-	genesis.Header().Number = ethutil.Big0
+	genesis.Header().Number = monkutil.Big0
 	genesis.Header().GasLimit = big.NewInt(1000000)
-	genesis.Header().GasUsed = ethutil.Big0
+	genesis.Header().GasUsed = monkutil.Big0
 	genesis.Header().Time = 0
-	genesis.Td = ethutil.Big0
+	genesis.Td = monkutil.Big0
 
 	genesis.SetUncles([]*types.Header{})
 	genesis.SetTransactions(types.Transactions{})
@@ -43,9 +43,9 @@ func GenesisBlock(db ethutil.Database) *types.Block {
 		"e6716f9544a56c530d868e4bfbacb172315bdead",
 		"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
 	} {
-		codedAddr := ethutil.Hex2Bytes(addr)
+		codedAddr := monkutil.Hex2Bytes(addr)
 		account := statedb.GetAccount(codedAddr)
-		account.SetBalance(ethutil.Big("1606938044258990275541962092341162602522202993782792835301376")) //ethutil.BigPow(2, 200)
+		account.SetBalance(monkutil.Big("1606938044258990275541962092341162602522202993782792835301376")) //monkutil.BigPow(2, 200)
 		statedb.UpdateStateObject(account)
 	}
 	statedb.Sync()

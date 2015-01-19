@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/pow"
 	"github.com/obscuren/sha3"
@@ -82,8 +82,8 @@ func verify(hash []byte, diff *big.Int, nonce []byte) bool {
 	d := append(hash, nonce...)
 	sha.Write(d)
 
-	verification := new(big.Int).Div(ethutil.BigPow(2, 256), diff)
-	res := ethutil.U256(ethutil.BigD(sha.Sum(nil)))
+	verification := new(big.Int).Div(monkutil.BigPow(2, 256), diff)
+	res := monkutil.U256(monkutil.BigD(sha.Sum(nil)))
 
 	return res.Cmp(verification) <= 0
 }

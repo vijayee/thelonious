@@ -1,6 +1,6 @@
 // +build !windows
 
-package ethutil
+package monkutil
 
 import "github.com/ethereum/serpent-go"
 

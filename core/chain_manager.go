@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/rlp"
@@ -49,7 +49,7 @@ func CalculateTD(block, parent *types.Block) *big.Int {
 
 func CalcGasLimit(parent, block *types.Block) *big.Int {
 	if block.Number().Cmp(big.NewInt(0)) == 0 {
-		return ethutil.BigPow(10, 6)
+		return monkutil.BigPow(10, 6)
 	}
 
 	// ((1024-1) * parent.gasLimit + (gasUsed * 6 / 5)) / 1024
@@ -63,12 +63,12 @@ func CalcGasLimit(parent, block *types.Block) *big.Int {
 
 	min := big.NewInt(125000)
 
-	return ethutil.BigMax(min, result)
+	return monkutil.BigMax(min, result)
 }
 
 type ChainManager struct {
 	//eth          EthManager
-	db           ethutil.Database
+	db           monkutil.Database
 	processor    types.BlockProcessor
 	eventMux     *event.TypeMux
 	genesisBlock *types.Block
@@ -110,7 +110,7 @@ func (self *ChainManager) CurrentBlock() *types.Block {
 	return self.currentBlock
 }
 
-func NewChainManager(db ethutil.Database, mux *event.TypeMux) *ChainManager {
+func NewChainManager(db monkutil.Database, mux *event.TypeMux) *ChainManager {
 	bc := &ChainManager{db: db, genesisBlock: GenesisBlock(db), eventMux: mux}
 	bc.setLastBlock()
 	bc.transState = bc.State().Copy()
@@ -147,7 +147,7 @@ func (bc *ChainManager) setLastBlock() {
 		bc.lastBlockNumber = block.Header().Number.Uint64()
 
 		// Set the last know difficulty (might be 0x0 as initial value, Genesis)
-		bc.td = ethutil.BigD(bc.db.LastKnownTD())
+		bc.td = monkutil.BigD(bc.db.LastKnownTD())
 	} else {
 		bc.Reset()
 	}
@@ -172,7 +172,7 @@ func (bc *ChainManager) NewBlock(coinbase []byte) *types.Block {
 		parentHash,
 		coinbase,
 		root,
-		ethutil.BigPow(2, 32),
+		monkutil.BigPow(2, 32),
 		nil,
 		"")
 
@@ -180,7 +180,7 @@ func (bc *ChainManager) NewBlock(coinbase []byte) *types.Block {
 	if parent != nil {
 		header := block.Header()
 		header.Difficulty = CalcDifficulty(block, parent)
-		header.Number = new(big.Int).Add(parent.Header().Number, ethutil.Big1)
+		header.Number = new(big.Int).Add(parent.Header().Number, monkutil.Big1)
 		header.GasLimit = CalcGasLimit(parent, block)
 
 	}
@@ -201,7 +201,7 @@ func (bc *ChainManager) Reset() {
 	bc.insert(bc.genesisBlock)
 	bc.currentBlock = bc.genesisBlock
 
-	bc.setTotalDifficulty(ethutil.Big("0"))
+	bc.setTotalDifficulty(monkutil.Big("0"))
 }
 
 func (self *ChainManager) Export() []byte {
@@ -215,11 +215,11 @@ func (self *ChainManager) Export() []byte {
 		blocks[block.NumberU64()] = block
 	}
 
-	return ethutil.Encode(blocks)
+	return monkutil.Encode(blocks)
 }
 
 func (bc *ChainManager) insert(block *types.Block) {
-	encodedBlock := ethutil.Encode(block)
+	encodedBlock := monkutil.Encode(block)
 	bc.db.Put([]byte("LastBlock"), encodedBlock)
 	bc.currentBlock = block
 	bc.lastBlockHash = block.Hash()
@@ -228,7 +228,7 @@ func (bc *ChainManager) insert(block *types.Block) {
 func (bc *ChainManager) write(block *types.Block) {
 	bc.writeBlockInfo(block)
 
-	encodedBlock := ethutil.Encode(block.RlpDataForStorage())
+	encodedBlock := monkutil.Encode(block.RlpDataForStorage())
 	bc.db.Put(block.Hash(), encodedBlock)
 }
 
@@ -253,7 +253,7 @@ func (self *ChainManager) GetBlockHashesFromHash(hash []byte, max uint64) (chain
 	for i := uint64(0); i < max; i++ {
 		block = self.GetBlock(block.Header().ParentHash)
 		chain = append(chain, block.Hash())
-		if block.Header().Number.Cmp(ethutil.Big0) <= 0 {
+		if block.Header().Number.Cmp(monkutil.Big0) <= 0 {
 			break
 		}
 	}
@@ -372,7 +372,7 @@ func (self *ChainManager) InsertChain(chain types.Blocks) error {
 			self.write(block)
 			cblock := self.currentBlock
 			if td.Cmp(self.td) > 0 {
-				if block.Header().Number.Cmp(new(big.Int).Add(cblock.Header().Number, ethutil.Big1)) < 0 {
+				if block.Header().Number.Cmp(new(big.Int).Add(cblock.Header().Number, monkutil.Big1)) < 0 {
 					chainlogger.Infof("Split detected. New head #%v (%x) TD=%v, was #%v (%x) TD=%v\n", block.Header().Number, block.Hash()[:4], td, cblock.Header().Number, cblock.Hash()[:4], self.td)
 				}
 

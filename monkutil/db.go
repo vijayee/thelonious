@@ -1,4 +1,4 @@
-package ethutil
+package monkutil
 
 // Database interface
 type Database interface {

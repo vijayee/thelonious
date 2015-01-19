@@ -39,7 +39,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/eth"
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/miner"
 	"github.com/eris-ltd/new-thelonious/p2p"
@@ -80,7 +80,7 @@ type Gui struct {
 
 	Session        string
 	clientIdentity *p2p.SimpleClientIdentity
-	config         *ethutil.ConfigManager
+	config         *monkutil.ConfigManager
 
 	plugins map[string]plugin
 
@@ -88,7 +88,7 @@ type Gui struct {
 }
 
 // Create GUI, but doesn't start it
-func NewWindow(ethereum *eth.Ethereum, config *ethutil.ConfigManager, clientIdentity *p2p.SimpleClientIdentity, session string, logLevel int) *Gui {
+func NewWindow(ethereum *eth.Ethereum, config *monkutil.ConfigManager, clientIdentity *p2p.SimpleClientIdentity, session string, logLevel int) *Gui {
 	db, err := ethdb.NewLDBDatabase("tx_database")
 	if err != nil {
 		panic(err)
@@ -106,7 +106,7 @@ func NewWindow(ethereum *eth.Ethereum, config *ethutil.ConfigManager, clientIden
 		plugins:        make(map[string]plugin),
 		serviceEvents:  make(chan ServEv, 1),
 	}
-	data, _ := ethutil.ReadAllFile(path.Join(ethutil.Config.ExecPath, "plugins.json"))
+	data, _ := monkutil.ReadAllFile(path.Join(monkutil.Config.ExecPath, "plugins.json"))
 	json.Unmarshal([]byte(data), &gui.plugins)
 
 	return gui
@@ -235,7 +235,7 @@ func (gui *Gui) loadAddressBook() {
 		it := nameReg.Trie().Iterator()
 		for it.Next() {
 			if it.Key[0] != 0 {
-				view.Call("addAddress", struct{ Name, Address string }{string(it.Key), ethutil.Bytes2Hex(it.Value)})
+				view.Call("addAddress", struct{ Name, Address string }{string(it.Key), monkutil.Bytes2Hex(it.Value)})
 			}
 
 		}
@@ -254,7 +254,7 @@ func (self *Gui) loadMergedMiningOptions() {
 				Checked       bool
 				Name, Address string
 				Id, ItemId    int
-			}{false, string(it.Key), ethutil.Bytes2Hex(it.Value), 0, i})
+			}{false, string(it.Key), monkutil.Bytes2Hex(it.Value), 0, i})
 
 			i++
 
@@ -287,15 +287,15 @@ func (gui *Gui) insertTransaction(window string, tx *types.Transaction) {
 	if send.Len() != 0 {
 		s = strings.Trim(send.Str(), "\x00")
 	} else {
-		s = ethutil.Bytes2Hex(tx.From())
+		s = monkutil.Bytes2Hex(tx.From())
 	}
 	if rec.Len() != 0 {
 		r = strings.Trim(rec.Str(), "\x00")
 	} else {
 		if core.MessageCreatesContract(tx) {
-			r = ethutil.Bytes2Hex(core.AddressFromMessage(tx))
+			r = monkutil.Bytes2Hex(core.AddressFromMessage(tx))
 		} else {
-			r = ethutil.Bytes2Hex(tx.To())
+			r = monkutil.Bytes2Hex(tx.To())
 		}
 	}
 	ptx.Sender = s
@@ -334,10 +334,10 @@ func (gui *Gui) setWalletValue(amount, unconfirmedFunds *big.Int) {
 		if unconfirmedFunds.Cmp(big.NewInt(0)) < 0 {
 			pos = "-"
 		}
-		val := ethutil.CurrencyToString(new(big.Int).Abs(ethutil.BigCopy(unconfirmedFunds)))
-		str = fmt.Sprintf("%v (%s %v)", ethutil.CurrencyToString(amount), pos, val)
+		val := monkutil.CurrencyToString(new(big.Int).Abs(monkutil.BigCopy(unconfirmedFunds)))
+		str = fmt.Sprintf("%v (%s %v)", monkutil.CurrencyToString(amount), pos, val)
 	} else {
-		str = fmt.Sprintf("%v", ethutil.CurrencyToString(amount))
+		str = fmt.Sprintf("%v", monkutil.CurrencyToString(amount))
 	}
 
 	gui.win.Root().Call("setWalletValue", str)
@@ -419,7 +419,7 @@ func (gui *Gui) update() {
 
 	state := gui.eth.ChainManager().TransState()
 
-	gui.win.Root().Call("setWalletValue", fmt.Sprintf("%v", ethutil.CurrencyToString(state.GetAccount(gui.address()).Balance())))
+	gui.win.Root().Call("setWalletValue", fmt.Sprintf("%v", monkutil.CurrencyToString(state.GetAccount(gui.address()).Balance())))
 
 	lastBlockLabel := gui.getObjectByName("lastBlockLabel")
 	miningLabel := gui.getObjectByName("miningLabel")
@@ -537,7 +537,7 @@ func (gui *Gui) setPeerInfo() {
 }
 
 func (gui *Gui) privateKey() string {
-	return ethutil.Bytes2Hex(gui.eth.KeyManager().PrivateKey())
+	return monkutil.Bytes2Hex(gui.eth.KeyManager().PrivateKey())
 }
 
 func (gui *Gui) address() []byte {

@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/xeth"
 )
 
@@ -198,7 +198,7 @@ func (p *EthereumApi) GetStorageAt(args *GetStorageArgs, reply *string) error {
 		return err
 	}
 
-	state := p.pipe.World().SafeGet(ethutil.Hex2Bytes(args.Address))
+	state := p.pipe.World().SafeGet(monkutil.Hex2Bytes(args.Address))
 
 	var hx string
 	if strings.Index(args.Key, "0x") == 0 {
@@ -206,10 +206,10 @@ func (p *EthereumApi) GetStorageAt(args *GetStorageArgs, reply *string) error {
 	} else {
 		// Convert the incoming string (which is a bigint) into hex
 		i, _ := new(big.Int).SetString(args.Key, 10)
-		hx = ethutil.Bytes2Hex(i.Bytes())
+		hx = monkutil.Bytes2Hex(i.Bytes())
 	}
 	jsonlogger.Debugf("GetStorageAt(%s, %s)\n", args.Address, hx)
-	value := state.Storage(ethutil.Hex2Bytes(hx))
+	value := state.Storage(monkutil.Hex2Bytes(hx))
 	*reply = NewSuccessRes(GetStorageAtRes{Address: args.Address, Key: args.Key, Value: value.Str()})
 	return nil
 }
@@ -295,7 +295,7 @@ func (p *EthereumApi) GetBalanceAt(args *GetBalanceArgs, reply *string) error {
 	if err != nil {
 		return err
 	}
-	state := p.pipe.World().SafeGet(ethutil.Hex2Bytes(args.Address))
+	state := p.pipe.World().SafeGet(monkutil.Hex2Bytes(args.Address))
 	*reply = NewSuccessRes(BalanceRes{Balance: state.Balance().String(), Address: args.Address})
 	return nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/ui"
 	"github.com/eris-ltd/new-thelonious/xeth"
@@ -21,7 +21,7 @@ func (self *JSStateObject) EachStorage(call otto.FunctionCall) otto.Value {
 
 	it := self.JSObject.Trie().Iterator()
 	for it.Next() {
-		cb.Call(self.eth.toVal(self), self.eth.toVal(ethutil.Bytes2Hex(it.Key)), self.eth.toVal(ethutil.Bytes2Hex(it.Value)))
+		cb.Call(self.eth.toVal(self), self.eth.toVal(monkutil.Bytes2Hex(it.Key)), self.eth.toVal(monkutil.Bytes2Hex(it.Value)))
 	}
 
 	return otto.UndefinedValue()
@@ -53,15 +53,15 @@ type JSMessage struct {
 
 func NewJSMessage(message *state.Message) JSMessage {
 	return JSMessage{
-		To:        ethutil.Bytes2Hex(message.To),
-		From:      ethutil.Bytes2Hex(message.From),
-		Input:     ethutil.Bytes2Hex(message.Input),
-		Output:    ethutil.Bytes2Hex(message.Output),
+		To:        monkutil.Bytes2Hex(message.To),
+		From:      monkutil.Bytes2Hex(message.From),
+		Input:     monkutil.Bytes2Hex(message.Input),
+		Output:    monkutil.Bytes2Hex(message.Output),
 		Path:      message.Path,
-		Origin:    ethutil.Bytes2Hex(message.Origin),
+		Origin:    monkutil.Bytes2Hex(message.Origin),
 		Timestamp: int32(message.Timestamp),
-		Coinbase:  ethutil.Bytes2Hex(message.Origin),
-		Block:     ethutil.Bytes2Hex(message.Block),
+		Coinbase:  monkutil.Bytes2Hex(message.Origin),
+		Block:     monkutil.Bytes2Hex(message.Block),
 		Number:    int32(message.Number.Int64()),
 	}
 }
@@ -91,7 +91,7 @@ func (self *JSEthereum) Key() otto.Value {
 }
 
 func (self *JSEthereum) GetStateObject(addr string) otto.Value {
-	return self.toVal(&JSStateObject{xeth.NewJSObject(self.JSXEth.World().SafeGet(ethutil.Hex2Bytes(addr))), self})
+	return self.toVal(&JSStateObject{xeth.NewJSObject(self.JSXEth.World().SafeGet(monkutil.Hex2Bytes(addr))), self})
 }
 
 func (self *JSEthereum) Transact(key, recipient, valueStr, gasStr, gasPriceStr, dataStr string) otto.Value {

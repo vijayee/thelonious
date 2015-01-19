@@ -34,7 +34,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/miner"
 	"github.com/eris-ltd/new-thelonious/rlp"
@@ -70,7 +70,7 @@ func RunInterruptCallbacks(sig os.Signal) {
 }
 
 func openLogFile(Datadir string, filename string) *os.File {
-	path := ethutil.AbsolutePath(Datadir, filename)
+	path := monkutil.AbsolutePath(Datadir, filename)
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))
@@ -102,9 +102,9 @@ func initDataDir(Datadir string) {
 	}
 }
 
-func InitConfig(vmType int, ConfigFile string, Datadir string, EnvPrefix string) *ethutil.ConfigManager {
+func InitConfig(vmType int, ConfigFile string, Datadir string, EnvPrefix string) *monkutil.ConfigManager {
 	initDataDir(Datadir)
-	cfg := ethutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
+	cfg := monkutil.ReadConfig(ConfigFile, Datadir, EnvPrefix)
 	cfg.VmType = vmType
 
 	return cfg
@@ -168,7 +168,7 @@ func KeyTasks(keyManager *crypto.KeyManager, KeyRing string, GenAddr bool, Secre
 		}
 		exit(err)
 	case len(SecretFile) > 0:
-		SecretFile = ethutil.ExpandHomePath(SecretFile)
+		SecretFile = monkutil.ExpandHomePath(SecretFile)
 
 		if NonInteractive || confirm("This action overwrites your old private key.") {
 			err = keyManager.InitFromSecretsFile(KeyRing, 0, SecretFile)
@@ -227,10 +227,10 @@ func StartMining(ethereum *eth.Ethereum) bool {
 }
 
 func FormatTransactionData(data string) []byte {
-	d := ethutil.StringToByteFunc(data, func(s string) (ret []byte) {
+	d := monkutil.StringToByteFunc(data, func(s string) (ret []byte) {
 		slice := regexp.MustCompile("\\n|\\s").Split(s, 1000000000)
 		for _, dataItem := range slice {
-			d := ethutil.FormatData(dataItem)
+			d := monkutil.FormatData(dataItem)
 			ret = append(ret, d...)
 		}
 		return

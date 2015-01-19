@@ -8,7 +8,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/crypto"
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	ethlogger "github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/p2p"
@@ -50,7 +50,7 @@ type Ethereum struct {
 	quit         chan bool
 
 	// DB interface
-	db        ethutil.Database
+	db        monkutil.Database
 	blacklist p2p.Blacklist
 
 	//*** SERVICES ***
@@ -88,9 +88,9 @@ func New(config *Config) (*Ethereum, error) {
 
 	// Perform database sanity checks
 	d, _ := db.Get([]byte("ProtocolVersion"))
-	protov := ethutil.NewValue(d).Uint()
+	protov := monkutil.NewValue(d).Uint()
 	if protov != ProtocolVersion && protov != 0 {
-		return nil, fmt.Errorf("Database version mismatch. Protocol(%d / %d). `rm -rf %s`", protov, ProtocolVersion, ethutil.Config.ExecPath+"/database")
+		return nil, fmt.Errorf("Database version mismatch. Protocol(%d / %d). `rm -rf %s`", protov, ProtocolVersion, monkutil.Config.ExecPath+"/database")
 	}
 
 	// Create new keymanager
@@ -110,7 +110,7 @@ func New(config *Config) (*Ethereum, error) {
 	clientId := p2p.NewSimpleClientIdentity(config.Name, config.Version, config.Identifier, keyManager.PublicKey())
 
 	saveProtocolVersion(db)
-	//ethutil.Config.Db = db
+	//monkutil.Config.Db = db
 
 	eth := &Ethereum{
 		shutdownChan:   make(chan bool),
@@ -193,7 +193,7 @@ func (s *Ethereum) Whisper() *whisper.Whisper {
 func (s *Ethereum) EventMux() *event.TypeMux {
 	return s.eventMux
 }
-func (self *Ethereum) Db() ethutil.Database {
+func (self *Ethereum) Db() monkutil.Database {
 	return self.db
 }
 
@@ -312,11 +312,11 @@ func (self *Ethereum) blockBroadcastLoop() {
 	}
 }
 
-func saveProtocolVersion(db ethutil.Database) {
+func saveProtocolVersion(db monkutil.Database) {
 	d, _ := db.Get([]byte("ProtocolVersion"))
-	protocolVersion := ethutil.NewValue(d).Uint()
+	protocolVersion := monkutil.NewValue(d).Uint()
 
 	if protocolVersion == 0 {
-		db.Put([]byte("ProtocolVersion"), ethutil.NewValue(ProtocolVersion).Bytes())
+		db.Put([]byte("ProtocolVersion"), monkutil.NewValue(ProtocolVersion).Bytes())
 	}
 }

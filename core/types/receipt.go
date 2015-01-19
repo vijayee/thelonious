@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -17,10 +17,10 @@ type Receipt struct {
 }
 
 func NewReceipt(root []byte, cumalativeGasUsed *big.Int) *Receipt {
-	return &Receipt{PostState: ethutil.CopyBytes(root), CumulativeGasUsed: cumalativeGasUsed}
+	return &Receipt{PostState: monkutil.CopyBytes(root), CumulativeGasUsed: cumalativeGasUsed}
 }
 
-func NewRecieptFromValue(val *ethutil.Value) *Receipt {
+func NewRecieptFromValue(val *monkutil.Value) *Receipt {
 	r := &Receipt{}
 	r.RlpValueDecode(val)
 
@@ -31,7 +31,7 @@ func (self *Receipt) SetLogs(logs state.Logs) {
 	self.logs = logs
 }
 
-func (self *Receipt) RlpValueDecode(decoder *ethutil.Value) {
+func (self *Receipt) RlpValueDecode(decoder *monkutil.Value) {
 	self.PostState = decoder.Get(0).Bytes()
 	self.CumulativeGasUsed = decoder.Get(1).BigInt()
 	self.Bloom = decoder.Get(2).Bytes()
@@ -47,7 +47,7 @@ func (self *Receipt) RlpData() interface{} {
 }
 
 func (self *Receipt) RlpEncode() []byte {
-	return ethutil.Encode(self.RlpData())
+	return monkutil.Encode(self.RlpData())
 }
 
 func (self *Receipt) Cmp(other *Receipt) bool {
@@ -74,8 +74,8 @@ func (self Receipts) RlpData() interface{} {
 }
 
 func (self Receipts) RlpEncode() []byte {
-	return ethutil.Encode(self.RlpData())
+	return monkutil.Encode(self.RlpData())
 }
 
 func (self Receipts) Len() int            { return len(self) }
-func (self Receipts) GetRlp(i int) []byte { return ethutil.Rlp(self[i]) }
+func (self Receipts) GetRlp(i int) []byte { return monkutil.Rlp(self[i]) }

@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/p2p"
 	"github.com/eris-ltd/new-thelonious/rlp"
 )
@@ -147,7 +147,7 @@ func (self *ethProtocol) handle() error {
 			request.Amount = maxHashes
 		}
 		hashes := self.chainManager.GetBlockHashesFromHash(request.Hash, request.Amount)
-		return p2p.EncodeMsg(self.rw, BlockHashesMsg, ethutil.ByteSliceToInterface(hashes)...)
+		return p2p.EncodeMsg(self.rw, BlockHashesMsg, monkutil.ByteSliceToInterface(hashes)...)
 
 	case BlockHashesMsg:
 		// TODO: redo using lazy decode , this way very inefficient on known chains
@@ -300,7 +300,7 @@ func (self *ethProtocol) requestBlockHashes(from []byte) error {
 
 func (self *ethProtocol) requestBlocks(hashes [][]byte) error {
 	self.peer.Debugf("fetching %v blocks", len(hashes))
-	return p2p.EncodeMsg(self.rw, GetBlocksMsg, ethutil.ByteSliceToInterface(hashes)...)
+	return p2p.EncodeMsg(self.rw, GetBlocksMsg, monkutil.ByteSliceToInterface(hashes)...)
 }
 
 func (self *ethProtocol) protoError(code int, format string, params ...interface{}) (err *protocolError) {

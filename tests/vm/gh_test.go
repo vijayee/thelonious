@@ -8,7 +8,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/tests/helper"
@@ -28,26 +28,26 @@ type Log struct {
 	BloomF   string   `json:"bloom"`
 }
 
-func (self Log) Address() []byte      { return ethutil.Hex2Bytes(self.AddressF) }
-func (self Log) Data() []byte         { return ethutil.Hex2Bytes(self.DataF) }
+func (self Log) Address() []byte      { return monkutil.Hex2Bytes(self.AddressF) }
+func (self Log) Data() []byte         { return monkutil.Hex2Bytes(self.DataF) }
 func (self Log) RlpData() interface{} { return nil }
 func (self Log) Topics() [][]byte {
 	t := make([][]byte, len(self.TopicsF))
 	for i, topic := range self.TopicsF {
-		t[i] = ethutil.Hex2Bytes(topic)
+		t[i] = monkutil.Hex2Bytes(topic)
 	}
 	return t
 }
 
-func StateObjectFromAccount(db ethutil.Database, addr string, account Account) *state.StateObject {
-	obj := state.NewStateObject(ethutil.Hex2Bytes(addr), db)
-	obj.SetBalance(ethutil.Big(account.Balance))
+func StateObjectFromAccount(db monkutil.Database, addr string, account Account) *state.StateObject {
+	obj := state.NewStateObject(monkutil.Hex2Bytes(addr), db)
+	obj.SetBalance(monkutil.Big(account.Balance))
 
-	if ethutil.IsHex(account.Code) {
+	if monkutil.IsHex(account.Code) {
 		account.Code = account.Code[2:]
 	}
-	obj.Code = ethutil.Hex2Bytes(account.Code)
-	obj.Nonce = ethutil.Big(account.Nonce).Uint64()
+	obj.Code = monkutil.Hex2Bytes(account.Code)
+	obj.Nonce = monkutil.Big(account.Nonce).Uint64()
 
 	return obj
 }
@@ -85,7 +85,7 @@ func RunVmTest(p string, t *testing.T) {
 			obj := StateObjectFromAccount(db, addr, account)
 			statedb.SetStateObject(obj)
 			for a, v := range account.Storage {
-				obj.SetState(helper.FromHex(a), ethutil.NewValue(helper.FromHex(v)))
+				obj.SetState(helper.FromHex(a), monkutil.NewValue(helper.FromHex(v)))
 			}
 		}
 
@@ -127,7 +127,7 @@ func RunVmTest(p string, t *testing.T) {
 				helper.Log.Infof("%s's: %v\n", name, err)
 				t.Errorf("%s's gas unspecified, indicating an error. VM returned (incorrectly) successfull", name)
 			} else {
-				gexp := ethutil.Big(test.Gas)
+				gexp := monkutil.Big(test.Gas)
 				if gexp.Cmp(gas) != 0 {
 					// Log VM err
 					helper.Log.Infof("%s's: %v\n", name, err)
@@ -143,8 +143,8 @@ func RunVmTest(p string, t *testing.T) {
 			}
 
 			if len(test.Exec) == 0 {
-				if obj.Balance().Cmp(ethutil.Big(account.Balance)) != 0 {
-					t.Errorf("%s's : (%x) balance failed. Expected %v, got %v => %v\n", name, obj.Address()[:4], account.Balance, obj.Balance(), new(big.Int).Sub(ethutil.Big(account.Balance), obj.Balance()))
+				if obj.Balance().Cmp(monkutil.Big(account.Balance)) != 0 {
+					t.Errorf("%s's : (%x) balance failed. Expected %v, got %v => %v\n", name, obj.Address()[:4], account.Balance, obj.Balance(), new(big.Int).Sub(monkutil.Big(account.Balance), obj.Balance()))
 				}
 			}
 
@@ -153,15 +153,15 @@ func RunVmTest(p string, t *testing.T) {
 				vexp := helper.FromHex(value)
 
 				if bytes.Compare(v, vexp) != 0 {
-					t.Errorf("%s's : (%x: %s) storage failed. Expected %x, got %x (%v %v)\n", name, obj.Address()[0:4], addr, vexp, v, ethutil.BigD(vexp), ethutil.BigD(v))
+					t.Errorf("%s's : (%x: %s) storage failed. Expected %x, got %x (%v %v)\n", name, obj.Address()[0:4], addr, vexp, v, monkutil.BigD(vexp), monkutil.BigD(v))
 				}
 			}
 		}
 
 		if len(test.Logs) > 0 {
 			for i, log := range test.Logs {
-				genBloom := ethutil.LeftPadBytes(types.LogsBloom(state.Logs{logs[i]}).Bytes(), 64)
-				if !bytes.Equal(genBloom, ethutil.Hex2Bytes(log.BloomF)) {
+				genBloom := monkutil.LeftPadBytes(types.LogsBloom(state.Logs{logs[i]}).Bytes(), 64)
+				if !bytes.Equal(genBloom, monkutil.Hex2Bytes(log.BloomF)) {
 					t.Errorf("bloom mismatch")
 				}
 			}

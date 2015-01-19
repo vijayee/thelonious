@@ -10,7 +10,7 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/rlp"
 )
 
@@ -31,7 +31,7 @@ type Msg struct {
 func NewMsg(code uint64, params ...interface{}) Msg {
 	buf := new(bytes.Buffer)
 	for _, p := range params {
-		buf.Write(ethutil.Encode(p))
+		buf.Write(monkutil.Encode(p))
 	}
 	return Msg{Code: code, Size: uint32(buf.Len()), Payload: buf}
 }
@@ -39,7 +39,7 @@ func NewMsg(code uint64, params ...interface{}) Msg {
 func encodePayload(params ...interface{}) []byte {
 	buf := new(bytes.Buffer)
 	for _, p := range params {
-		buf.Write(ethutil.Encode(p))
+		buf.Write(monkutil.Encode(p))
 	}
 	return buf.Bytes()
 }
@@ -94,7 +94,7 @@ var magicToken = []byte{34, 64, 8, 145}
 
 func writeMsg(w io.Writer, msg Msg) error {
 	// TODO: handle case when Size + len(code) + len(listhdr) overflows uint32
-	code := ethutil.Encode(uint32(msg.Code))
+	code := monkutil.Encode(uint32(msg.Code))
 	listhdr := makeListHeader(msg.Size + uint32(len(code)))
 	payloadLen := uint32(len(listhdr)) + uint32(len(code)) + msg.Size
 

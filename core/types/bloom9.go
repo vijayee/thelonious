@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -14,7 +14,7 @@ func CreateBloom(receipts Receipts) []byte {
 		bin.Or(bin, LogsBloom(receipt.logs))
 	}
 
-	return ethutil.LeftPadBytes(bin.Bytes(), 64)
+	return monkutil.LeftPadBytes(bin.Bytes(), 64)
 }
 
 func LogsBloom(logs state.Logs) *big.Int {
@@ -28,7 +28,7 @@ func LogsBloom(logs state.Logs) *big.Int {
 		}
 
 		for _, b := range data {
-			bin.Or(bin, ethutil.BigD(bloom9(crypto.Sha3(b)).Bytes()))
+			bin.Or(bin, monkutil.BigD(bloom9(crypto.Sha3(b)).Bytes()))
 		}
 	}
 
@@ -47,7 +47,7 @@ func bloom9(b []byte) *big.Int {
 }
 
 func BloomLookup(bin, topic []byte) bool {
-	bloom := ethutil.BigD(bin)
+	bloom := monkutil.BigD(bin)
 	cmp := bloom9(crypto.Sha3(topic))
 
 	return bloom.And(bloom, cmp).Cmp(cmp) == 0

@@ -7,7 +7,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/p2p"
 )
@@ -17,7 +17,7 @@ type TestManager struct {
 	// stateManager *StateManager
 	eventMux *event.TypeMux
 
-	db         ethutil.Database
+	db         monkutil.Database
 	txPool     *TxPool
 	blockChain *ChainManager
 	Blocks     []*types.Block
@@ -65,12 +65,12 @@ func (tm *TestManager) KeyManager() *crypto.KeyManager {
 	return nil
 }
 
-func (tm *TestManager) Db() ethutil.Database {
+func (tm *TestManager) Db() monkutil.Database {
 	return tm.db
 }
 
 func NewTestManager() *TestManager {
-	ethutil.ReadConfig(".ethtest", "/tmp/ethtest", "ETH")
+	monkutil.ReadConfig(".ethtest", "/tmp/ethtest", "ETH")
 
 	db, err := ethdb.NewMemDatabase()
 	if err != nil {

@@ -29,7 +29,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/cmd/utils"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 )
@@ -89,7 +89,7 @@ func main() {
 		if len(DumpHash) == 0 && DumpNumber == -1 {
 			block = ethereum.ChainManager().CurrentBlock()
 		} else if len(DumpHash) > 0 {
-			block = ethereum.ChainManager().GetBlock(ethutil.Hex2Bytes(DumpHash))
+			block = ethereum.ChainManager().GetBlock(monkutil.Hex2Bytes(DumpHash))
 		} else {
 			block = ethereum.ChainManager().GetBlockByNumber(uint64(DumpNumber))
 		}

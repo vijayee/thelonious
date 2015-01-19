@@ -4,7 +4,7 @@ import (
 	checker "gopkg.in/check.v1"
 
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 )
 
 type StateSuite struct {
@@ -24,16 +24,16 @@ func (s *StateSuite) TestDump(c *checker.C) {
 }
 
 func (s *StateSuite) SetUpTest(c *checker.C) {
-	ethutil.ReadConfig(".ethtest", "/tmp/ethtest", "")
+	monkutil.ReadConfig(".ethtest", "/tmp/ethtest", "")
 	db, _ := ethdb.NewMemDatabase()
 	s.state = New(nil, db)
 }
 
 func (s *StateSuite) TestSnapshot(c *checker.C) {
 	stateobjaddr := []byte("aa")
-	storageaddr := ethutil.Big("0")
-	data1 := ethutil.NewValue(42)
-	data2 := ethutil.NewValue(43)
+	storageaddr := monkutil.Big("0")
+	data1 := monkutil.NewValue(42)
+	data2 := monkutil.NewValue(43)
 
 	// get state object
 	stateObject := s.state.GetOrNewStateObject(stateobjaddr)

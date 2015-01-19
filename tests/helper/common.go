@@ -1,11 +1,11 @@
 package helper
 
-import "github.com/eris-ltd/new-thelonious/ethutil"
+import "github.com/eris-ltd/new-thelonious/monkutil"
 
 func FromHex(h string) []byte {
-	if ethutil.IsHex(h) {
+	if monkutil.IsHex(h) {
 		h = h[2:]
 	}
 
-	return ethutil.Hex2Bytes(h)
+	return monkutil.Hex2Bytes(h)
 }

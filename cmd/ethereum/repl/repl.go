@@ -25,7 +25,7 @@ import (
 	"path"
 
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/javascript"
 	"github.com/eris-ltd/new-thelonious/logger"
 )
@@ -48,7 +48,7 @@ type JSRepl struct {
 }
 
 func NewJSRepl(ethereum *eth.Ethereum) *JSRepl {
-	hist, err := os.OpenFile(path.Join(ethutil.Config.ExecPath, "history"), os.O_RDWR|os.O_CREATE, os.ModePerm)
+	hist, err := os.OpenFile(path.Join(monkutil.Config.ExecPath, "history"), os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}

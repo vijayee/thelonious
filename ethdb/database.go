@@ -5,7 +5,7 @@ import (
 	"path"
 
 	"github.com/eris-ltd/new-thelonious/compression/rle"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -16,7 +16,7 @@ type LDBDatabase struct {
 }
 
 func NewLDBDatabase(name string) (*LDBDatabase, error) {
-	dbPath := path.Join(ethutil.Config.ExecPath, name)
+	dbPath := path.Join(monkutil.Config.ExecPath, name)
 
 	// Open the db
 	db, err := leveldb.OpenFile(dbPath, nil)
@@ -87,7 +87,7 @@ func (self *LDBDatabase) Print() {
 		value := iter.Value()
 
 		fmt.Printf("%x(%d): ", key, len(key))
-		node := ethutil.NewValueFromBytes(value)
+		node := monkutil.NewValueFromBytes(value)
 		fmt.Printf("%v\n", node)
 	}
 }

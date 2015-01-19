@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/rlp"
 )
 
 type Header struct {
 	// Hash to the previous block
-	ParentHash ethutil.Bytes
+	ParentHash monkutil.Bytes
 	// Uncles of this block
 	UncleHash []byte
 	// The coin base address
@@ -40,7 +40,7 @@ type Header struct {
 	// Extra data
 	Extra string
 	// Block Nonce for verification
-	Nonce ethutil.Bytes
+	Nonce monkutil.Bytes
 }
 
 func (self *Header) rlpData(withNonce bool) []interface{} {
@@ -57,11 +57,11 @@ func (self *Header) RlpData() interface{} {
 }
 
 func (self *Header) Hash() []byte {
-	return crypto.Sha3(ethutil.Encode(self.rlpData(true)))
+	return crypto.Sha3(monkutil.Encode(self.rlpData(true)))
 }
 
 func (self *Header) HashNoNonce() []byte {
-	return crypto.Sha3(ethutil.Encode(self.rlpData(false)))
+	return crypto.Sha3(monkutil.Encode(self.rlpData(false)))
 }
 
 type Block struct {
@@ -126,7 +126,7 @@ func (self *Block) Uncles() []*Header {
 
 func (self *Block) SetUncles(uncleHeaders []*Header) {
 	self.uncles = uncleHeaders
-	self.header.UncleHash = crypto.Sha3(ethutil.Encode(uncleHeaders))
+	self.header.UncleHash = crypto.Sha3(monkutil.Encode(uncleHeaders))
 }
 
 func (self *Block) Transactions() Transactions {
@@ -175,11 +175,11 @@ func (self *Block) GasLimit() *big.Int { return self.header.GasLimit }
 func (self *Block) GasUsed() *big.Int  { return self.header.GasUsed }
 func (self *Block) Nonce() []byte      { return self.header.Nonce }
 
-//func (self *Block) Trie() *ptrie.Trie         { return ptrie.New(self.header.Root, ethutil.Config.Db) }
+//func (self *Block) Trie() *ptrie.Trie         { return ptrie.New(self.header.Root, monkutil.Config.Db) }
 //func (self *Block) State() *state.StateDB     { return state.New(self.Trie()) }
 func (self *Block) Root() []byte              { return self.header.Root }
 func (self *Block) SetRoot(root []byte)       { self.header.Root = root }
-func (self *Block) Size() ethutil.StorageSize { return ethutil.StorageSize(len(ethutil.Encode(self))) }
+func (self *Block) Size() monkutil.StorageSize { return monkutil.StorageSize(len(monkutil.Encode(self))) }
 
 // Implement pow.Block
 func (self *Block) Difficulty() *big.Int { return self.header.Difficulty }

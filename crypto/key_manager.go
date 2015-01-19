@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 )
 
@@ -18,7 +18,7 @@ type KeyManager struct {
 	keyPair  *KeyPair
 }
 
-func NewDBKeyManager(db ethutil.Database) *KeyManager {
+func NewDBKeyManager(db monkutil.Database) *KeyManager {
 	return &KeyManager{keyStore: &DBKeyStore{db: db}, keyRings: make(map[string]*KeyRing)}
 }
 

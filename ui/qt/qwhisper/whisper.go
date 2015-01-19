@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/whisper"
 	"gopkg.in/qml.v1"
@@ -14,11 +14,11 @@ var qlogger = logger.NewLogger("QSHH")
 
 func fromHex(s string) []byte {
 	if len(s) > 1 {
-		return ethutil.Hex2Bytes(s[2:])
+		return monkutil.Hex2Bytes(s[2:])
 	}
 	return nil
 }
-func toHex(b []byte) string { return "0x" + ethutil.Bytes2Hex(b) }
+func toHex(b []byte) string { return "0x" + monkutil.Bytes2Hex(b) }
 
 type Whisper struct {
 	*whisper.Whisper
@@ -93,9 +93,9 @@ func (self *Whisper) Watch(opts map[string]interface{}, view *qml.Common) int {
 	return i
 }
 
-func (self *Whisper) Messages(id int) (messages *ethutil.List) {
+func (self *Whisper) Messages(id int) (messages *monkutil.List) {
 	msgs := self.Whisper.Messages(id)
-	messages = ethutil.EmptyList()
+	messages = monkutil.EmptyList()
 	for _, message := range msgs {
 		messages.Append(ToQMessage(message))
 	}

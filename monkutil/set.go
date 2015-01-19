@@ -1,4 +1,4 @@
-package ethutil
+package monkutil
 
 type Settable interface {
 	AsSet() UniqueSet

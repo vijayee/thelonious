@@ -31,7 +31,7 @@ import (
 	"path/filepath"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/javascript"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/xeth"
@@ -65,7 +65,7 @@ func (app *HtmlApplication) Create() error {
 		return errors.New("Ethereum package not yet supported")
 
 		// TODO
-		//ethutil.OpenPackage(app.path)
+		//monkutil.OpenPackage(app.path)
 	}
 
 	win := component.CreateWindow(nil)
@@ -83,7 +83,7 @@ func (app *HtmlApplication) RootFolder() string {
 	if err != nil {
 		return ""
 	}
-	return path.Dir(ethutil.WindonizePath(folder.RequestURI()))
+	return path.Dir(monkutil.WindonizePath(folder.RequestURI()))
 }
 func (app *HtmlApplication) RecursiveFolders() []os.FileInfo {
 	files, _ := ioutil.ReadDir(app.RootFolder())
@@ -142,7 +142,7 @@ func (app *HtmlApplication) Window() *qml.Window {
 }
 
 func (app *HtmlApplication) NewBlock(block *types.Block) {
-	b := &xeth.JSBlock{Number: int(block.NumberU64()), Hash: ethutil.Bytes2Hex(block.Hash())}
+	b := &xeth.JSBlock{Number: int(block.NumberU64()), Hash: monkutil.Bytes2Hex(block.Hash())}
 	app.webView.Call("onNewBlockCb", b)
 }
 

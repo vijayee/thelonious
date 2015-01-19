@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	ethlogger "github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/pow"
 )
@@ -253,7 +253,7 @@ func (self *BlockPool) AddPeer(td *big.Int, currentBlockHash []byte, peerId stri
 		peer.headSectionC <- nil
 		best = true
 	} else {
-		currentTD := ethutil.Big0
+		currentTD := monkutil.Big0
 		if self.peer != nil {
 			currentTD = self.peer.td
 		}
@@ -394,7 +394,7 @@ func (self *BlockPool) RemovePeer(peerId string) {
 	// if current best peer is removed, need find a better one
 	if self.peer == peer {
 		var newPeer *peerInfo
-		max := ethutil.Big0
+		max := monkutil.Big0
 		// peer with the highest self-acclaimed TD is chosen
 		for _, info := range self.peers {
 			if info.td.Cmp(max) > 0 {

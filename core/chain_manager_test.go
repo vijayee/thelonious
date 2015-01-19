@@ -11,14 +11,14 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/rlp"
 )
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	ethutil.ReadConfig("/tmp/ethtest", "/tmp/ethtest", "ETH")
+	monkutil.ReadConfig("/tmp/ethtest", "/tmp/ethtest", "ETH")
 }
 
 func loadChain(fn string, t *testing.T) (types.Blocks, error) {

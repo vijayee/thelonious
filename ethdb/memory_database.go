@@ -3,7 +3,7 @@ package ethdb
 import (
 	"fmt"
 
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 )
 
 /*
@@ -32,10 +32,10 @@ func (db *MemDatabase) Get(key []byte) ([]byte, error) {
 }
 
 /*
-func (db *MemDatabase) GetKeys() []*ethutil.Key {
+func (db *MemDatabase) GetKeys() []*monkutil.Key {
 	data, _ := db.Get([]byte("KeyRing"))
 
-	return []*ethutil.Key{ethutil.NewKeyFromBytes(data)}
+	return []*monkutil.Key{monkutil.NewKeyFromBytes(data)}
 }
 */
 
@@ -48,7 +48,7 @@ func (db *MemDatabase) Delete(key []byte) error {
 func (db *MemDatabase) Print() {
 	for key, val := range db.db {
 		fmt.Printf("%x(%d): ", key, len(key))
-		node := ethutil.NewValueFromBytes(val)
+		node := monkutil.NewValueFromBytes(val)
 		fmt.Printf("%q\n", node.Interface())
 	}
 }

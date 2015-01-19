@@ -7,13 +7,13 @@ import (
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
 // State query interface
-type stateQuery struct{ db ethutil.Database }
+type stateQuery struct{ db monkutil.Database }
 
 func SQ() stateQuery {
 	db, _ := ethdb.NewMemDatabase()
@@ -25,7 +25,7 @@ func (self stateQuery) GetAccount(addr []byte) *state.StateObject {
 }
 
 func transaction() *types.Transaction {
-	return types.NewTransactionMessage(make([]byte, 20), ethutil.Big0, ethutil.Big0, ethutil.Big0, nil)
+	return types.NewTransactionMessage(make([]byte, 20), monkutil.Big0, monkutil.Big0, monkutil.Big0, nil)
 }
 
 func setup() (*TxPool, *ecdsa.PrivateKey) {

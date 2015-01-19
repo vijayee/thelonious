@@ -31,7 +31,7 @@ import (
 	"strings"
 
 	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/tests/helper"
@@ -44,15 +44,15 @@ type Account struct {
 	Storage map[string]string
 }
 
-func StateObjectFromAccount(db ethutil.Database, addr string, account Account) *state.StateObject {
-	obj := state.NewStateObject(ethutil.Hex2Bytes(addr), db)
-	obj.SetBalance(ethutil.Big(account.Balance))
+func StateObjectFromAccount(db monkutil.Database, addr string, account Account) *state.StateObject {
+	obj := state.NewStateObject(monkutil.Hex2Bytes(addr), db)
+	obj.SetBalance(monkutil.Big(account.Balance))
 
-	if ethutil.IsHex(account.Code) {
+	if monkutil.IsHex(account.Code) {
 		account.Code = account.Code[2:]
 	}
-	obj.Code = ethutil.Hex2Bytes(account.Code)
-	obj.Nonce = ethutil.Big(account.Nonce).Uint64()
+	obj.Code = monkutil.Hex2Bytes(account.Code)
+	obj.Nonce = monkutil.Big(account.Nonce).Uint64()
 
 	return obj
 }
@@ -101,7 +101,7 @@ func RunVmTest(r io.Reader) (failed int) {
 			log.Printf("0 gas indicates error but no error given by VM")
 			failed = 1
 		} else {
-			gexp := ethutil.Big(test.Gas)
+			gexp := monkutil.Big(test.Gas)
 			if gexp.Cmp(gas) != 0 {
 				log.Printf("%s's gas failed. Expected %v, got %v\n", name, gexp, gas)
 				failed = 1
@@ -115,7 +115,7 @@ func RunVmTest(r io.Reader) (failed int) {
 				vexp := helper.FromHex(value)
 
 				if bytes.Compare(v, vexp) != 0 {
-					log.Printf("%s's : (%x: %s) storage failed. Expected %x, got %x (%v %v)\n", name, obj.Address()[0:4], addr, vexp, v, ethutil.BigD(vexp), ethutil.BigD(v))
+					log.Printf("%s's : (%x: %s) storage failed. Expected %x, got %x (%v %v)\n", name, obj.Address()[0:4], addr, vexp, v, monkutil.BigD(vexp), monkutil.BigD(v))
 					failed = 1
 				}
 			}

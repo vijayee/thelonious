@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 )
 
 func TestNewMsg(t *testing.T) {
@@ -61,7 +61,7 @@ func TestEncodeDecodeMsg(t *testing.T) {
 }
 
 func TestDecodeRealMsg(t *testing.T) {
-	data := ethutil.Hex2Bytes("2240089100000080f87e8002b5457468657265756d282b2b292f5065657220536572766572204f6e652f76302e372e382f52656c656173652f4c696e75782f672b2bc082765fb84086dd80b7aefd6a6d2e3b93f4f300a86bfb6ef7bdc97cb03f793db6bb")
+	data := monkutil.Hex2Bytes("2240089100000080f87e8002b5457468657265756d282b2b292f5065657220536572766572204f6e652f76302e372e382f52656c656173652f4c696e75782f672b2bc082765fb84086dd80b7aefd6a6d2e3b93f4f300a86bfb6ef7bdc97cb03f793db6bb")
 	msg, err := readMsg(bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

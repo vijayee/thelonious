@@ -1,6 +1,6 @@
 // +build windows
 
-package ethutil
+package monkutil
 
 // General compile function
 func Compile(script string, silent bool) (ret []byte, err error) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/logger"
 )
@@ -105,7 +105,7 @@ func (self *TxPool) Add(tx *types.Transaction) error {
 
 	var to string
 	if len(tx.To()) > 0 {
-		to = ethutil.Bytes2Hex(tx.To()[:4])
+		to = monkutil.Bytes2Hex(tx.To()[:4])
 	} else {
 		to = "[NEW_CONTRACT]"
 	}

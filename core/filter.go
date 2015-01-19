@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -188,7 +188,7 @@ func (self *Filter) bloomFilter(block *types.Block) bool {
 
 	if len(self.to) > 0 {
 		for _, to := range self.to {
-			if types.BloomLookup(block.Bloom(), ethutil.U256(new(big.Int).Add(ethutil.Big1, ethutil.BigD(to))).Bytes()) || bytes.Equal(block.Coinbase(), to) {
+			if types.BloomLookup(block.Bloom(), monkutil.U256(new(big.Int).Add(monkutil.Big1, monkutil.BigD(to))).Bytes()) || bytes.Equal(block.Coinbase(), to) {
 				toIncluded = true
 				break
 			}

@@ -1,4 +1,4 @@
-package ethutil
+package monkutil
 
 import (
 	checker "gopkg.in/check.v1"

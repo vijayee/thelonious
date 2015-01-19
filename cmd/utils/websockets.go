@@ -24,7 +24,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/event/filter"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
@@ -58,13 +58,13 @@ func (self *WebSocketServer) Serv() {
 	wsServ.MessageFunc(func(c *websocket.Client, msg *websocket.Message) {
 		switch msg.Call {
 		case "compile":
-			data := ethutil.NewValue(msg.Args)
-			bcode, err := ethutil.Compile(data.Get(0).Str(), false)
+			data := monkutil.NewValue(msg.Args)
+			bcode, err := monkutil.Compile(data.Get(0).Str(), false)
 			if err != nil {
 				c.Write(args(nil, err.Error()), msg.Id)
 			}
 
-			code := ethutil.Bytes2Hex(bcode)
+			code := monkutil.Bytes2Hex(bcode)
 			c.Write(args(code, nil), msg.Id)
 		case "eth_blockByNumber":
 			args := msg.Arguments()
@@ -195,14 +195,14 @@ func mapToTxParams(object map[string]interface{}) map[string]string {
 	}
 
 	for _, str := range data {
-		if ethutil.IsHex(str) {
+		if monkutil.IsHex(str) {
 			str = str[2:]
 
 			if len(str) != 64 {
-				str = ethutil.LeftPadString(str, 64)
+				str = monkutil.LeftPadString(str, 64)
 			}
 		} else {
-			str = ethutil.Bytes2Hex(ethutil.LeftPadBytes(ethutil.Big(str).Bytes(), 32))
+			str = monkutil.Bytes2Hex(monkutil.LeftPadBytes(monkutil.Big(str).Bytes(), 32))
 		}
 
 		dataStr += str

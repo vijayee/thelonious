@@ -7,7 +7,7 @@ import (
 )
 
 func TestCompression(t *testing.T) {
-	ethutil.ReadConfig("", "/tmp", "")
+	monkutil.ReadConfig("", "/tmp", "")
 
 	db, err := NewLDBDatabase("testdb")
 	if err != nil {

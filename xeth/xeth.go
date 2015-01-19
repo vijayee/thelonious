@@ -8,7 +8,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 )
@@ -42,8 +42,8 @@ func New(obj core.EthManager) *XEth {
 /*
  * State / Account accessors
  */
-func (self *XEth) Balance(addr []byte) *ethutil.Value {
-	return ethutil.NewValue(self.World().safeGet(addr).Balance)
+func (self *XEth) Balance(addr []byte) *monkutil.Value {
+	return monkutil.NewValue(self.World().safeGet(addr).Balance)
 }
 
 func (self *XEth) Nonce(addr []byte) uint64 {
@@ -54,8 +54,8 @@ func (self *XEth) Block(hash []byte) *types.Block {
 	return self.chainManager.GetBlock(hash)
 }
 
-func (self *XEth) Storage(addr, storageAddr []byte) *ethutil.Value {
-	return self.World().safeGet(addr).GetStorage(ethutil.BigD(storageAddr))
+func (self *XEth) Storage(addr, storageAddr []byte) *monkutil.Value {
+	return self.World().safeGet(addr).GetStorage(monkutil.BigD(storageAddr))
 }
 
 func (self *XEth) Exists(addr []byte) bool {
@@ -75,11 +75,11 @@ func (self *XEth) ToAddress(priv []byte) []byte {
 /*
  * Execution helpers
  */
-func (self *XEth) Execute(addr []byte, data []byte, value, gas, price *ethutil.Value) ([]byte, error) {
+func (self *XEth) Execute(addr []byte, data []byte, value, gas, price *monkutil.Value) ([]byte, error) {
 	return self.ExecuteObject(&Object{self.World().safeGet(addr)}, data, value, gas, price)
 }
 
-func (self *XEth) ExecuteObject(object *Object, data []byte, value, gas, price *ethutil.Value) ([]byte, error) {
+func (self *XEth) ExecuteObject(object *Object, data []byte, value, gas, price *monkutil.Value) ([]byte, error) {
 	var (
 		initiator = state.NewStateObject(self.obj.KeyManager().KeyPair().Address(), self.obj.Db())
 		block     = self.chainManager.CurrentBlock()
@@ -94,22 +94,22 @@ func (self *XEth) ExecuteObject(object *Object, data []byte, value, gas, price *
 /*
  * Transactional methods
  */
-func (self *XEth) TransactString(key *crypto.KeyPair, rec string, value, gas, price *ethutil.Value, data []byte) (*types.Transaction, error) {
+func (self *XEth) TransactString(key *crypto.KeyPair, rec string, value, gas, price *monkutil.Value, data []byte) (*types.Transaction, error) {
 	// Check if an address is stored by this address
 	var hash []byte
 	addr := self.World().Config().Get("NameReg").StorageString(rec).Bytes()
 	if len(addr) > 0 {
 		hash = addr
-	} else if ethutil.IsHex(rec) {
-		hash = ethutil.Hex2Bytes(rec[2:])
+	} else if monkutil.IsHex(rec) {
+		hash = monkutil.Hex2Bytes(rec[2:])
 	} else {
-		hash = ethutil.Hex2Bytes(rec)
+		hash = monkutil.Hex2Bytes(rec)
 	}
 
 	return self.Transact(key, hash, value, gas, price, data)
 }
 
-func (self *XEth) Transact(key *crypto.KeyPair, to []byte, value, gas, price *ethutil.Value, data []byte) (*types.Transaction, error) {
+func (self *XEth) Transact(key *crypto.KeyPair, to []byte, value, gas, price *monkutil.Value, data []byte) (*types.Transaction, error) {
 	var hash []byte
 	var contractCreation bool
 	if types.IsContractAddr(to) {
@@ -172,7 +172,7 @@ func (self *XEth) PushTx(tx *types.Transaction) ([]byte, error) {
 }
 
 func (self *XEth) CompileMutan(code string) ([]byte, error) {
-	data, err := ethutil.Compile(code, false)
+	data, err := monkutil.Compile(code, false)
 	if err != nil {
 		return nil, err
 	}
