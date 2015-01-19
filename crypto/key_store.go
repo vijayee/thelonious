@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 type KeyStore interface {
@@ -16,7 +16,7 @@ type KeyStore interface {
 }
 
 type DBKeyStore struct {
-	db monkutil.Database
+	db thelutil.Database
 }
 
 const dbKeyPrefix = "KeyRing"
@@ -59,9 +59,9 @@ func (k *FileKeyStore) Save(session string, keyRing *KeyRing) error {
 	var mnemonics []string
 	var addresses []string
 	keyRing.Each(func(keyPair *KeyPair) {
-		privateKeys = append(privateKeys, monkutil.Bytes2Hex(keyPair.PrivateKey))
-		publicKeys = append(publicKeys, monkutil.Bytes2Hex(keyPair.PublicKey))
-		addresses = append(addresses, monkutil.Bytes2Hex(keyPair.Address()))
+		privateKeys = append(privateKeys, thelutil.Bytes2Hex(keyPair.PrivateKey))
+		publicKeys = append(publicKeys, thelutil.Bytes2Hex(keyPair.PublicKey))
+		addresses = append(addresses, thelutil.Bytes2Hex(keyPair.Address()))
 		mnemonics = append(mnemonics, keyPair.Mnemonic())
 	})
 

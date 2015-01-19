@@ -3,11 +3,11 @@ package state
 import (
 	"fmt"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 type Log interface {
-	monkutil.RlpEncodable
+	thelutil.RlpEncodable
 
 	Address() []byte
 	Topics() [][]byte
@@ -36,7 +36,7 @@ func (self *StateLog) Data() []byte {
 	return self.data
 }
 
-func NewLogFromValue(decoder *monkutil.Value) *StateLog {
+func NewLogFromValue(decoder *thelutil.Value) *StateLog {
 	log := &StateLog{
 		address: decoder.Get(0).Bytes(),
 		data:    decoder.Get(2).Bytes(),
@@ -51,7 +51,7 @@ func NewLogFromValue(decoder *monkutil.Value) *StateLog {
 }
 
 func (self *StateLog) RlpData() interface{} {
-	return []interface{}{self.address, monkutil.ByteSliceToInterface(self.topics), self.data}
+	return []interface{}{self.address, thelutil.ByteSliceToInterface(self.topics), self.data}
 }
 
 func (self *StateLog) String() string {

@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 
 	"code.google.com/p/go.crypto/ripemd160"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/obscuren/ecies"
 	"github.com/obscuren/secp256k1-go"
 	"github.com/obscuren/sha3"
@@ -27,7 +27,7 @@ func Sha3(data []byte) []byte {
 
 // Creates an ethereum address given the bytes and the nonce
 func CreateAddress(b []byte, nonce uint64) []byte {
-	return Sha3(monkutil.NewValue([]interface{}{b, nonce}).Encode())[12:]
+	return Sha3(thelutil.NewValue([]interface{}{b, nonce}).Encode())[12:]
 }
 
 func Sha256(data []byte) []byte {
@@ -62,7 +62,7 @@ func ToECDSA(prv []byte) *ecdsa.PrivateKey {
 
 	priv := new(ecdsa.PrivateKey)
 	priv.PublicKey.Curve = S256()
-	priv.D = monkutil.BigD(prv)
+	priv.D = thelutil.BigD(prv)
 	priv.PublicKey.X, priv.PublicKey.Y = S256().ScalarBaseMult(prv)
 	return priv
 }

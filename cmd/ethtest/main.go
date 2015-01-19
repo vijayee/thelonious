@@ -30,8 +30,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/theldb"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/tests/helper"
@@ -44,15 +44,15 @@ type Account struct {
 	Storage map[string]string
 }
 
-func StateObjectFromAccount(db monkutil.Database, addr string, account Account) *state.StateObject {
-	obj := state.NewStateObject(monkutil.Hex2Bytes(addr), db)
-	obj.SetBalance(monkutil.Big(account.Balance))
+func StateObjectFromAccount(db thelutil.Database, addr string, account Account) *state.StateObject {
+	obj := state.NewStateObject(thelutil.Hex2Bytes(addr), db)
+	obj.SetBalance(thelutil.Big(account.Balance))
 
-	if monkutil.IsHex(account.Code) {
+	if thelutil.IsHex(account.Code) {
 		account.Code = account.Code[2:]
 	}
-	obj.Code = monkutil.Hex2Bytes(account.Code)
-	obj.Nonce = monkutil.Big(account.Nonce).Uint64()
+	obj.Code = thelutil.Hex2Bytes(account.Code)
+	obj.Nonce = thelutil.Big(account.Nonce).Uint64()
 
 	return obj
 }
@@ -77,7 +77,7 @@ func RunVmTest(r io.Reader) (failed int) {
 	}
 
 	for name, test := range tests {
-		db, _ := ethdb.NewMemDatabase()
+		db, _ := theldb.NewMemDatabase()
 		state := state.New(nil, db)
 		for addr, account := range test.Pre {
 			obj := StateObjectFromAccount(db, addr, account)
@@ -101,7 +101,7 @@ func RunVmTest(r io.Reader) (failed int) {
 			log.Printf("0 gas indicates error but no error given by VM")
 			failed = 1
 		} else {
-			gexp := monkutil.Big(test.Gas)
+			gexp := thelutil.Big(test.Gas)
 			if gexp.Cmp(gas) != 0 {
 				log.Printf("%s's gas failed. Expected %v, got %v\n", name, gexp, gas)
 				failed = 1
@@ -115,7 +115,7 @@ func RunVmTest(r io.Reader) (failed int) {
 				vexp := helper.FromHex(value)
 
 				if bytes.Compare(v, vexp) != 0 {
-					log.Printf("%s's : (%x: %s) storage failed. Expected %x, got %x (%v %v)\n", name, obj.Address()[0:4], addr, vexp, v, monkutil.BigD(vexp), monkutil.BigD(v))
+					log.Printf("%s's : (%x: %s) storage failed. Expected %x, got %x (%v %v)\n", name, obj.Address()[0:4], addr, vexp, v, thelutil.BigD(vexp), thelutil.BigD(v))
 					failed = 1
 				}
 			}

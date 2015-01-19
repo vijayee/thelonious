@@ -27,7 +27,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/cmd/utils"
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 )
@@ -52,13 +52,13 @@ func (gui *Gui) LogPrint(level logger.LogLevel, msg string) {
 func (gui *Gui) Transact(recipient, value, gas, gasPrice, d string) (string, error) {
 	var data string
 	if len(recipient) == 0 {
-		code, err := monkutil.Compile(d, false)
+		code, err := thelutil.Compile(d, false)
 		if err != nil {
 			return "", err
 		}
-		data = monkutil.Bytes2Hex(code)
+		data = thelutil.Bytes2Hex(code)
 	} else {
-		data = monkutil.Bytes2Hex(utils.FormatTransactionData(d))
+		data = thelutil.Bytes2Hex(utils.FormatTransactionData(d))
 	}
 
 	return gui.xeth.Transact(gui.privateKey(), recipient, value, gas, gasPrice, data)
@@ -88,14 +88,14 @@ func (self *Gui) AddPlugin(pluginPath string) {
 	self.plugins[pluginPath] = plugin{Name: pluginPath, Path: pluginPath}
 
 	json, _ := json.MarshalIndent(self.plugins, "", "    ")
-	monkutil.WriteFile(monkutil.Config.ExecPath+"/plugins.json", json)
+	thelutil.WriteFile(thelutil.Config.ExecPath+"/plugins.json", json)
 }
 
 func (self *Gui) RemovePlugin(pluginPath string) {
 	delete(self.plugins, pluginPath)
 
 	json, _ := json.MarshalIndent(self.plugins, "", "    ")
-	monkutil.WriteFile(monkutil.Config.ExecPath+"/plugins.json", json)
+	thelutil.WriteFile(thelutil.Config.ExecPath+"/plugins.json", json)
 }
 
 // this extra function needed to give int typecast value to gui widget
@@ -114,7 +114,7 @@ func (self *Gui) DumpState(hash, path string) {
 			i, _ := strconv.Atoi(hash[1:])
 			block = self.eth.ChainManager().GetBlockByNumber(uint64(i))
 		} else {
-			block = self.eth.ChainManager().GetBlock(monkutil.Hex2Bytes(hash))
+			block = self.eth.ChainManager().GetBlock(thelutil.Hex2Bytes(hash))
 		}
 
 		if block == nil {

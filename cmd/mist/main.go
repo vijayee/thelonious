@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/eris-ltd/new-thelonious/cmd/utils"
-	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/thel"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/p2p"
 	"gopkg.in/qml.v1"

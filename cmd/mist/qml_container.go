@@ -26,7 +26,7 @@ import (
 	"runtime"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/xeth"
 	"gopkg.in/qml.v1"
@@ -70,7 +70,7 @@ func (app *QmlApplication) NewWatcher(quitChan chan bool) {
 
 // Events
 func (app *QmlApplication) NewBlock(block *types.Block) {
-	pblock := &xeth.JSBlock{Number: int(block.NumberU64()), Hash: monkutil.Bytes2Hex(block.Hash())}
+	pblock := &xeth.JSBlock{Number: int(block.NumberU64()), Hash: thelutil.Bytes2Hex(block.Hash())}
 	app.win.Call("onNewBlockCb", pblock)
 }
 

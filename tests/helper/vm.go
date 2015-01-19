@@ -6,7 +6,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/vm"
 )
@@ -39,13 +39,13 @@ func NewEnv(state *state.StateDB) *Env {
 func NewEnvFromMap(state *state.StateDB, envValues map[string]string, exeValues map[string]string) *Env {
 	env := NewEnv(state)
 
-	env.origin = monkutil.Hex2Bytes(exeValues["caller"])
-	env.parent = monkutil.Hex2Bytes(envValues["previousHash"])
-	env.coinbase = monkutil.Hex2Bytes(envValues["currentCoinbase"])
-	env.number = monkutil.Big(envValues["currentNumber"])
-	env.time = monkutil.Big(envValues["currentTimestamp"]).Int64()
-	env.difficulty = monkutil.Big(envValues["currentDifficulty"])
-	env.gasLimit = monkutil.Big(envValues["currentGasLimit"])
+	env.origin = thelutil.Hex2Bytes(exeValues["caller"])
+	env.parent = thelutil.Hex2Bytes(envValues["previousHash"])
+	env.coinbase = thelutil.Hex2Bytes(envValues["currentCoinbase"])
+	env.number = thelutil.Big(envValues["currentNumber"])
+	env.time = thelutil.Big(envValues["currentTimestamp"]).Int64()
+	env.difficulty = thelutil.Big(envValues["currentDifficulty"])
+	env.gasLimit = thelutil.Big(envValues["currentGasLimit"])
 	env.Gas = new(big.Int)
 
 	return env
@@ -112,9 +112,9 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 		to    = FromHex(exec["address"])
 		from  = FromHex(exec["caller"])
 		data  = FromHex(exec["data"])
-		gas   = monkutil.Big(exec["gas"])
-		price = monkutil.Big(exec["gasPrice"])
-		value = monkutil.Big(exec["value"])
+		gas   = thelutil.Big(exec["gas"])
+		price = thelutil.Big(exec["gasPrice"])
+		value = thelutil.Big(exec["value"])
 	)
 	// Reset the pre-compiled contracts for VM tests.
 	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
@@ -131,12 +131,12 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 
 func RunState(statedb *state.StateDB, env, tx map[string]string) ([]byte, state.Logs, *big.Int, error) {
 	var (
-		keyPair, _ = crypto.NewKeyPairFromSec([]byte(monkutil.Hex2Bytes(tx["secretKey"])))
+		keyPair, _ = crypto.NewKeyPairFromSec([]byte(thelutil.Hex2Bytes(tx["secretKey"])))
 		to         = FromHex(tx["to"])
 		data       = FromHex(tx["data"])
-		gas        = monkutil.Big(tx["gasLimit"])
-		price      = monkutil.Big(tx["gasPrice"])
-		value      = monkutil.Big(tx["value"])
+		gas        = thelutil.Big(tx["gasLimit"])
+		price      = thelutil.Big(tx["gasPrice"])
+		value      = thelutil.Big(tx["value"])
 		caddr      = FromHex(env["currentCoinbase"])
 	)
 
@@ -144,7 +144,7 @@ func RunState(statedb *state.StateDB, env, tx map[string]string) ([]byte, state.
 	vm.Precompiled = vm.PrecompiledContracts()
 
 	coinbase := statedb.GetOrNewStateObject(caddr)
-	coinbase.SetGasPool(monkutil.Big(env["currentGasLimit"]))
+	coinbase.SetGasPool(thelutil.Big(env["currentGasLimit"]))
 
 	message := NewMessage(keyPair.Address(), to, data, value, gas, price)
 	Log.DebugDetailf("message{ to: %x, from %x, value: %v, gas: %v, price: %v }\n", message.to[:4], message.from[:4], message.value, message.gas, message.price)

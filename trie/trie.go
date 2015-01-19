@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 func ParanoiaCheck(t1 *Trie, backend Backend) (bool, *Trie) {
@@ -37,7 +37,7 @@ func New(root []byte, backend Backend) *Trie {
 	trie.cache = NewCache(backend)
 
 	if root != nil {
-		value := monkutil.NewValueFromBytes(trie.cache.Get(root))
+		value := thelutil.NewValueFromBytes(trie.cache.Get(root))
 		trie.root = trie.mknode(value)
 	}
 
@@ -61,10 +61,10 @@ func (self *Trie) Hash() []byte {
 		if byts, ok := t.([]byte); ok && len(byts) > 0 {
 			hash = byts
 		} else {
-			hash = crypto.Sha3(monkutil.Encode(self.root.RlpData()))
+			hash = crypto.Sha3(thelutil.Encode(self.root.RlpData()))
 		}
 	} else {
-		hash = crypto.Sha3(monkutil.Encode(""))
+		hash = crypto.Sha3(thelutil.Encode(""))
 	}
 
 	if !bytes.Equal(hash, self.roothash) {
@@ -95,7 +95,7 @@ func (self *Trie) Reset() {
 		revision := self.revisions.Remove(self.revisions.Back()).([]byte)
 		self.roothash = revision
 	}
-	value := monkutil.NewValueFromBytes(self.cache.Get(self.roothash))
+	value := thelutil.NewValueFromBytes(self.cache.Get(self.roothash))
 	self.root = self.mknode(value)
 }
 
@@ -284,7 +284,7 @@ func (self *Trie) delete(node Node, key []byte) Node {
 }
 
 // casting functions and cache storing
-func (self *Trie) mknode(value *monkutil.Value) Node {
+func (self *Trie) mknode(value *thelutil.Value) Node {
 	l := value.Len()
 	switch l {
 	case 0:
@@ -310,7 +310,7 @@ func (self *Trie) mknode(value *monkutil.Value) Node {
 func (self *Trie) trans(node Node) Node {
 	switch node := node.(type) {
 	case *HashNode:
-		value := monkutil.NewValueFromBytes(self.cache.Get(node.key))
+		value := thelutil.NewValueFromBytes(self.cache.Get(node.key))
 		return self.mknode(value)
 	default:
 		return node
@@ -318,7 +318,7 @@ func (self *Trie) trans(node Node) Node {
 }
 
 func (self *Trie) store(node Node) interface{} {
-	data := monkutil.Encode(node)
+	data := thelutil.Encode(node)
 	if len(data) >= 32 {
 		key := crypto.Sha3(data)
 		self.cache.Put(key, data)

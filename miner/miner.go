@@ -27,11 +27,11 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/pow"
 	"github.com/eris-ltd/new-thelonious/pow/ezp"
 	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/thel"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
@@ -54,7 +54,7 @@ func (self *LocalTx) Sign(key []byte) *types.Transaction {
 var minerlogger = logger.NewLogger("MINER")
 
 type Miner struct {
-	eth    *eth.Ethereum
+	eth    *thel.Thelonious
 	events event.Subscription
 
 	uncles    []*types.Header
@@ -73,7 +73,7 @@ type Miner struct {
 	Extra               string
 }
 
-func New(coinbase []byte, eth *eth.Ethereum) *Miner {
+func New(coinbase []byte, eth *thel.Thelonious) *Miner {
 	return &Miner{
 		eth:                 eth,
 		powQuitCh:           make(chan struct{}),
@@ -208,7 +208,7 @@ func (self *Miner) mine() {
 	// Accumulate the rewards included for this block
 	blockProcessor.AccumelateRewards(state, block, parent)
 
-	state.Update(monkutil.Big0)
+	state.Update(thelutil.Big0)
 	block.SetRoot(state.Root())
 
 	minerlogger.Infof("Mining on block. Includes %v transactions", len(transactions))
@@ -240,7 +240,7 @@ func (self *Miner) finiliseTxs() types.Transactions {
 	// XXX This has to change. Coinbase is, for new, same as key.
 	key := self.eth.KeyManager()
 	for i, ltx := range self.localTxs {
-		tx := types.NewTransactionMessage(ltx.To, monkutil.Big(ltx.Value), monkutil.Big(ltx.Gas), monkutil.Big(ltx.GasPrice), ltx.Data)
+		tx := types.NewTransactionMessage(ltx.To, thelutil.Big(ltx.Value), thelutil.Big(ltx.Gas), thelutil.Big(ltx.GasPrice), ltx.Data)
 		tx.SetNonce(state.GetNonce(self.Coinbase))
 		state.SetNonce(self.Coinbase, tx.Nonce()+1)
 

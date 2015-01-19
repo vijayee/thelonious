@@ -3,7 +3,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 )
 
@@ -41,20 +41,20 @@ var (
 	GasEcrecover    = big.NewInt(500)
 	GasMemCpy       = big.NewInt(1)
 
-	Pow256 = monkutil.BigPow(2, 256)
+	Pow256 = thelutil.BigPow(2, 256)
 
 	LogTyPretty byte = 0x1
 	LogTyDiff   byte = 0x2
 
-	U256 = monkutil.U256
-	S256 = monkutil.S256
+	U256 = thelutil.U256
+	S256 = thelutil.S256
 )
 
 const MaxCallDepth = 1025
 
 func calcMemSize(off, l *big.Int) *big.Int {
-	if l.Cmp(monkutil.Big0) == 0 {
-		return monkutil.Big0
+	if l.Cmp(thelutil.Big0) == 0 {
+		return thelutil.Big0
 	}
 
 	return new(big.Int).Add(off, l)

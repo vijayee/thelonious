@@ -32,8 +32,8 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/theldb"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/vm"
@@ -59,20 +59,20 @@ func main() {
 
 	logger.AddLogSystem(logger.NewStdLogSystem(os.Stdout, log.LstdFlags, logger.LogLevel(*loglevel)))
 
-	monkutil.ReadConfig("/tmp/evmtest", "/tmp/evm", "")
+	thelutil.ReadConfig("/tmp/evmtest", "/tmp/evm", "")
 
-	db, _ := ethdb.NewMemDatabase()
+	db, _ := theldb.NewMemDatabase()
 	statedb := state.New(nil, db)
 	sender := statedb.NewStateObject([]byte("sender"))
 	receiver := statedb.NewStateObject([]byte("receiver"))
 	//receiver.SetCode([]byte(*code))
-	receiver.SetCode(monkutil.Hex2Bytes(*code))
+	receiver.SetCode(thelutil.Hex2Bytes(*code))
 
-	vmenv := NewEnv(statedb, []byte("evmuser"), monkutil.Big(*value))
+	vmenv := NewEnv(statedb, []byte("evmuser"), thelutil.Big(*value))
 
 	tstart := time.Now()
 
-	ret, e := vmenv.Call(sender, receiver.Address(), monkutil.Hex2Bytes(*data), monkutil.Big(*gas), monkutil.Big(*price), monkutil.Big(*value))
+	ret, e := vmenv.Call(sender, receiver.Address(), thelutil.Hex2Bytes(*data), thelutil.Big(*gas), thelutil.Big(*price), thelutil.Big(*value))
 
 	logger.Flush()
 	if e != nil {
@@ -120,11 +120,11 @@ func NewEnv(state *state.StateDB, transactor []byte, value *big.Int) *VMEnv {
 
 func (self *VMEnv) State() *state.StateDB { return self.state }
 func (self *VMEnv) Origin() []byte        { return self.transactor }
-func (self *VMEnv) BlockNumber() *big.Int { return monkutil.Big0 }
+func (self *VMEnv) BlockNumber() *big.Int { return thelutil.Big0 }
 func (self *VMEnv) PrevHash() []byte      { return make([]byte, 32) }
 func (self *VMEnv) Coinbase() []byte      { return self.transactor }
 func (self *VMEnv) Time() int64           { return self.time }
-func (self *VMEnv) Difficulty() *big.Int  { return monkutil.Big1 }
+func (self *VMEnv) Difficulty() *big.Int  { return thelutil.Big1 }
 func (self *VMEnv) BlockHash() []byte     { return make([]byte, 32) }
 func (self *VMEnv) Value() *big.Int       { return self.value }
 func (self *VMEnv) GasLimit() *big.Int    { return big.NewInt(1000000000) }

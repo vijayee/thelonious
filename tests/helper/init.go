@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	logpkg "github.com/eris-ltd/new-thelonious/logger"
 )
 
@@ -15,5 +15,5 @@ func init() {
 	Logger = logpkg.NewStdLogSystem(os.Stdout, log.LstdFlags, logpkg.InfoLevel)
 	logpkg.AddLogSystem(Logger)
 
-	monkutil.ReadConfig(".ethtest", "/tmp/ethtest", "")
+	thelutil.ReadConfig(".ethtest", "/tmp/ethtest", "")
 }

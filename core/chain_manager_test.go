@@ -10,15 +10,15 @@ import (
 	"testing"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/theldb"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/rlp"
 )
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	monkutil.ReadConfig("/tmp/ethtest", "/tmp/ethtest", "ETH")
+	thelutil.ReadConfig("/tmp/ethtest", "/tmp/ethtest", "ETH")
 }
 
 func loadChain(fn string, t *testing.T) (types.Blocks, error) {
@@ -46,7 +46,7 @@ func insertChain(done chan bool, chainMan *ChainManager, chain types.Blocks, t *
 }
 
 func TestChainInsertions(t *testing.T) {
-	db, _ := ethdb.NewMemDatabase()
+	db, _ := theldb.NewMemDatabase()
 
 	chain1, err := loadChain("valid1", t)
 	if err != nil {
@@ -86,7 +86,7 @@ func TestChainInsertions(t *testing.T) {
 }
 
 func TestChainMultipleInsertions(t *testing.T) {
-	db, _ := ethdb.NewMemDatabase()
+	db, _ := theldb.NewMemDatabase()
 
 	const max = 4
 	chains := make([]types.Blocks, max)
@@ -130,7 +130,7 @@ func TestChainMultipleInsertions(t *testing.T) {
 }
 
 func TestGetAncestors(t *testing.T) {
-	db, _ := ethdb.NewMemDatabase()
+	db, _ := theldb.NewMemDatabase()
 	var eventMux event.TypeMux
 	chainMan := NewChainManager(db, &eventMux)
 	chain, err := loadChain("valid1", t)

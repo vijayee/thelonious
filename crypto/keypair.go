@@ -3,7 +3,7 @@ package crypto
 import (
 	"strings"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/obscuren/secp256k1-go"
 )
 
@@ -40,19 +40,19 @@ func (k *KeyPair) Address() []byte {
 
 func (k *KeyPair) Mnemonic() string {
 	if k.mnemonic == "" {
-		k.mnemonic = strings.Join(MnemonicEncode(monkutil.Bytes2Hex(k.PrivateKey)), " ")
+		k.mnemonic = strings.Join(MnemonicEncode(thelutil.Bytes2Hex(k.PrivateKey)), " ")
 	}
 	return k.mnemonic
 }
 
 func (k *KeyPair) AsStrings() (string, string, string, string) {
-	return k.Mnemonic(), monkutil.Bytes2Hex(k.Address()), monkutil.Bytes2Hex(k.PrivateKey), monkutil.Bytes2Hex(k.PublicKey)
+	return k.Mnemonic(), thelutil.Bytes2Hex(k.Address()), thelutil.Bytes2Hex(k.PrivateKey), thelutil.Bytes2Hex(k.PublicKey)
 }
 
 func (k *KeyPair) RlpEncode() []byte {
 	return k.RlpValue().Encode()
 }
 
-func (k *KeyPair) RlpValue() *monkutil.Value {
-	return monkutil.NewValue(k.PrivateKey)
+func (k *KeyPair) RlpValue() *thelutil.Value {
+	return thelutil.NewValue(k.PrivateKey)
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -67,7 +67,7 @@ func (self *Log) Data() []byte {
 }
 
 func (self *Log) RlpData() interface{} {
-	return []interface{}{self.address, monkutil.ByteSliceToInterface(self.topics), self.data}
+	return []interface{}{self.address, thelutil.ByteSliceToInterface(self.topics), self.data}
 }
 
 func (self *Log) String() string {

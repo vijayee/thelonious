@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/trie"
 )
 
@@ -17,7 +17,7 @@ var statelogger = logger.NewLogger("STATE")
 // * Contracts
 // * Accounts
 type StateDB struct {
-	db   monkutil.Database
+	db   thelutil.Database
 	trie *trie.Trie
 
 	stateObjects map[string]*StateObject
@@ -30,9 +30,13 @@ type StateDB struct {
 }
 
 // Create a new state from a given trie
-func New(root []byte, db monkutil.Database) *StateDB {
+func New(root []byte, db thelutil.Database) *StateDB {
 	trie := trie.New(root, db)
 	return &StateDB{db: db, trie: trie, stateObjects: make(map[string]*StateObject), manifest: NewManifest(), refund: make(map[string]*big.Int)}
+}
+
+func (self *StateDB) Trie() *trie.Trie {
+	return self.trie
 }
 
 func (self *StateDB) EmptyLogs() {
@@ -54,7 +58,7 @@ func (self *StateDB) GetBalance(addr []byte) *big.Int {
 		return stateObject.balance
 	}
 
-	return monkutil.Big0
+	return thelutil.Big0
 }
 
 func (self *StateDB) Refund(addr []byte, gas *big.Int) {
@@ -115,7 +119,7 @@ func (self *StateDB) GetState(a, b []byte) []byte {
 func (self *StateDB) SetState(addr, key []byte, value interface{}) {
 	stateObject := self.GetStateObject(addr)
 	if stateObject != nil {
-		stateObject.SetState(key, monkutil.NewValue(value))
+		stateObject.SetState(key, thelutil.NewValue(value))
 	}
 }
 
@@ -154,7 +158,7 @@ func (self *StateDB) DeleteStateObject(stateObject *StateObject) {
 
 // Retrieve a state object given my the address. Nil if not found
 func (self *StateDB) GetStateObject(addr []byte) *StateObject {
-	addr = monkutil.Address(addr)
+	addr = thelutil.Address(addr)
 
 	stateObject := self.stateObjects[string(addr)]
 	if stateObject != nil {
@@ -188,7 +192,7 @@ func (self *StateDB) GetOrNewStateObject(addr []byte) *StateObject {
 
 // Create a state object whether it exist in the trie or not
 func (self *StateDB) NewStateObject(addr []byte) *StateObject {
-	addr = monkutil.Address(addr)
+	addr = thelutil.Address(addr)
 
 	statelogger.Debugf("(+) %x\n", addr)
 

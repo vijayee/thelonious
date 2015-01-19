@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/obscuren/sha3"
 )
@@ -50,7 +50,7 @@ func (dag *Dagger) Search(hash, diff *big.Int) *big.Int {
 
 	dag.hash = hash
 
-	obj := monkutil.BigPow(2, 256)
+	obj := thelutil.BigPow(2, 256)
 	obj = obj.Div(obj, diff)
 
 	Found = false
@@ -75,7 +75,7 @@ func (dag *Dagger) Search(hash, diff *big.Int) *big.Int {
 func (dag *Dagger) Verify(hash, diff, nonce *big.Int) bool {
 	dag.hash = hash
 
-	obj := monkutil.BigPow(2, 256)
+	obj := thelutil.BigPow(2, 256)
 	obj = obj.Div(obj, diff)
 
 	return dag.Eval(nonce).Cmp(obj) < 0
@@ -85,7 +85,7 @@ func DaggerVerify(hash, diff, nonce *big.Int) bool {
 	dagger := &Dagger{}
 	dagger.hash = hash
 
-	obj := monkutil.BigPow(2, 256)
+	obj := thelutil.BigPow(2, 256)
 	obj = obj.Div(obj, diff)
 
 	return dagger.Eval(nonce).Cmp(obj) < 0
@@ -133,7 +133,7 @@ func Sum(sha hash.Hash) []byte {
 }
 
 func (dag *Dagger) Eval(N *big.Int) *big.Int {
-	pow := monkutil.BigPow(2, 26)
+	pow := thelutil.BigPow(2, 26)
 	dag.xn = pow.Div(N, pow)
 
 	sha := sha3.NewKeccak256()

@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/vm"
 )
@@ -56,7 +56,7 @@ type Message interface {
 
 func AddressFromMessage(msg Message) []byte {
 	// Generate a new address
-	return crypto.Sha3(monkutil.NewValue([]interface{}{msg.From(), msg.Nonce()}).Encode())[12:]
+	return crypto.Sha3(thelutil.NewValue([]interface{}{msg.From(), msg.Nonce()}).Encode())[12:]
 }
 
 func MessageCreatesContract(msg Message) bool {
@@ -223,9 +223,9 @@ func (self *StateTransition) RefundGas() {
 	remaining := new(big.Int).Mul(self.gas, self.msg.GasPrice())
 	sender.AddAmount(remaining)
 
-	uhalf := new(big.Int).Div(self.GasUsed(), monkutil.Big2)
+	uhalf := new(big.Int).Div(self.GasUsed(), thelutil.Big2)
 	for addr, ref := range self.state.Refunds() {
-		refund := monkutil.BigMin(uhalf, ref)
+		refund := thelutil.BigMin(uhalf, ref)
 		self.gas.Add(self.gas, refund)
 		self.state.AddBalance([]byte(addr), refund.Mul(refund, self.msg.GasPrice()))
 	}

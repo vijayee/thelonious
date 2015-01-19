@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/rlp"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 type Header struct {
 	// Hash to the previous block
-	ParentHash monkutil.Bytes
+	ParentHash thelutil.Bytes
 	// Uncles of this block
 	UncleHash []byte
 	// The coin base address
@@ -40,7 +40,7 @@ type Header struct {
 	// Extra data
 	Extra string
 	// Block Nonce for verification
-	Nonce monkutil.Bytes
+	Nonce thelutil.Bytes
 }
 
 func (self *Header) rlpData(withNonce bool) []interface{} {
@@ -57,11 +57,11 @@ func (self *Header) RlpData() interface{} {
 }
 
 func (self *Header) Hash() []byte {
-	return crypto.Sha3(monkutil.Encode(self.rlpData(true)))
+	return crypto.Sha3(thelutil.Encode(self.rlpData(true)))
 }
 
 func (self *Header) HashNoNonce() []byte {
-	return crypto.Sha3(monkutil.Encode(self.rlpData(false)))
+	return crypto.Sha3(thelutil.Encode(self.rlpData(false)))
 }
 
 type Block struct {
@@ -126,7 +126,7 @@ func (self *Block) Uncles() []*Header {
 
 func (self *Block) SetUncles(uncleHeaders []*Header) {
 	self.uncles = uncleHeaders
-	self.header.UncleHash = crypto.Sha3(monkutil.Encode(uncleHeaders))
+	self.header.UncleHash = crypto.Sha3(thelutil.Encode(uncleHeaders))
 }
 
 func (self *Block) Transactions() Transactions {
@@ -174,12 +174,16 @@ func (self *Block) Time() int64        { return int64(self.header.Time) }
 func (self *Block) GasLimit() *big.Int { return self.header.GasLimit }
 func (self *Block) GasUsed() *big.Int  { return self.header.GasUsed }
 func (self *Block) Nonce() []byte      { return self.header.Nonce }
+func (self *Block) TxHash() []byte     { return self.header.TxHash }
+func (self *Block) UncleHash() []byte  { return self.header.UncleHash }
 
-//func (self *Block) Trie() *ptrie.Trie         { return ptrie.New(self.header.Root, monkutil.Config.Db) }
+//func (self *Block) Trie() *ptrie.Trie         { return ptrie.New(self.header.Root, thelutil.Config.Db) }
 //func (self *Block) State() *state.StateDB     { return state.New(self.Trie()) }
-func (self *Block) Root() []byte              { return self.header.Root }
-func (self *Block) SetRoot(root []byte)       { self.header.Root = root }
-func (self *Block) Size() monkutil.StorageSize { return monkutil.StorageSize(len(monkutil.Encode(self))) }
+func (self *Block) Root() []byte        { return self.header.Root }
+func (self *Block) SetRoot(root []byte) { self.header.Root = root }
+func (self *Block) Size() thelutil.StorageSize {
+	return thelutil.StorageSize(len(thelutil.Encode(self)))
+}
 
 // Implement pow.Block
 func (self *Block) Difficulty() *big.Int { return self.header.Difficulty }

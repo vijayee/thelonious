@@ -6,11 +6,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 func openLogFile(datadir string, filename string) *os.File {
-	path := monkutil.AbsolutePath(datadir, filename)
+	path := thelutil.AbsolutePath(datadir, filename)
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))

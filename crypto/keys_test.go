@@ -1,7 +1,7 @@
 package crypto
 
 // import (
-// 	"github.com/eris-ltd/new-thelonious/ethdb"
+// 	"github.com/eris-ltd/new-thelonious/theldb"
 // 	// "io/ioutil"
 // 	"fmt"
 // 	"os"
@@ -11,7 +11,7 @@ package crypto
 
 // // test if persistence layer works
 // func TestDBKeyManager(t *testing.T) {
-// 	memdb, _ := ethdb.NewMemDatabase()
+// 	memdb, _ := theldb.NewMemDatabase()
 // 	keyManager0 := NewDBKeyManager(memdb)
 // 	err := keyManager0.Init("", 0, false)
 // 	if err != nil {
@@ -66,7 +66,7 @@ package crypto
 
 // // cursor errors
 // func TestCursorErrors(t *testing.T) {
-// 	memdb, _ := ethdb.NewMemDatabase()
+// 	memdb, _ := theldb.NewMemDatabase()
 // 	keyManager0 := NewDBKeyManager(memdb)
 // 	err := keyManager0.Init("", 0, false)
 // 	err = keyManager0.Init("", 1, false)
@@ -80,7 +80,7 @@ package crypto
 // }
 
 // func TestExportImport(t *testing.T) {
-// 	memdb, _ := ethdb.NewMemDatabase()
+// 	memdb, _ := theldb.NewMemDatabase()
 // 	keyManager0 := NewDBKeyManager(memdb)
 // 	err := keyManager0.Init("", 0, false)
 // 	basedir0 := "/tmp/ethtest0"
@@ -100,7 +100,7 @@ package crypto
 // 	}
 // 	path.Join("")
 
-// 	// memdb, _ = ethdb.NewMemDatabase()
+// 	// memdb, _ = theldb.NewMemDatabase()
 // 	// keyManager2 := NewDBKeyManager(memdb)
 // 	// err = keyManager2.InitFromSecretsFile("", 0, path.Join(basedir0, "default.prv"))
 // 	// if err != nil {
@@ -110,7 +110,7 @@ package crypto
 // 	// 	t.Error("Expected private keys %s, %s, to be identical via export/import prv", keyManager0.PrivateKey(), keyManager1.PrivateKey())
 // 	// }
 
-// 	// memdb, _ = ethdb.NewMemDatabase()
+// 	// memdb, _ = theldb.NewMemDatabase()
 // 	// keyManager3 := NewDBKeyManager(memdb)
 // 	// err = keyManager3.InitFromSecretsFile("", 0, path.Join(basedir0, "default.mne"))
 // 	// if err != nil {

@@ -1,6 +1,6 @@
 package rpc
 
-import "github.com/eris-ltd/new-thelonious/monkutil"
+import "github.com/eris-ltd/new-thelonious/thelutil"
 
 type Message struct {
 	Call string        `json:"call"`
@@ -9,6 +9,6 @@ type Message struct {
 	Data interface{}   `json:"data"`
 }
 
-func (self *Message) Arguments() *monkutil.Value {
-	return monkutil.NewValue(self.Args)
+func (self *Message) Arguments() *thelutil.Value {
+	return thelutil.NewValue(self.Args)
 }

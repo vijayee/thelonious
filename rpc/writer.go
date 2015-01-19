@@ -10,13 +10,13 @@ func WriteOn(msg *Message, writer io.Writer) {
 
 	switch msg.Call {
 	case "compile":
-		data := monkutil.NewValue(msg.Args)
-		bcode, err := monkutil.Compile(data.Get(0).Str(), false)
+		data := thelutil.NewValue(msg.Args)
+		bcode, err := thelutil.Compile(data.Get(0).Str(), false)
 		if err != nil {
 			JSON.Send(writer, pack(msg.Id, err.Error()))
 		}
 
-		code := monkutil.Bytes2Hex(bcode)
+		code := thelutil.Bytes2Hex(bcode)
 
 		JSON.Send(writer, pack(msg.Id, code, nil))
 	case "block":

@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/theldb"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/trie"
 )
 
@@ -12,10 +12,10 @@ type DerivableList interface {
 }
 
 func DeriveSha(list DerivableList) []byte {
-	db, _ := ethdb.NewMemDatabase()
+	db, _ := theldb.NewMemDatabase()
 	trie := trie.New(nil, db)
 	for i := 0; i < list.Len(); i++ {
-		trie.Update(monkutil.Encode(i), list.GetRlp(i))
+		trie.Update(thelutil.Encode(i), list.GetRlp(i))
 	}
 
 	return trie.Root()

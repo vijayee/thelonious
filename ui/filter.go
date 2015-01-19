@@ -2,7 +2,7 @@ package ui
 
 import (
 	"github.com/eris-ltd/new-thelonious/core"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 func fromHex(s string) []byte {
@@ -10,7 +10,7 @@ func fromHex(s string) []byte {
 		if s[0:2] == "0x" {
 			s = s[2:]
 		}
-		return monkutil.Hex2Bytes(s)
+		return thelutil.Hex2Bytes(s)
 	}
 	return nil
 }
@@ -19,32 +19,32 @@ func NewFilterFromMap(object map[string]interface{}, eth core.EthManager) *core.
 	filter := core.NewFilter(eth)
 
 	if object["earliest"] != nil {
-		val := monkutil.NewValue(object["earliest"])
+		val := thelutil.NewValue(object["earliest"])
 		filter.SetEarliestBlock(val.Int())
 	}
 
 	if object["latest"] != nil {
-		val := monkutil.NewValue(object["latest"])
+		val := thelutil.NewValue(object["latest"])
 		filter.SetLatestBlock(val.Int())
 	}
 
 	if object["to"] != nil {
-		val := monkutil.NewValue(object["to"])
+		val := thelutil.NewValue(object["to"])
 		filter.AddTo(fromHex(val.Str()))
 	}
 
 	if object["from"] != nil {
-		val := monkutil.NewValue(object["from"])
+		val := thelutil.NewValue(object["from"])
 		filter.AddFrom(fromHex(val.Str()))
 	}
 
 	if object["max"] != nil {
-		val := monkutil.NewValue(object["max"])
+		val := thelutil.NewValue(object["max"])
 		filter.SetMax(int(val.Uint()))
 	}
 
 	if object["skip"] != nil {
-		val := monkutil.NewValue(object["skip"])
+		val := thelutil.NewValue(object["skip"])
 		filter.SetSkip(int(val.Uint()))
 	}
 

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 type Account struct {
@@ -22,7 +22,7 @@ type World struct {
 
 func (self *StateDB) Dump() []byte {
 	world := World{
-		Root:     monkutil.Bytes2Hex(self.trie.Root()),
+		Root:     thelutil.Bytes2Hex(self.trie.Root()),
 		Accounts: make(map[string]Account),
 	}
 
@@ -30,14 +30,14 @@ func (self *StateDB) Dump() []byte {
 	for it.Next() {
 		stateObject := NewStateObjectFromBytes(it.Key, it.Value, self.db)
 
-		account := Account{Balance: stateObject.balance.String(), Nonce: stateObject.Nonce, Root: monkutil.Bytes2Hex(stateObject.Root()), CodeHash: monkutil.Bytes2Hex(stateObject.codeHash)}
+		account := Account{Balance: stateObject.balance.String(), Nonce: stateObject.Nonce, Root: thelutil.Bytes2Hex(stateObject.Root()), CodeHash: thelutil.Bytes2Hex(stateObject.codeHash)}
 		account.Storage = make(map[string]string)
 
 		storageIt := stateObject.State.trie.Iterator()
 		for storageIt.Next() {
-			account.Storage[monkutil.Bytes2Hex(it.Key)] = monkutil.Bytes2Hex(it.Value)
+			account.Storage[thelutil.Bytes2Hex(it.Key)] = thelutil.Bytes2Hex(it.Value)
 		}
-		world.Accounts[monkutil.Bytes2Hex(it.Key)] = account
+		world.Accounts[thelutil.Bytes2Hex(it.Key)] = account
 	}
 
 	json, err := json.MarshalIndent(world, "", "    ")

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 type KeyRing struct {
@@ -77,7 +77,7 @@ func NewKeyRingFromString(content string) (*KeyRing, error) {
 		}
 
 		if len(secret) != 0 {
-			secrets = append(secrets, monkutil.Hex2Bytes(secret))
+			secrets = append(secrets, thelutil.Hex2Bytes(secret))
 		}
 	}
 
@@ -98,7 +98,7 @@ func NewKeyRingFromSecrets(secs [][]byte) (*KeyRing, error) {
 
 func NewKeyRingFromBytes(data []byte) (*KeyRing, error) {
 	var secrets [][]byte
-	it := monkutil.NewValueFromBytes(data).NewIterator()
+	it := thelutil.NewValueFromBytes(data).NewIterator()
 	for it.Next() {
 		secret := it.Value().Bytes()
 		secrets = append(secrets, secret)
@@ -114,8 +114,8 @@ func (k *KeyRing) RlpEncode() []byte {
 	return k.RlpValue().Encode()
 }
 
-func (k *KeyRing) RlpValue() *monkutil.Value {
-	v := monkutil.EmptyValue()
+func (k *KeyRing) RlpValue() *thelutil.Value {
+	v := thelutil.EmptyValue()
 	k.Each(func(keyPair *KeyPair) {
 		v.Append(keyPair.RlpValue())
 	})

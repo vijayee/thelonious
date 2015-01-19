@@ -7,20 +7,20 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/p2p"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
 func toHex(b []byte) string {
-	return "0x" + monkutil.Bytes2Hex(b)
+	return "0x" + thelutil.Bytes2Hex(b)
 }
 func fromHex(s string) []byte {
 	if len(s) > 1 {
 		if s[0:2] == "0x" {
 			s = s[2:]
 		}
-		return monkutil.Hex2Bytes(s)
+		return thelutil.Hex2Bytes(s)
 	}
 	return nil
 }
@@ -32,8 +32,8 @@ type JSBlock struct {
 	Size         string        `json:"size"`
 	Number       int           `json:"number"`
 	Hash         string        `json:"hash"`
-	Transactions *monkutil.List `json:"transactions"`
-	Uncles       *monkutil.List `json:"uncles"`
+	Transactions *thelutil.List `json:"transactions"`
+	Uncles       *thelutil.List `json:"uncles"`
 	Time         int64         `json:"time"`
 	Coinbase     string        `json:"coinbase"`
 	Name         string        `json:"name"`
@@ -54,13 +54,13 @@ func NewJSBlock(block *types.Block) *JSBlock {
 	for i, tx := range block.Transactions() {
 		ptxs[i] = NewJSTx(tx)
 	}
-	txlist := monkutil.NewList(ptxs)
+	txlist := thelutil.NewList(ptxs)
 
 	puncles := make([]*JSBlock, len(block.Uncles()))
 	for i, uncle := range block.Uncles() {
 		puncles[i] = NewJSBlock(types.NewBlockWithHeader(uncle))
 	}
-	ulist := monkutil.NewList(puncles)
+	ulist := thelutil.NewList(puncles)
 
 	return &JSBlock{
 		ref: block, Size: block.Size().String(),
@@ -124,7 +124,7 @@ func NewJSTx(tx *types.Transaction) *JSTransaction {
 		data = toHex(tx.Data())
 	}
 
-	return &JSTransaction{ref: tx, Hash: hash, Value: monkutil.CurrencyToString(tx.Value()), Address: receiver, Contract: createsContract, Gas: tx.Gas().String(), GasPrice: tx.GasPrice().String(), Data: data, Sender: sender, CreatesContract: createsContract, RawData: toHex(tx.Data())}
+	return &JSTransaction{ref: tx, Hash: hash, Value: thelutil.CurrencyToString(tx.Value()), Address: receiver, Contract: createsContract, Gas: tx.Gas().String(), GasPrice: tx.GasPrice().String(), Data: data, Sender: sender, CreatesContract: createsContract, RawData: toHex(tx.Data())}
 }
 
 func (self *JSTransaction) ToString() string {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/ethdb"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/theldb"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/p2p"
 )
@@ -17,7 +17,7 @@ type TestManager struct {
 	// stateManager *StateManager
 	eventMux *event.TypeMux
 
-	db         monkutil.Database
+	db         thelutil.Database
 	txPool     *TxPool
 	blockChain *ChainManager
 	Blocks     []*types.Block
@@ -65,14 +65,14 @@ func (tm *TestManager) KeyManager() *crypto.KeyManager {
 	return nil
 }
 
-func (tm *TestManager) Db() monkutil.Database {
+func (tm *TestManager) Db() thelutil.Database {
 	return tm.db
 }
 
 func NewTestManager() *TestManager {
-	monkutil.ReadConfig(".ethtest", "/tmp/ethtest", "ETH")
+	thelutil.ReadConfig(".ethtest", "/tmp/ethtest", "ETH")
 
-	db, err := ethdb.NewMemDatabase()
+	db, err := theldb.NewMemDatabase()
 	if err != nil {
 		fmt.Println("Could not create mem-db, failing")
 		return nil

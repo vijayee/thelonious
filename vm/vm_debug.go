@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -29,7 +29,7 @@ type DebugVm struct {
 
 func NewDebugVm(env Environment) *DebugVm {
 	lt := LogTyPretty
-	if monkutil.Config.Diff {
+	if thelutil.Config.Diff {
 		lt = LogTyDiff
 	}
 
@@ -167,7 +167,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			x, y := stack.Pop(), stack.Pop()
 			self.Printf(" %v / %v", x, y)
 
-			if y.Cmp(monkutil.Big0) != 0 {
+			if y.Cmp(thelutil.Big0) != 0 {
 				base.Div(x, y)
 			}
 
@@ -181,11 +181,11 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 
 			self.Printf(" %v / %v", x, y)
 
-			if y.Cmp(monkutil.Big0) == 0 {
-				base.Set(monkutil.Big0)
+			if y.Cmp(thelutil.Big0) == 0 {
+				base.Set(thelutil.Big0)
 			} else {
 				n := new(big.Int)
-				if new(big.Int).Mul(x, y).Cmp(monkutil.Big0) < 0 {
+				if new(big.Int).Mul(x, y).Cmp(thelutil.Big0) < 0 {
 					n.SetInt64(-1)
 				} else {
 					n.SetInt64(1)
@@ -203,8 +203,8 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 
 			self.Printf(" %v %% %v", x, y)
 
-			if y.Cmp(monkutil.Big0) == 0 {
-				base.Set(monkutil.Big0)
+			if y.Cmp(thelutil.Big0) == 0 {
+				base.Set(thelutil.Big0)
 			} else {
 				base.Mod(x, y)
 			}
@@ -218,11 +218,11 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 
 			self.Printf(" %v %% %v", x, y)
 
-			if y.Cmp(monkutil.Big0) == 0 {
-				base.Set(monkutil.Big0)
+			if y.Cmp(thelutil.Big0) == 0 {
+				base.Set(thelutil.Big0)
 			} else {
 				n := new(big.Int)
-				if x.Cmp(monkutil.Big0) < 0 {
+				if x.Cmp(thelutil.Big0) < 0 {
 					n.SetInt64(-1)
 				} else {
 					n.SetInt64(1)
@@ -253,9 +253,9 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			if back < 31 {
 				bit := uint(back*8 + 7)
 				num := stack.Pop()
-				mask := new(big.Int).Lsh(monkutil.Big1, bit)
-				mask.Sub(mask, monkutil.Big1)
-				if monkutil.BitTest(num, int(bit)) {
+				mask := new(big.Int).Lsh(thelutil.Big1, bit)
+				mask.Sub(mask, thelutil.Big1)
+				if thelutil.BitTest(num, int(bit)) {
 					num.Or(num, mask.Not(mask))
 				} else {
 					num.And(num, mask)
@@ -268,7 +268,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 				stack.Push(num)
 			}
 		case NOT:
-			base.Sub(Pow256, stack.Pop()).Sub(base, monkutil.Big1)
+			base.Sub(Pow256, stack.Pop()).Sub(base, thelutil.Big1)
 
 			// Not needed
 			//base = U256(base)
@@ -279,9 +279,9 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			self.Printf(" %v < %v", y, x)
 			// x < y
 			if y.Cmp(x) < 0 {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 			} else {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 			}
 		case GT:
 			x, y := stack.Popn()
@@ -289,9 +289,9 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 
 			// x > y
 			if y.Cmp(x) > 0 {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 			} else {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 			}
 
 		case SLT:
@@ -299,9 +299,9 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			self.Printf(" %v < %v", y, x)
 			// x < y
 			if y.Cmp(S256(x)) < 0 {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 			} else {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 			}
 		case SGT:
 			y, x := S256(stack.Pop()), S256(stack.Pop())
@@ -309,9 +309,9 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 
 			// x > y
 			if y.Cmp(x) > 0 {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 			} else {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 			}
 
 		case EQ:
@@ -320,16 +320,16 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 
 			// x == y
 			if x.Cmp(y) == 0 {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 			} else {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 			}
 		case ISZERO:
 			x := stack.Pop()
-			if x.Cmp(monkutil.BigFalse) > 0 {
-				stack.Push(monkutil.BigFalse)
+			if x.Cmp(thelutil.BigFalse) > 0 {
+				stack.Push(thelutil.BigFalse)
 			} else {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 			}
 
 			// 0x10 range
@@ -352,11 +352,11 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			val, th := stack.Popn()
 
 			if th.Cmp(big.NewInt(32)) < 0 {
-				byt := big.NewInt(int64(monkutil.LeftPadBytes(val.Bytes(), 32)[th.Int64()]))
+				byt := big.NewInt(int64(thelutil.LeftPadBytes(val.Bytes(), 32)[th.Int64()]))
 
 				base.Set(byt)
 			} else {
-				base.Set(monkutil.BigFalse)
+				base.Set(thelutil.BigFalse)
 			}
 
 			self.Printf(" => 0x%x", base.Bytes())
@@ -400,12 +400,12 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			size, offset := stack.Popn()
 			data := crypto.Sha3(mem.Get(offset.Int64(), size.Int64()))
 
-			stack.Push(monkutil.BigD(data))
+			stack.Push(thelutil.BigD(data))
 
 			self.Printf(" => %x", data)
 			// 0x30 range
 		case ADDRESS:
-			stack.Push(monkutil.BigD(context.Address()))
+			stack.Push(thelutil.BigD(context.Address()))
 
 			self.Printf(" => %x", context.Address())
 		case BALANCE:
@@ -419,12 +419,12 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 		case ORIGIN:
 			origin := self.env.Origin()
 
-			stack.Push(monkutil.BigD(origin))
+			stack.Push(thelutil.BigD(origin))
 
 			self.Printf(" => %x", origin)
 		case CALLER:
 			caller := context.caller.Address()
-			stack.Push(monkutil.BigD(caller))
+			stack.Push(thelutil.BigD(caller))
 
 			self.Printf(" => %x", caller)
 		case CALLVALUE:
@@ -439,15 +439,15 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			)
 
 			if lenData.Cmp(offset) >= 0 {
-				length := new(big.Int).Add(offset, monkutil.Big32)
-				length = monkutil.BigMin(length, lenData)
+				length := new(big.Int).Add(offset, thelutil.Big32)
+				length = thelutil.BigMin(length, lenData)
 
 				copy(data, callData[offset.Int64():length.Int64()])
 			}
 
 			self.Printf(" => 0x%x", data)
 
-			stack.Push(monkutil.BigD(data))
+			stack.Push(thelutil.BigD(data))
 		case CALLDATASIZE:
 			l := int64(len(callData))
 			stack.Push(big.NewInt(l))
@@ -494,7 +494,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			} else {
 				code = context.Code
 			}
-			context := NewContext(nil, nil, code, monkutil.Big0, monkutil.Big0)
+			context := NewContext(nil, nil, code, thelutil.Big0, thelutil.Big0)
 			var (
 				mOff = stack.Pop().Uint64()
 				cOff = stack.Pop().Uint64()
@@ -514,18 +514,18 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 		case BLOCKHASH:
 			num := stack.Pop()
 
-			n := U256(new(big.Int).Sub(self.env.BlockNumber(), monkutil.Big256))
+			n := U256(new(big.Int).Sub(self.env.BlockNumber(), thelutil.Big256))
 			if num.Cmp(n) > 0 && num.Cmp(self.env.BlockNumber()) < 0 {
-				stack.Push(monkutil.BigD(self.env.GetHash(num.Uint64())))
+				stack.Push(thelutil.BigD(self.env.GetHash(num.Uint64())))
 			} else {
-				stack.Push(monkutil.Big0)
+				stack.Push(thelutil.Big0)
 			}
 
 			self.Printf(" => 0x%x", stack.Peek().Bytes())
 		case COINBASE:
 			coinbase := self.env.Coinbase()
 
-			stack.Push(monkutil.BigD(coinbase))
+			stack.Push(thelutil.BigD(coinbase))
 
 			self.Printf(" => 0x%x", coinbase)
 		case TIMESTAMP:
@@ -556,7 +556,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			a := uint64(op - PUSH1 + 1)
 			byts := context.GetRangeValue(pc+1, a)
 			// Push value to stack
-			stack.Push(monkutil.BigD(byts))
+			stack.Push(thelutil.BigD(byts))
 			pc += a
 
 			step += int(op) - int(PUSH1) + 1
@@ -579,7 +579,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			topics := make([][]byte, n)
 			mSize, mStart := stack.Popn()
 			for i := 0; i < n; i++ {
-				topics[i] = monkutil.LeftPadBytes(stack.Pop().Bytes(), 32)
+				topics[i] = thelutil.LeftPadBytes(stack.Pop().Bytes(), 32)
 			}
 
 			data := mem.Get(mStart.Int64(), mSize.Int64())
@@ -589,14 +589,14 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			self.Printf(" => %v", log)
 		case MLOAD:
 			offset := stack.Pop()
-			val := monkutil.BigD(mem.Get(offset.Int64(), 32))
+			val := thelutil.BigD(mem.Get(offset.Int64(), 32))
 			stack.Push(val)
 
 			self.Printf(" => 0x%x", val.Bytes())
 		case MSTORE: // Store the value at stack top-1 in to memory at location stack top
 			// Pop value of the stack
 			val, mStart := stack.Popn()
-			mem.Set(mStart.Uint64(), 32, monkutil.BigToBytes(val, 256))
+			mem.Set(mStart.Uint64(), 32, thelutil.BigToBytes(val, 256))
 
 			self.Printf(" => 0x%x", val)
 		case MSTORE8:
@@ -608,7 +608,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			self.Printf(" => [%v] 0x%x", off, val)
 		case SLOAD:
 			loc := stack.Pop()
-			val := monkutil.BigD(statedb.GetState(context.Address(), loc.Bytes()))
+			val := thelutil.BigD(statedb.GetState(context.Address(), loc.Bytes()))
 			stack.Push(val)
 
 			self.Printf(" {0x%x : 0x%x}", loc.Bytes(), val.Bytes())
@@ -626,7 +626,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 		case JUMPI:
 			cond, pos := stack.Popn()
 
-			if cond.Cmp(monkutil.BigTrue) >= 0 {
+			if cond.Cmp(thelutil.BigTrue) >= 0 {
 				jump(pc, pos)
 
 				continue
@@ -653,7 +653,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			context.UseGas(context.Gas)
 			ret, suberr, ref := self.env.Create(context, nil, input, gas, price, value)
 			if suberr != nil {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 
 				self.Printf(" (*) 0x0 %v", suberr)
 			} else {
@@ -667,7 +667,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 				}
 				addr = ref.Address()
 
-				stack.Push(monkutil.BigD(addr))
+				stack.Push(thelutil.BigD(addr))
 
 				self.Printf(" (*) %x", addr)
 			}
@@ -701,11 +701,11 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 			}
 
 			if err != nil {
-				stack.Push(monkutil.BigFalse)
+				stack.Push(thelutil.BigFalse)
 
 				vmlogger.Debugln(err)
 			} else {
-				stack.Push(monkutil.BigTrue)
+				stack.Push(thelutil.BigTrue)
 				msg.Output = ret
 
 				mem.Set(retOffset.Uint64(), retSize.Uint64(), ret)
@@ -770,14 +770,14 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 func (self *DebugVm) calculateGasAndSize(context *Context, caller ContextRef, op OpCode, statedb *state.StateDB, mem *Memory, stack *Stack) (*big.Int, *big.Int) {
 	gas := new(big.Int)
 	addStepGasUsage := func(amount *big.Int) {
-		if amount.Cmp(monkutil.Big0) >= 0 {
+		if amount.Cmp(thelutil.Big0) >= 0 {
 			gas.Add(gas, amount)
 		}
 	}
 
 	addStepGasUsage(GasStep)
 
-	var newMemSize *big.Int = monkutil.Big0
+	var newMemSize *big.Int = thelutil.Big0
 	var additionalGas *big.Int = new(big.Int)
 	// Stack Check, memory resize & gas phase
 	switch op {
@@ -811,11 +811,11 @@ func (self *DebugVm) calculateGasAndSize(context *Context, caller ContextRef, op
 		gas.Set(big.NewInt(int64(len(stack.data[stack.Len()-2].Bytes()) + 1)))
 	// Gas only
 	case STOP:
-		gas.Set(monkutil.Big0)
+		gas.Set(thelutil.Big0)
 	case SUICIDE:
 		stack.require(1)
 
-		gas.Set(monkutil.Big0)
+		gas.Set(thelutil.Big0)
 	case SLOAD:
 		stack.require(1)
 
@@ -829,14 +829,14 @@ func (self *DebugVm) calculateGasAndSize(context *Context, caller ContextRef, op
 		val := statedb.GetState(context.Address(), x.Bytes())
 		if len(val) == 0 && len(y.Bytes()) > 0 {
 			// 0 => non 0
-			mult = monkutil.Big3
+			mult = thelutil.Big3
 		} else if len(val) > 0 && len(y.Bytes()) == 0 {
 			statedb.Refund(caller.Address(), GasSStoreRefund)
 
-			mult = monkutil.Big0
+			mult = thelutil.Big0
 		} else {
 			// non 0 => non 0 (or 0 => 0)
-			mult = monkutil.Big1
+			mult = thelutil.Big1
 		}
 		gas.Set(new(big.Int).Mul(mult, GasSStore))
 	case BALANCE:
@@ -884,7 +884,7 @@ func (self *DebugVm) calculateGasAndSize(context *Context, caller ContextRef, op
 		x := calcMemSize(stack.data[stack.Len()-6], stack.data[stack.Len()-7])
 		y := calcMemSize(stack.data[stack.Len()-4], stack.data[stack.Len()-5])
 
-		newMemSize = monkutil.BigMax(x, y)
+		newMemSize = thelutil.BigMax(x, y)
 	case CREATE:
 		stack.require(3)
 		gas.Set(GasCreate)
@@ -904,7 +904,7 @@ func (self *DebugVm) calculateGasAndSize(context *Context, caller ContextRef, op
 		addStepGasUsage(additionalGas)
 	}
 
-	if newMemSize.Cmp(monkutil.Big0) > 0 {
+	if newMemSize.Cmp(thelutil.Big0) > 0 {
 		newMemSize.Add(newMemSize, u256(31))
 		newMemSize.Div(newMemSize, u256(32))
 		newMemSize.Mul(newMemSize, u256(32))

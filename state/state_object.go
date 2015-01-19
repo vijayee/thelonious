@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/trie"
 )
 
@@ -15,7 +15,7 @@ func (self Code) String() string {
 	return string(self) //strings.Join(Disassemble(self), " ")
 }
 
-type Storage map[string]*monkutil.Value
+type Storage map[string]*thelutil.Value
 
 func (self Storage) Copy() Storage {
 	cpy := make(Storage)
@@ -28,7 +28,7 @@ func (self Storage) Copy() Storage {
 }
 
 type StateObject struct {
-	db monkutil.Database
+	db thelutil.Database
 	// Address of the object
 	address []byte
 	// Shared attributes
@@ -58,19 +58,19 @@ func (self *StateObject) Reset() {
 	self.State.Reset()
 }
 
-func NewStateObject(addr []byte, db monkutil.Database) *StateObject {
+func NewStateObject(addr []byte, db thelutil.Database) *StateObject {
 	// This to ensure that it has 20 bytes (and not 0 bytes), thus left or right pad doesn't matter.
-	address := monkutil.Address(addr)
+	address := thelutil.Address(addr)
 
 	object := &StateObject{db: db, address: address, balance: new(big.Int), gasPool: new(big.Int)}
-	object.State = New(nil, db) //New(trie.New(monkutil.Config.Db, ""))
+	object.State = New(nil, db) //New(trie.New(thelutil.Config.Db, ""))
 	object.storage = make(Storage)
 	object.gasPool = new(big.Int)
 
 	return object
 }
 
-func NewStateObjectFromBytes(address, data []byte, db monkutil.Database) *StateObject {
+func NewStateObjectFromBytes(address, data []byte, db thelutil.Database) *StateObject {
 	object := &StateObject{address: address, db: db}
 	object.RlpDecode(data)
 
@@ -82,27 +82,27 @@ func (self *StateObject) MarkForDeletion() {
 	statelogger.DebugDetailf("%x: #%d %v (deletion)\n", self.Address(), self.Nonce, self.balance)
 }
 
-func (c *StateObject) getAddr(addr []byte) *monkutil.Value {
-	return monkutil.NewValueFromBytes([]byte(c.State.trie.Get(addr)))
+func (c *StateObject) getAddr(addr []byte) *thelutil.Value {
+	return thelutil.NewValueFromBytes([]byte(c.State.trie.Get(addr)))
 }
 
 func (c *StateObject) setAddr(addr []byte, value interface{}) {
-	c.State.trie.Update(addr, monkutil.Encode(value))
+	c.State.trie.Update(addr, thelutil.Encode(value))
 }
 
-func (self *StateObject) GetStorage(key *big.Int) *monkutil.Value {
+func (self *StateObject) GetStorage(key *big.Int) *thelutil.Value {
 	return self.GetState(key.Bytes())
 }
-func (self *StateObject) SetStorage(key *big.Int, value *monkutil.Value) {
+func (self *StateObject) SetStorage(key *big.Int, value *thelutil.Value) {
 	self.SetState(key.Bytes(), value)
 }
 
-func (self *StateObject) Storage() map[string]*monkutil.Value {
+func (self *StateObject) Storage() map[string]*thelutil.Value {
 	return self.storage
 }
 
-func (self *StateObject) GetState(k []byte) *monkutil.Value {
-	key := monkutil.LeftPadBytes(k, 32)
+func (self *StateObject) GetState(k []byte) *thelutil.Value {
+	key := thelutil.LeftPadBytes(k, 32)
 
 	value := self.storage[string(key)]
 	if value == nil {
@@ -116,30 +116,30 @@ func (self *StateObject) GetState(k []byte) *monkutil.Value {
 	return value
 }
 
-func (self *StateObject) SetState(k []byte, value *monkutil.Value) {
-	key := monkutil.LeftPadBytes(k, 32)
+func (self *StateObject) SetState(k []byte, value *thelutil.Value) {
+	key := thelutil.LeftPadBytes(k, 32)
 	self.storage[string(key)] = value.Copy()
 }
 
-/*
 // Iterate over each storage address and yield callback
-func (self *StateObject) EachStorage(cb trie.EachCallback) {
+func (self *StateObject) EachStorage(cb func(string, *thelutil.Value)) {
 	// First loop over the uncommit/cached values in storage
 	for key, value := range self.storage {
 		// XXX Most iterators Fns as it stands require encoded values
-		encoded := monkutil.NewValue(value.Encode())
+		encoded := thelutil.NewValue(value.Encode())
 		cb(key, encoded)
 	}
 
-	it := self.State.Trie.NewIterator()
-	it.Each(func(key string, value *monkutil.Value) {
+	it := self.State.Trie().Iterator()
+	for it.Next() { //(func(key string, value *thelutil.Value) {
+		key := string(it.Key)
+		value := it.Value
 		// If it's cached don't call the callback.
 		if self.storage[key] == nil {
-			cb(key, value)
+			cb(key, thelutil.NewValue(value))
 		}
-	})
+	}
 }
-*/
 
 func (self *StateObject) Sync() {
 	for key, value := range self.storage {
@@ -152,7 +152,7 @@ func (self *StateObject) Sync() {
 	}
 
 	/*
-		valid, t2 := trie.ParanoiaCheck(self.State.trie, monkutil.Config.Db)
+		valid, t2 := trie.ParanoiaCheck(self.State.trie, thelutil.Config.Db)
 		if !valid {
 			statelogger.Infof("Warn: PARANOIA: Different state storage root during copy %x vs %x\n", self.State.Root(), t2.Root())
 
@@ -161,12 +161,12 @@ func (self *StateObject) Sync() {
 	*/
 }
 
-func (c *StateObject) GetInstr(pc *big.Int) *monkutil.Value {
+func (c *StateObject) GetInstr(pc *big.Int) *thelutil.Value {
 	if int64(len(c.Code)-1) < pc.Int64() {
-		return monkutil.NewValue(0)
+		return thelutil.NewValue(0)
 	}
 
-	return monkutil.NewValueFromBytes([]byte{c.Code[pc.Int64()]})
+	return thelutil.NewValueFromBytes([]byte{c.Code[pc.Int64()]})
 }
 
 func (c *StateObject) AddBalance(amount *big.Int) {
@@ -237,13 +237,13 @@ func (self *StateObject) RefundGas(gas, price *big.Int) {
 func (self *StateObject) Copy() *StateObject {
 	stateObject := NewStateObject(self.Address(), self.db)
 	stateObject.balance.Set(self.balance)
-	stateObject.codeHash = monkutil.CopyBytes(self.codeHash)
+	stateObject.codeHash = thelutil.CopyBytes(self.codeHash)
 	stateObject.Nonce = self.Nonce
 	if self.State != nil {
 		stateObject.State = self.State.Copy()
 	}
-	stateObject.Code = monkutil.CopyBytes(self.Code)
-	stateObject.InitCode = monkutil.CopyBytes(self.InitCode)
+	stateObject.Code = thelutil.CopyBytes(self.Code)
+	stateObject.InitCode = thelutil.CopyBytes(self.InitCode)
 	stateObject.storage = self.storage.Copy()
 	stateObject.gasPool.Set(self.gasPool)
 	stateObject.remove = self.remove
@@ -291,20 +291,20 @@ func (self *StateObject) SetCode(code []byte) {
 
 // State object encoding methods
 func (c *StateObject) RlpEncode() []byte {
-	return monkutil.Encode([]interface{}{c.Nonce, c.balance, c.Root(), c.CodeHash()})
+	return thelutil.Encode([]interface{}{c.Nonce, c.balance, c.Root(), c.CodeHash()})
 }
 
-func (c *StateObject) CodeHash() monkutil.Bytes {
+func (c *StateObject) CodeHash() thelutil.Bytes {
 	return crypto.Sha3(c.Code)
 }
 
 func (c *StateObject) RlpDecode(data []byte) {
-	decoder := monkutil.NewValueFromBytes(data)
+	decoder := thelutil.NewValueFromBytes(data)
 
 	c.Nonce = decoder.Get(0).Uint()
 	c.balance = decoder.Get(1).BigInt()
-	c.State = New(decoder.Get(2).Bytes(), c.db) //New(trie.New(monkutil.Config.Db, decoder.Get(2).Interface()))
-	c.storage = make(map[string]*monkutil.Value)
+	c.State = New(decoder.Get(2).Bytes(), c.db) //New(trie.New(thelutil.Config.Db, decoder.Get(2).Interface()))
+	c.storage = make(map[string]*thelutil.Value)
 	c.gasPool = new(big.Int)
 
 	c.codeHash = decoder.Get(3).Bytes()

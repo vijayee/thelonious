@@ -8,7 +8,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/p2p"
@@ -30,7 +30,7 @@ type EthManager interface {
 	Peers() []*p2p.Peer
 	KeyManager() *crypto.KeyManager
 	ClientIdentity() p2p.ClientIdentity
-	Db() monkutil.Database
+	Db() thelutil.Database
 	EventMux() *event.TypeMux
 }
 
@@ -60,7 +60,7 @@ type Consensus interface {
 }
 
 type BlockProcessor struct {
-	db monkutil.Database
+	db thelutil.Database
 	// Mutex for locking the block processor. Blocks can only be handled one at a time
 	mutex sync.Mutex
 	// Canonical block chain
@@ -82,7 +82,7 @@ type BlockProcessor struct {
 	eventMux *event.TypeMux
 }
 
-func NewBlockProcessor(db monkutil.Database, txpool *TxPool, chainManager *ChainManager, eventMux *event.TypeMux) *BlockProcessor {
+func NewBlockProcessor(db thelutil.Database, txpool *TxPool, chainManager *ChainManager, eventMux *event.TypeMux) *BlockProcessor {
 	sm := &BlockProcessor{
 		db:       db,
 		mem:      make(map[string]*big.Int),
@@ -164,7 +164,7 @@ done:
 		receipts = append(receipts, receipt)
 		handled = append(handled, tx)
 
-		if monkutil.Config.Diff && monkutil.Config.DiffType == "all" {
+		if thelutil.Config.Diff && thelutil.Config.DiffType == "all" {
 			state.CreateOutputForDiff()
 		}
 	}
@@ -234,7 +234,7 @@ func (sm *BlockProcessor) ProcessWithParent(block, parent *types.Block) (td *big
 		return
 	}
 
-	state.Update(monkutil.Big0)
+	state.Update(thelutil.Big0)
 
 	if !bytes.Equal(header.Root, state.Root()) {
 		err = fmt.Errorf("invalid merkle root. received=%x got=%x", header.Root, state.Root())
@@ -285,7 +285,7 @@ func (sm *BlockProcessor) ValidateBlock(block, parent *types.Block) error {
 
 	// Verify the nonce of the block. Return an error if it's not valid
 	if !sm.Pow.Verify(block /*block.HashNoNonce(), block.Difficulty, block.Nonce*/) {
-		return ValidationError("Block's nonce is invalid (= %v)", monkutil.Bytes2Hex(block.Header().Nonce))
+		return ValidationError("Block's nonce is invalid (= %v)", thelutil.Bytes2Hex(block.Header().Nonce))
 	}
 
 	return nil

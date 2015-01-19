@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/eris-ltd/new-thelonious/monkutil"
 	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 var keylogger = logger.NewLogger("KEY")
@@ -18,7 +18,7 @@ type KeyManager struct {
 	keyPair  *KeyPair
 }
 
-func NewDBKeyManager(db monkutil.Database) *KeyManager {
+func NewDBKeyManager(db thelutil.Database) *KeyManager {
 	return &KeyManager{keyStore: &DBKeyStore{db: db}, keyRings: make(map[string]*KeyRing)}
 }
 
@@ -30,8 +30,8 @@ func (k *KeyManager) KeyPair() *KeyPair {
 	return k.keyPair
 }
 
-func (k *KeyManager) KeyRing() *KeyPair {
-	return k.keyPair
+func (k *KeyManager) KeyRing() *KeyRing {
+	return k.keyRing
 }
 
 func (k *KeyManager) PrivateKey() []byte {

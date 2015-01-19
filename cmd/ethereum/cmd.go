@@ -26,7 +26,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/cmd/ethereum/repl"
 	"github.com/eris-ltd/new-thelonious/cmd/utils"
-	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/thel"
 	"github.com/eris-ltd/new-thelonious/javascript"
 )
 

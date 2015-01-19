@@ -29,7 +29,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/cmd/utils"
 	"github.com/eris-ltd/new-thelonious/core"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 	"github.com/eris-ltd/new-thelonious/vm"
 	"gopkg.in/qml.v1"
@@ -92,8 +92,8 @@ func (self *DebuggerWindow) SetAsm(data []byte) {
 
 func (self *DebuggerWindow) Compile(code string) {
 	var err error
-	script := monkutil.StringToByteFunc(code, func(s string) (ret []byte) {
-		ret, err = monkutil.Compile(s, true)
+	script := thelutil.StringToByteFunc(code, func(s string) (ret []byte) {
+		ret, err = thelutil.Compile(s, true)
 		return
 	})
 
@@ -125,8 +125,8 @@ func (self *DebuggerWindow) Debug(valueStr, gasStr, gasPriceStr, scriptStr, data
 	data := utils.FormatTransactionData(dataStr)
 
 	var err error
-	script := monkutil.StringToByteFunc(scriptStr, func(s string) (ret []byte) {
-		ret, err = monkutil.Compile(s, false)
+	script := thelutil.StringToByteFunc(scriptStr, func(s string) (ret []byte) {
+		ret, err = thelutil.Compile(s, false)
 		return
 	})
 
@@ -137,9 +137,9 @@ func (self *DebuggerWindow) Debug(valueStr, gasStr, gasPriceStr, scriptStr, data
 	}
 
 	var (
-		gas      = monkutil.Big(gasStr)
-		gasPrice = monkutil.Big(gasPriceStr)
-		value    = monkutil.Big(valueStr)
+		gas      = thelutil.Big(gasStr)
+		gasPrice = thelutil.Big(gasPriceStr)
+		value    = thelutil.Big(valueStr)
 		// Contract addr as test address
 		keyPair = self.lib.eth.KeyManager().KeyPair()
 	)
@@ -158,10 +158,10 @@ func (self *DebuggerWindow) Debug(valueStr, gasStr, gasPriceStr, scriptStr, data
 
 	self.Logf("callsize %d", len(script))
 	go func() {
-		ret, err := env.Call(account, contract.Address(), data, gas, gasPrice, monkutil.Big0)
+		ret, err := env.Call(account, contract.Address(), data, gas, gasPrice, thelutil.Big0)
 		//ret, g, err := callerClosure.Call(evm, data)
 		tot := new(big.Int).Mul(env.Gas, gasPrice)
-		self.Logf("gas usage %v total price = %v (%v)", env.Gas, tot, monkutil.CurrencyToString(tot))
+		self.Logf("gas usage %v total price = %v (%v)", env.Gas, tot, thelutil.CurrencyToString(tot))
 		if err != nil {
 			self.Logln("exited with errors:", err)
 		} else {

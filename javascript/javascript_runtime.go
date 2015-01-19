@@ -10,8 +10,8 @@ import (
 	"github.com/eris-ltd/new-thelonious/cmd/utils"
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/eth"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thel"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/state"
@@ -137,7 +137,7 @@ func (self *JSRE) dump(call otto.FunctionCall) otto.Value {
 			block = self.ethereum.ChainManager().GetBlockByNumber(uint64(num))
 		} else if call.Argument(0).IsString() {
 			hash, _ := call.Argument(0).ToString()
-			block = self.ethereum.ChainManager().GetBlock(monkutil.Hex2Bytes(hash))
+			block = self.ethereum.ChainManager().GetBlock(thelutil.Hex2Bytes(hash))
 		} else {
 			fmt.Println("invalid argument for dump. Either hex string or number")
 		}
@@ -185,12 +185,12 @@ func (self *JSRE) watch(call otto.FunctionCall) otto.Value {
 	if storageCallback {
 		self.objectCb[addr+storageAddr] = append(self.objectCb[addr+storageAddr], cb)
 
-		// event := "storage:" + string(monkutil.Hex2Bytes(addr)) + ":" + string(monkutil.Hex2Bytes(storageAddr))
+		// event := "storage:" + string(thelutil.Hex2Bytes(addr)) + ":" + string(thelutil.Hex2Bytes(storageAddr))
 		// self.ethereum.EventMux().Subscribe(event, self.changeChan)
 	} else {
 		self.objectCb[addr] = append(self.objectCb[addr], cb)
 
-		// event := "object:" + string(monkutil.Hex2Bytes(addr))
+		// event := "object:" + string(thelutil.Hex2Bytes(addr))
 		// self.ethereum.EventMux().Subscribe(event, self.changeChan)
 	}
 
@@ -228,7 +228,7 @@ func (self *JSRE) execBlock(call otto.FunctionCall) otto.Value {
 		return otto.UndefinedValue()
 	}
 
-	err = utils.BlockDo(self.ethereum, monkutil.Hex2Bytes(hash))
+	err = utils.BlockDo(self.ethereum, thelutil.Hex2Bytes(hash))
 	if err != nil {
 		fmt.Println(err)
 		return otto.FalseValue()
@@ -246,7 +246,7 @@ func (self *JSRE) export(call otto.FunctionCall) otto.Value {
 
 	data := self.ethereum.ChainManager().Export()
 
-	if err := monkutil.WriteFile(fn, data); err != nil {
+	if err := thelutil.WriteFile(fn, data); err != nil {
 		fmt.Println(err)
 		return otto.FalseValue()
 	}

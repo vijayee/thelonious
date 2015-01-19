@@ -7,7 +7,7 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/monkutil"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/state"
 )
 
@@ -86,9 +86,9 @@ func (self *JSXEth) CoinBase() string {
 }
 
 func (self *JSXEth) NumberToHuman(balance string) string {
-	b := monkutil.Big(balance)
+	b := thelutil.Big(balance)
 
-	return monkutil.CurrencyToString(b)
+	return thelutil.CurrencyToString(b)
 }
 
 func (self *JSXEth) StorageAt(addr, storageAddr string) string {
@@ -126,9 +126,9 @@ func (self *JSXEth) Execute(addr, value, gas, price, data string) (string, error
 	ret, err := self.ExecuteObject(&Object{
 		self.World().safeGet(fromHex(addr))},
 		fromHex(data),
-		monkutil.NewValue(value),
-		monkutil.NewValue(gas),
-		monkutil.NewValue(price),
+		thelutil.NewValue(value),
+		thelutil.NewValue(gas),
+		thelutil.NewValue(price),
 	)
 
 	return toHex(ret), err
@@ -156,13 +156,13 @@ func (self *JSXEth) EachStorage(addr string) string {
 }
 
 func (self *JSXEth) ToAscii(str string) string {
-	padded := monkutil.RightPadBytes([]byte(str), 32)
+	padded := thelutil.RightPadBytes([]byte(str), 32)
 
 	return "0x" + toHex(padded)
 }
 
 func (self *JSXEth) FromAscii(str string) string {
-	if monkutil.IsHex(str) {
+	if thelutil.IsHex(str) {
 		str = str[2:]
 	}
 
@@ -170,19 +170,19 @@ func (self *JSXEth) FromAscii(str string) string {
 }
 
 func (self *JSXEth) FromNumber(str string) string {
-	if monkutil.IsHex(str) {
+	if thelutil.IsHex(str) {
 		str = str[2:]
 	}
 
-	return monkutil.BigD(fromHex(str)).String()
+	return thelutil.BigD(fromHex(str)).String()
 }
 
 func (self *JSXEth) Transact(key, toStr, valueStr, gasStr, gasPriceStr, codeStr string) (string, error) {
 	var (
 		to       []byte
-		value    = monkutil.NewValue(valueStr)
-		gas      = monkutil.NewValue(gasStr)
-		gasPrice = monkutil.NewValue(gasPriceStr)
+		value    = thelutil.NewValue(valueStr)
+		gas      = thelutil.NewValue(gasStr)
+		gasPrice = thelutil.NewValue(gasPriceStr)
 		data     []byte
 	)
 
@@ -229,11 +229,11 @@ func (self *JSXEth) FindInConfig(str string) string {
 	return toHex(self.World().Config().Get(str).Address())
 }
 
-func ToJSMessages(messages state.Messages) *monkutil.List {
+func ToJSMessages(messages state.Messages) *thelutil.List {
 	var msgs []JSMessage
 	for _, m := range messages {
 		msgs = append(msgs, NewJSMessage(m))
 	}
 
-	return monkutil.NewList(msgs)
+	return thelutil.NewList(msgs)
 }
