@@ -171,6 +171,10 @@ func (reactor *ReactorEngine) Post(event string, resource interface{}) {
 	}
 }
 
+func (reactor *ReactorEngine) Running() bool {
+	return reactor.running
+}
+
 func (reactor *ReactorEngine) dispatch(event Event) {
 	reactor.lock.Lock()
 	defer reactor.lock.Unlock()
