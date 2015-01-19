@@ -492,6 +492,10 @@ func (monk *Monk) Tx(addr, amt string) (string, error) {
 	return monkutil.Bytes2Hex(hash), nil
 }
 
+func (monk *MonkModule) Reactor() bool {
+	return monk.monk.reactor.Running()
+}
+
 // send a message to a contract
 func (monk *Monk) Msg(addr string, data []string) (string, error) {
 	packed := PackTxDataArgs(data...)
@@ -772,15 +776,40 @@ func (monk *Monk) FetchPriv() string {
 	return monk.fetchPriv()
 }
 
+func (mod *MonkModule) Restart() error {
+	if err := mod.Shutdown(); err != nil {
+		return err
+	}
+
+	mk := mod.monk
+	mod = NewMonk(nil)
+	mod.monk = mk
+	mod.Config = mk.config
+
+	if err := mod.Init(); err != nil {
+		return err
+	}
+	if err := mod.Start(); err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (monk *Monk) Stop() {
 	if !monk.started {
 		logger.Infoln("can't stop: haven't even started...")
 		return
 	}
 	monk.StopMining()
+	for n, _ := range monk.chans {
+		monk.UnSubscribe(n)
+	}
 	monk.thelonious.Stop()
 	monk = &Monk{config: monk.config}
 	monklog.Reset()
+	monk.started = false
 }
 
 // Set the root. If it's already set, check if the
