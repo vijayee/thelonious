@@ -6,15 +6,15 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/pow"
-	"github.com/ethereum/go-ethereum/pow/ezp"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/event"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/p2p"
+	"github.com/eris-ltd/new-thelonious/pow"
+	"github.com/eris-ltd/new-thelonious/pow/ezp"
+	"github.com/eris-ltd/new-thelonious/state"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -32,6 +32,31 @@ type EthManager interface {
 	ClientIdentity() p2p.ClientIdentity
 	Db() ethutil.Database
 	EventMux() *event.TypeMux
+}
+
+// Model defining the consensus
+type Consensus interface {
+	// GenDoug address
+	Doug() []byte
+	// deploy genesis block containing protocol rules
+	// returns 20-byte chainId
+	Deploy(block *types.Block) ([]byte, error)
+	// validate the chain's Id
+	// (typically requires other info, like signatures)
+	//ValidateChainID(chainId []byte, genesisBlock *types.Block) error
+
+	// determine whether to attempt participating in consensus
+	Participate(coinbase []byte, parent *types.Block) bool
+	// required difficulty of a block
+	Difficulty(block, parent *types.Block) *big.Int
+	// determine if an address has a permission
+	ValidatePerm(addr []byte, role string, st *state.StateDB) error
+	// validate a block
+	ValidateBlock(block *types.Block, bc *ChainManager) error
+	// validate a tx
+	ValidateTx(tx *types.Transaction, st *state.StateDB) error
+	// determine whether or not this checkpoint should be accepted
+	CheckPoint(proposed []byte, bc *ChainManager) bool
 }
 
 type BlockProcessor struct {
