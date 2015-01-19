@@ -8,13 +8,13 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/p2p"
 	"github.com/eris-ltd/new-thelonious/pow"
 	"github.com/eris-ltd/new-thelonious/pow/ezp"
 	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"gopkg.in/fatih/set.v0"
 )
 
@@ -57,6 +57,15 @@ type Consensus interface {
 	ValidateTx(tx *types.Transaction, st *state.StateDB) error
 	// determine whether or not this checkpoint should be accepted
 	CheckPoint(proposed []byte, bc *ChainManager) bool
+}
+
+// Private global genDoug variable for checking permissions on arbitrary
+// chain related actions. Set by setLastBlock when we boot up the blockchain
+var genDoug Consensus
+
+// Public function so we can validate permissions using the genDoug from outside this package
+func DougValidatePerm(addr []byte, role string, st *state.StateDB) error {
+	return genDoug.ValidatePerm(addr, role, st)
 }
 
 type BlockProcessor struct {

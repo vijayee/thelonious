@@ -7,9 +7,9 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/logger"
 	monkstate "github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/obscuren/secp256k1-go"
 	"io/ioutil"
 	"math/big"
@@ -94,6 +94,10 @@ type GenesisConfig struct {
 	deployer func(block *types.Block) ([]byte, error)
 
 	db thelutil.Database
+}
+
+func (g *GenesisConfig) SetDB(db thelutil.Database) {
+	g.db = db
 }
 
 // A protocol level call executed through the vm
@@ -192,7 +196,9 @@ func (g *GenesisConfig) Init() {
 // Deploy the genesis block
 // Converts the GenesisConfig into a populated and functional doug contract in the genesis block
 func (g *GenesisConfig) Deploy(block *types.Block) ([]byte, error) {
+	fmt.Println("Deploy!")
 	difficulty := thelutil.BigPow(2, g.Difficulty)
+	block.Header().Difficulty = difficulty
 
 	state := monkstate.New(block.Root(), g.db)
 
@@ -209,6 +215,7 @@ func (g *GenesisConfig) Deploy(block *types.Block) ([]byte, error) {
 		chainId := g.chainIdFromBlock(block, keys)
 		state.Update(nil)
 		state.Sync()
+		block.Header().Root = state.Root()
 		return chainId, nil
 	}
 
@@ -238,7 +245,7 @@ func (g *GenesisConfig) Deploy(block *types.Block) ([]byte, error) {
 	chainId := g.chainIdFromBlock(block, keys)
 	state.Update(nil)
 	state.Sync()
-	*block = *types.NewBlock(block.ParentHash(), block.Coinbase(), state.Root(), difficulty, nil, "")
+	block.Header().Root = state.Root()
 
 	return chainId, nil
 }
@@ -462,7 +469,8 @@ var DefaultGenesis = defaultGenesis()
 func defaultGenesis() *GenesisConfig {
 	g := &GenesisConfig{
 		Address:    "0000000000THISISDOUG",
-		NoGenDoug:  true,
+		DougPath:   "Genesis DOUG/gendoug-v2.lll",
+		NoGenDoug:  false,
 		Difficulty: 15,
 		Accounts: []*Account{
 			&Account{

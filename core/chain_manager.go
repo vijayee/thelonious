@@ -3,15 +3,16 @@ package core
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 
 	"github.com/eris-ltd/new-thelonious/core/types"
-	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/event"
 	"github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/rlp"
 	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 )
 
 var chainlogger = logger.NewLogger("CHAIN")
@@ -72,6 +73,8 @@ type ChainManager struct {
 	processor    types.BlockProcessor
 	eventMux     *event.TypeMux
 	genesisBlock *types.Block
+	consensus    Consensus
+	chainId      []byte
 	// Last known total difficulty
 	mu              sync.RWMutex
 	td              *big.Int
@@ -110,10 +113,12 @@ func (self *ChainManager) CurrentBlock() *types.Block {
 	return self.currentBlock
 }
 
-func NewChainManager(db thelutil.Database, mux *event.TypeMux) *ChainManager {
+func NewChainManager(db thelutil.Database, mux *event.TypeMux, consensus Consensus) *ChainManager {
 	bc := &ChainManager{db: db, genesisBlock: GenesisBlock(db), eventMux: mux}
+	bc.consensus = consensus
 	bc.setLastBlock()
 	bc.transState = bc.State().Copy()
+	genDoug = consensus
 
 	return bc
 }
@@ -138,7 +143,38 @@ func (self *ChainManager) TransState() *state.StateDB {
 }
 
 func (bc *ChainManager) setLastBlock() {
-	data, _ := bc.db.Get([]byte("LastBlock"))
+	data, _ := bc.db.Get([]byte("GenesisBlock"))
+	if len(data) != 0 {
+		chainlogger.Infoln("Found genesis block")
+		var block types.Block
+		rlp.Decode(bytes.NewReader(data), &block)
+		bc.genesisBlock = &block
+
+		data, _ = bc.db.Get([]byte("ChainID"))
+		if len(data) == 0 {
+			log.Fatal("No chainId found for genesis block.")
+		}
+		bc.chainId = data
+	} else {
+		// no genesis block found. fire up a deploy
+		// save genesis and chainId to db
+		chainlogger.Infoln("Genesis block not found. Deploying.")
+		chainId, err := bc.consensus.Deploy(bc.genesisBlock)
+		if err != nil {
+			log.Fatal("Genesis deploy failed:", err)
+		}
+		data := thelutil.Encode(bc.genesisBlock)
+		block := new(types.Block)
+		rlp.Decode(bytes.NewReader(data), block)
+
+		bc.db.Put([]byte("GenesisBlock"), thelutil.Encode(bc.genesisBlock))
+		bc.write(bc.genesisBlock)
+		bc.insert(bc.genesisBlock)
+		bc.db.Put([]byte("ChainID"), chainId[:])
+		bc.chainId = chainId
+	}
+
+	data, _ = bc.db.Get([]byte("LastBlock"))
 	if len(data) != 0 {
 		var block types.Block
 		rlp.Decode(bytes.NewReader(data), &block)
@@ -146,13 +182,15 @@ func (bc *ChainManager) setLastBlock() {
 		bc.lastBlockHash = block.Hash()
 		bc.lastBlockNumber = block.Header().Number.Uint64()
 
-		// Set the last know difficulty (might be 0x0 as initial value, Genesis)
-		bc.td = thelutil.BigD(bc.db.LastKnownTD())
 	} else {
 		bc.Reset()
 	}
+	// Set the last know difficulty (might be 0x0 as initial value, Genesis)
+	bc.setTotalDifficulty(thelutil.Big("0"))
 
 	chainlogger.Infof("Last block (#%d) %x TD=%v\n", bc.lastBlockNumber, bc.currentBlock.Hash(), bc.td)
+	chainlogger.Infof("ChainID (%x) \n", bc.chainId)
+	chainlogger.Infof("Genesis (%x) \n", bc.genesisBlock.Hash())
 }
 
 // Block creation & chain handling

@@ -7,6 +7,7 @@ import (
 
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/doug"
 	"github.com/eris-ltd/new-thelonious/event"
 	ethlogger "github.com/eris-ltd/new-thelonious/logger"
 	"github.com/eris-ltd/new-thelonious/p2p"
@@ -58,8 +59,11 @@ type Thelonious struct {
 	blockProcessor *core.BlockProcessor
 	txPool         *core.TxPool
 	chainManager   *core.ChainManager
+	consensus      core.Consensus
 	blockPool      *BlockPool
 	whisper        *whisper.Whisper
+
+	genConfig *doug.GenesisConfig
 
 	net      *p2p.Server
 	eventMux *event.TypeMux
@@ -78,9 +82,9 @@ type Thelonious struct {
 	Mining bool
 }
 
-func New(config *Config) (*Thelonious, error) {
+func New(config *Config, genConfig *doug.GenesisConfig) (*Thelonious, error) {
 	// Boostrap database
-	logger := ethlogger.New(config.DataDir, config.LogFile, config.LogLevel)
+	logger := ethlogger.New(config.DataDir, config.LogFile, 5) //config.LogLevel)
 	db, err := theldb.NewLDBDatabase("blockchain")
 	if err != nil {
 		return nil, err
@@ -123,7 +127,10 @@ func New(config *Config) (*Thelonious, error) {
 		logger:         logger,
 	}
 
-	eth.chainManager = core.NewChainManager(db, eth.EventMux())
+	genConfig.SetDB(db)
+
+	eth.consensus = setGenesis(genConfig)
+	eth.chainManager = core.NewChainManager(db, eth.EventMux(), eth.consensus)
 	eth.txPool = core.NewTxPool(eth.EventMux())
 	eth.blockProcessor = core.NewBlockProcessor(db, eth.txPool, eth.chainManager, eth.EventMux())
 	eth.chainManager.SetProcessor(eth.blockProcessor)
@@ -156,6 +163,13 @@ func New(config *Config) (*Thelonious, error) {
 	}
 
 	return eth, nil
+}
+
+func setGenesis(genConfig *doug.GenesisConfig) core.Consensus {
+	if genConfig.Model() == nil {
+		genConfig.SetModel()
+	}
+	return genConfig.Model()
 }
 
 func (s *Thelonious) KeyManager() *crypto.KeyManager {

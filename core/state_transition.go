@@ -5,8 +5,9 @@ import (
 	"math/big"
 
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/thelutil"
+	"github.com/eris-ltd/new-thelonious/monkvm"
 	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/thelutil"
 	"github.com/eris-ltd/new-thelonious/vm"
 )
 
@@ -203,6 +204,24 @@ func (self *StateTransition) TransitionState() (ret []byte, err error) {
 	if err != nil {
 		self.UseGas(self.gas)
 	}
+
+	return
+}
+
+// TODO: remove this. strictly to make old monkvm work
+func (self *StateTransition) Eval(msg *state.Message, script []byte, context *state.StateObject, typ string) (ret []byte, err error) {
+	var (
+		state         = self.state
+		transactor    = state.GetOrNewStateObject(self.msg.From())
+		env           = OldNewEnv(state, self.msg, nil)
+		callerClosure = monkvm.NewClosure(msg, transactor, context, script, self.gas, self.gasPrice)
+	)
+
+	vm := monkvm.New(env)
+	vm.Verbose = true
+	vm.Fn = typ
+
+	ret, _, err = callerClosure.Call(vm, self.msg.Data())
 
 	return
 }

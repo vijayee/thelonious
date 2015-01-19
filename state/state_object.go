@@ -319,3 +319,8 @@ type StorageState struct {
 	Address      []byte
 	Value        *big.Int
 }
+
+// To satisfy ClosureRef
+func (self *StateObject) Object() *StateObject {
+	return self
+}

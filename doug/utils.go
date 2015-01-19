@@ -6,9 +6,10 @@ import (
 	"github.com/eris-ltd/new-thelonious/core"
 	"github.com/eris-ltd/new-thelonious/core/types"
 	"github.com/eris-ltd/new-thelonious/crypto"
-	"github.com/eris-ltd/new-thelonious/thelutil"
+	"github.com/eris-ltd/new-thelonious/monkvm" // stable for now
 	monkstate "github.com/eris-ltd/new-thelonious/state"
-	"github.com/eris-ltd/new-thelonious/vm"
+	"github.com/eris-ltd/new-thelonious/thelutil"
+	"github.com/eris-ltd/new-thelonious/vm" // work towards
 	"math/big"
 	"os"
 	"strconv"
@@ -36,7 +37,7 @@ func NewContract(scriptFile string) (*types.Transaction, error) {
 	}
 
 	// create tx
-	tx := types.NewContractCreationTx(thelutil.Big("543"), thelutil.Big("10000"), thelutil.Big("10000"), script)
+	tx := types.NewContractCreationTx(thelutil.Big("0"), thelutil.Big("10000"), thelutil.Big("10000"), script)
 
 	return tx, nil
 }
@@ -45,8 +46,8 @@ func NewContract(scriptFile string) (*types.Transaction, error) {
 func SimpleTransitionState(addr []byte, state *monkstate.StateDB, tx *types.Transaction) (*types.Receipt, error) {
 	coinbase := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	//	st := core.NewStateTransition(state.GetOrNewStateObject(coinbase), tx, state, nil)
-	var env vm.Environment
 	//var msg core.Message
+	env := NewEnv(state, tx, nil, nil)
 	st := core.NewStateTransition(env, tx, state.GetOrNewStateObject(coinbase))
 	st.AddGas(thelutil.Big("10000000000000000000000000000000000000000000000000000000000000000000000000000000000")) // gas is silly, but the vm needs it
 
@@ -68,20 +69,20 @@ func SimpleTransitionState(addr []byte, state *monkstate.StateDB, tx *types.Tran
 	var ret []byte
 	var err error
 	//var ref vm.ContextRef
+	var script []byte
 	if types.IsContractAddr(tx.To()) {
 		receiver.SetBalance(thelutil.Big("123456789098765432"))
 		receiver.InitCode = tx.Data()
-		//script = receiver.Init()
-		//ret, err = st.Eval(tx, script, receiver, "genesis")
-		ret, err, _ = env.Create(sender, receiver.Address(), tx.Data(), tx.Gas(), tx.GasPrice(), tx.Value())
+		script = receiver.Init()
+		//ret, err, _ = env.Create(sender, receiver.Address(), tx.Data(), tx.Gas(), tx.GasPrice(), tx.Value())
 	} else {
-		//script = receiver.Code
-		//ret, err = st.Eval(tx, script, receiver, "genesis")
-		ret, err = env.Call(sender, tx.To(), tx.Data(), tx.Gas(), tx.GasPrice(), tx.Value())
+		script = receiver.Code
+		//	ret, err = env.Call(sender, tx.To(), tx.Data(), tx.Gas(), tx.GasPrice(), tx.Value())
 	}
+	ret, err = st.Eval(nil, script, receiver, "genesis")
 
 	if err != nil {
-		return nil, fmt.Errorf("Eval error in simple transition state:", err.Error())
+		return nil, fmt.Errorf("Eval error in simple transition state: %s", err.Error())
 	}
 
 	if types.IsContractAddr(tx.To()) {
@@ -176,15 +177,17 @@ func SetPermissions(genAddr, addr []byte, permissions map[string]int, state *mon
 
 // Run data through evm code and return value
 func (m *VmModel) EvmCall(code, data []byte, stateObject *monkstate.StateObject, state *monkstate.StateDB, tx *types.Transaction, block *types.Block, dump bool) []byte {
-	//gas := "10000000000000000000000"
-	//msg := &monkstate.Message{}
+	gas := "10000000000000000000000"
+	price := "1000000"
+	msg := &monkstate.Message{}
 
-	//closure := vm.NewClosure(msg, stateObject, stateObject, code, thelutil.Big(gas), thelutil.Big(price))
+	closure := monkvm.NewClosure(msg, stateObject, stateObject, code, thelutil.Big(gas), thelutil.Big(price))
 
 	env := NewEnv(state, tx, block, m.g.consensus)
-	//vm.Verbose = true
-	//ret, _, e := closure.Call(vm, data)
-	ret, err := env.Call(stateObject, tx.To(), tx.Data(), tx.Gas(), tx.GasPrice(), tx.Value())
+	v := monkvm.New(env)
+	v.Verbose = true
+	ret, _, err := closure.Call(v, data)
+	//	ret, err := env.Call(stateObject, tx.To(), tx.Data(), tx.Gas(), tx.GasPrice(), tx.Value())
 
 	if err != nil {
 		fmt.Println("vm error!", err)
