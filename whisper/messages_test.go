@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/eris-ltd/new-thelonious/crypto"
 )
 
 func TestSign(t *testing.T) {

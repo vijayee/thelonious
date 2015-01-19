@@ -3,7 +3,7 @@ package p2p
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/logger"
+	"github.com/eris-ltd/new-thelonious/logger"
 )
 
 type testLogger struct{ t *testing.T }

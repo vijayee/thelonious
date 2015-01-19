@@ -7,9 +7,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/rlp"
 )
 
 type Header struct {
@@ -173,6 +173,7 @@ func (self *Block) Coinbase() []byte   { return self.header.Coinbase }
 func (self *Block) Time() int64        { return int64(self.header.Time) }
 func (self *Block) GasLimit() *big.Int { return self.header.GasLimit }
 func (self *Block) GasUsed() *big.Int  { return self.header.GasUsed }
+func (self *Block) Nonce() []byte      { return self.header.Nonce }
 
 //func (self *Block) Trie() *ptrie.Trie         { return ptrie.New(self.header.Root, ethutil.Config.Db) }
 //func (self *Block) State() *state.StateDB     { return state.New(self.Trie()) }

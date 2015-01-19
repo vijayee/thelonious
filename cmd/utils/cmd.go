@@ -31,16 +31,16 @@ import (
 	"runtime"
 
 	"bitbucket.org/kardianos/osext"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/miner"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/state"
-	"github.com/ethereum/go-ethereum/xeth"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/miner"
+	"github.com/eris-ltd/new-thelonious/rlp"
+	"github.com/eris-ltd/new-thelonious/rpc"
+	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/xeth"
 )
 
 var clilogger = logger.NewLogger("CLI")

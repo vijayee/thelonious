@@ -1,7 +1,7 @@
 package crypto
 
 // import (
-// 	"github.com/ethereum/go-ethereum/ethdb"
+// 	"github.com/eris-ltd/new-thelonious/ethdb"
 // 	// "io/ioutil"
 // 	"fmt"
 // 	"os"

@@ -5,16 +5,16 @@ import (
 	"net"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/event"
-	ethlogger "github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/pow/ezp"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/whisper"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/ethdb"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/event"
+	ethlogger "github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/p2p"
+	"github.com/eris-ltd/new-thelonious/pow/ezp"
+	"github.com/eris-ltd/new-thelonious/rpc"
+	"github.com/eris-ltd/new-thelonious/whisper"
 )
 
 const (

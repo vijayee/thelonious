@@ -3,7 +3,7 @@ package eth
 import (
 	"encoding/json"
 
-	"github.com/ethereum/go-ethereum/ethutil"
+	"github.com/eris-ltd/new-thelonious/ethutil"
 )
 
 func WritePeers(path string, addresses []string) {

@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/event"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/rlp"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 var chainlogger = logger.NewLogger("CHAIN")

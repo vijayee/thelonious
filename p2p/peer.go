@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/logger"
+	"github.com/eris-ltd/new-thelonious/event"
+	"github.com/eris-ltd/new-thelonious/logger"
 )
 
 // peerAddr is the structure of a peer list element.

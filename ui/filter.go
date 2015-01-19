@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/ethutil"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/ethutil"
 )
 
 func fromHex(s string) []byte {

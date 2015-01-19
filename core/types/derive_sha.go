@@ -1,9 +1,9 @@
 package types
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/eris-ltd/new-thelonious/ethdb"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/trie"
 )
 
 type DerivableList interface {

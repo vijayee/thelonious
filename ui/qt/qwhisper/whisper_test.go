@@ -3,7 +3,7 @@ package qwhisper
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/whisper"
+	"github.com/eris-ltd/new-thelonious/whisper"
 )
 
 func TestHasIdentity(t *testing.T) {

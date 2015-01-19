@@ -24,10 +24,10 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/ethereum/go-ethereum/cmd/ethereum/repl"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/javascript"
+	"github.com/eris-ltd/new-thelonious/cmd/ethereum/repl"
+	"github.com/eris-ltd/new-thelonious/cmd/utils"
+	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/javascript"
 )
 
 func InitJsConsole(ethereum *eth.Ethereum) {

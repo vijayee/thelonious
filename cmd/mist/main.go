@@ -26,10 +26,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/eris-ltd/new-thelonious/cmd/utils"
+	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/p2p"
 	"gopkg.in/qml.v1"
 )
 

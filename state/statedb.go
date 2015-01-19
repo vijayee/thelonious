@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/trie"
 )
 
 var statelogger = logger.NewLogger("STATE")

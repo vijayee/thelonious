@@ -1,8 +1,8 @@
 package xeth
 
 import (
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/p2p"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 type World struct {

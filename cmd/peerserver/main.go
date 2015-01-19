@@ -22,9 +22,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/p2p"
 )
 
 var (

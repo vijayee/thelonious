@@ -8,8 +8,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/p2p"
 	"github.com/obscuren/secp256k1-go"
 )
 

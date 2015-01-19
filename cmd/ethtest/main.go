@@ -30,11 +30,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/state"
-	"github.com/ethereum/go-ethereum/tests/helper"
+	"github.com/eris-ltd/new-thelonious/ethdb"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/tests/helper"
 )
 
 type Account struct {

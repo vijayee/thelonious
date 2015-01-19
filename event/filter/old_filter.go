@@ -4,9 +4,9 @@ package filter
 import (
 	"sync"
 
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/event"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 type FilterManager struct {

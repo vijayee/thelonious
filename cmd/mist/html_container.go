@@ -30,11 +30,11 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/javascript"
-	"github.com/ethereum/go-ethereum/state"
-	"github.com/ethereum/go-ethereum/xeth"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/javascript"
+	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/xeth"
 	"github.com/howeyc/fsnotify"
 	"gopkg.in/qml.v1"
 )

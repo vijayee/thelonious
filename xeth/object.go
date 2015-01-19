@@ -1,8 +1,8 @@
 package xeth
 
 import (
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 type Object struct {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/ethutil"
+	"github.com/eris-ltd/new-thelonious/ethutil"
 )
 
 type Account struct {

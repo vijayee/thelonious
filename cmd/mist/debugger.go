@@ -27,11 +27,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/state"
-	"github.com/ethereum/go-ethereum/vm"
+	"github.com/eris-ltd/new-thelonious/cmd/utils"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/vm"
 	"gopkg.in/qml.v1"
 )
 

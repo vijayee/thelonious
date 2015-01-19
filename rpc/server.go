@@ -6,8 +6,8 @@ import (
 	"net/rpc"
 	"net/rpc/jsonrpc"
 
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/xeth"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/xeth"
 )
 
 var jsonlogger = logger.NewLogger("JSON")

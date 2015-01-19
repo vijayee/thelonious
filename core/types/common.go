@@ -3,7 +3,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 type BlockProcessor interface {

@@ -31,7 +31,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/eris-ltd/new-thelonious/rlp"
 )
 
 var (

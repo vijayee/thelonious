@@ -1,6 +1,6 @@
 package xeth
 
-import "github.com/ethereum/go-ethereum/ethutil"
+import "github.com/eris-ltd/new-thelonious/ethutil"
 
 var cnfCtr = ethutil.Hex2Bytes("661005d2720d855f1d9976f88bb10c1a3398c77f")
 

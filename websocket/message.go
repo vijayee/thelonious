@@ -1,6 +1,6 @@
 package websocket
 
-import "github.com/ethereum/go-ethereum/ethutil"
+import "github.com/eris-ltd/new-thelonious/ethutil"
 
 type Message struct {
 	Call  string        `json:"call"`

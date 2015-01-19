@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethutil"
-	ethlogger "github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/pow"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	ethlogger "github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/pow"
 )
 
 const waitTimeout = 60 // seconds

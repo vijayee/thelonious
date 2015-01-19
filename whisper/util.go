@@ -1,6 +1,6 @@
 package whisper
 
-import "github.com/ethereum/go-ethereum/crypto"
+import "github.com/eris-ltd/new-thelonious/crypto"
 
 func hashTopic(topic []byte) []byte {
 	return crypto.Sha3(topic)[:4]

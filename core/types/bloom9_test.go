@@ -4,7 +4,7 @@ package types
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 func TestBloom9(t *testing.T) {

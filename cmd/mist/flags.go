@@ -31,8 +31,8 @@ import (
 	"runtime"
 
 	"bitbucket.org/kardianos/osext"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/vm"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/vm"
 )
 
 var (

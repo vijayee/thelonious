@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethereum/go-ethereum/ethutil"
+	"github.com/eris-ltd/new-thelonious/ethutil"
 )
 
 func openLogFile(datadir string, filename string) *os.File {

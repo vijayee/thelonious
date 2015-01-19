@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/crypto"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/state"
 )
 
 type DebugVm struct {
@@ -514,7 +514,7 @@ func (self *DebugVm) Run(me, caller ContextRef, code []byte, value, gas, price *
 		case BLOCKHASH:
 			num := stack.Pop()
 
-			n := U256(new(big.Int).Sub(self.env.BlockNumber(), ethutil.Big257))
+			n := U256(new(big.Int).Sub(self.env.BlockNumber(), ethutil.Big256))
 			if num.Cmp(n) > 0 && num.Cmp(self.env.BlockNumber()) < 0 {
 				stack.Push(ethutil.BigD(self.env.GetHash(num.Uint64())))
 			} else {

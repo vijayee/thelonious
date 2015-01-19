@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethereum/go-ethereum/ethutil"
-	logpkg "github.com/ethereum/go-ethereum/logger"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	logpkg "github.com/eris-ltd/new-thelonious/logger"
 )
 
 var Logger logpkg.LogSystem

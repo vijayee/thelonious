@@ -27,16 +27,16 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/pow"
-	"github.com/ethereum/go-ethereum/pow/ezp"
-	"github.com/ethereum/go-ethereum/state"
+	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/pow"
+	"github.com/eris-ltd/new-thelonious/pow/ezp"
+	"github.com/eris-ltd/new-thelonious/state"
 
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/logger"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/event"
+	"github.com/eris-ltd/new-thelonious/logger"
 )
 
 type LocalTx struct {

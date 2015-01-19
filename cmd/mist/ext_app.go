@@ -23,13 +23,13 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/javascript"
-	"github.com/ethereum/go-ethereum/state"
-	"github.com/ethereum/go-ethereum/ui/qt"
-	"github.com/ethereum/go-ethereum/xeth"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/event"
+	"github.com/eris-ltd/new-thelonious/javascript"
+	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/ui/qt"
+	"github.com/eris-ltd/new-thelonious/xeth"
 	"gopkg.in/qml.v1"
 )
 

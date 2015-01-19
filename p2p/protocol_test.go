@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/eris-ltd/new-thelonious/crypto"
 )
 
 type peerId struct {

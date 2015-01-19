@@ -1,8 +1,8 @@
 package qt
 
 import (
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/ui"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/ui"
 	"gopkg.in/qml.v1"
 )
 

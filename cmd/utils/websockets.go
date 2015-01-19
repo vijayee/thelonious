@@ -21,16 +21,16 @@
 package utils
 
 import (
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/event/filter"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/state"
-	"github.com/ethereum/go-ethereum/ui"
-	"github.com/ethereum/go-ethereum/websocket"
-	"github.com/ethereum/go-ethereum/xeth"
+	"github.com/eris-ltd/new-thelonious/core"
+	"github.com/eris-ltd/new-thelonious/core/types"
+	"github.com/eris-ltd/new-thelonious/eth"
+	"github.com/eris-ltd/new-thelonious/ethutil"
+	"github.com/eris-ltd/new-thelonious/event/filter"
+	"github.com/eris-ltd/new-thelonious/logger"
+	"github.com/eris-ltd/new-thelonious/state"
+	"github.com/eris-ltd/new-thelonious/ui"
+	"github.com/eris-ltd/new-thelonious/websocket"
+	"github.com/eris-ltd/new-thelonious/xeth"
 )
 
 var wslogger = logger.NewLogger("WS")
