@@ -139,3 +139,42 @@ func IsKnownBlockErr(e error) bool {
 	_, ok := e.(*KnownBlockError)
 	return ok
 }
+
+type InvalidPermErr string
+
+func InvalidPermError(addr []byte, role string) *InvalidPermErr {
+	s := InvalidPermErr(fmt.Sprintf("Invalid permissions err on role %s for adddress %x", role, addr))
+	return &s
+}
+
+func (self *InvalidPermErr) Error() string {
+	return string(*self)
+}
+
+type InvalidDifficultyErr string
+
+func InvalidDifficultyError(observed, expected *big.Int, coinbase []byte) *InvalidDifficultyErr {
+	s := InvalidDifficultyErr(fmt.Sprintf("Invalid difficulty for coinbase %x. Got %s, expected %s", coinbase, observed.String(), expected.String()))
+	return &s
+}
+
+func (self *InvalidDifficultyErr) Error() string {
+	return string(*self)
+}
+
+type GasLimitTxErr struct {
+	Message string
+	Is, Max *big.Int
+}
+
+func IsGasLimitTxErr(err error) bool {
+	_, ok := err.(*GasLimitTxErr)
+
+	return ok
+}
+func (err *GasLimitTxErr) Error() string {
+	return err.Message
+}
+func GasLimitTxError(is, max *big.Int) *GasLimitTxErr {
+	return &GasLimitTxErr{Message: fmt.Sprintf("GasLimitTx error. Max %s, transaction would take %s", max, is), Is: is, Max: max}
+}
