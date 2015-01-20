@@ -3,6 +3,7 @@ package monkrpc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -139,7 +140,6 @@ func (p *TheloniousApi) Create(args *NewTxArgs, reply *string) error {
 	if err != nil {
 		return err
 	}
-
 	result, _ := p.pipe.Transact(p.pipe.Key().PrivateKey, "", args.Value, args.Gas, args.GasPrice, args.Body)
 	*reply = NewSuccessRes(result)
 	return nil
@@ -149,7 +149,7 @@ type PushTxArgs struct {
 	Tx string
 }
 
-func (a *PushTxArgs) requirementsPushTx() error {
+func (a *PushTxArgs) requirements() error {
 	if a.Tx == "" {
 		return NewErrorResponse("PushTx requires a 'tx' as argument")
 	}
@@ -157,7 +157,7 @@ func (a *PushTxArgs) requirementsPushTx() error {
 }
 
 func (p *TheloniousApi) PushTx(args *PushTxArgs, reply *string) error {
-	err := args.requirementsPushTx()
+	err := args.requirements()
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,8 @@ func (p *TheloniousApi) GetStorageAt(args *GetStorageArgs, reply *string) error 
 	}
 	logger.Debugf("GetStorageAt(%s, %s)\n", args.Address, hx)
 	value := state.Storage(monkutil.Hex2Bytes(hx))
-	*reply = NewSuccessRes(GetStorageAtRes{Address: args.Address, Key: args.Key, Value: value.Str()})
+	v := fmt.Sprintf("%x", value.Str())
+	*reply = NewSuccessRes(GetStorageAtRes{Address: args.Address, Key: args.Key, Value: v})
 	return nil
 }
 
@@ -271,6 +272,45 @@ func (p *TheloniousApi) GetTxCountAt(args *GetTxCountArgs, reply *string) error 
 	}
 	state := p.pipe.TxCountAt(args.Address)
 	*reply = NewSuccessRes(GetTxCountRes{Nonce: state})
+	return nil
+}
+
+type ChainIdArgs struct {
+}
+
+type ChainIdRes struct {
+	Id string `json:"chain_id"`
+}
+
+func (a *ChainIdArgs) requirements() error {
+	return nil
+}
+
+func (p *TheloniousApi) ChainId(args *ChainIdArgs, reply *string) error {
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return err
+	} else if len(data) == 0 {
+		return fmt.Errorf("ChainID is empty!")
+	}
+	chainId := monkutil.Bytes2Hex(data)
+	//*reply = NewSuccessRes(ChainIdRes{Id: chainId})
+	// *reply = ChainIdRes{Id: chainId}
+	*reply = chainId
+
+	return nil
+}
+
+type LatestBlockHashArgs struct {
+}
+
+func (a *LatestBlockHashArgs) requirements() error {
+	return nil
+}
+
+func (p *TheloniousApi) LatestBlockHash(args *LatestBlockHashArgs, reply *string) error {
+	jsblock := p.pipe.BlockByNumber(-1)
+	*reply = jsblock.Hash
 	return nil
 }
 

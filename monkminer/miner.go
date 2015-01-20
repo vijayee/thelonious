@@ -229,7 +229,9 @@ func (self *Miner) mineNewBlock() {
 			logger.Infoln(err)
 		} else {
 			chainMan.InsertChain(lchain)
-			//self.thelonious.EventMux().Post(chain.NewBlockEvent{block})
+			//	self.thelonious.EventMux().Post(chain.NewBlockEvent{block})
+			logger.Infoln("posting new block!")
+			self.thelonious.Reactor().Post("newBlock", self.block)
 			self.thelonious.Broadcast(monkwire.MsgBlockTy, []interface{}{self.block.Value().Val})
 
 			logger.Infof("🔨  Mined block %x\n", self.block.Hash())

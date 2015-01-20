@@ -3,11 +3,11 @@ package monkdoug
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/eris-ltd/decerver-interfaces/glue/utils"
 	"github.com/eris-ltd/thelonious/monkchain"
 	"github.com/eris-ltd/thelonious/monkcrypto"
 	"github.com/eris-ltd/thelonious/monklog"
 	"github.com/eris-ltd/thelonious/monkutil"
+	"github.com/eris-ltd/epm-go/utils"
 	"io/ioutil"
 	"math/big"
 	"os"

@@ -9,11 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	core "github.com/eris-ltd/decerver-interfaces/core"
-	events "github.com/eris-ltd/decerver-interfaces/events"
-	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
-	utils "github.com/eris-ltd/decerver-interfaces/glue/utils"
-	modules "github.com/eris-ltd/decerver-interfaces/modules"
+	chains "github.com/eris-ltd/epm-go/chains"
+	utils "github.com/eris-ltd/epm-go/utils"
+	mutils "github.com/eris-ltd/modules/monkutils"
+	types "github.com/eris-ltd/modules/types"
 
 	"github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -33,7 +32,7 @@ func init() {
 	utils.InitDecerverDir()
 }
 
-// implements decerver-interfaces Module
+// implements epm.Blockchain
 type MonkModule struct {
 	monk          *Monk
 	Config        *ChainConfig
@@ -56,7 +55,7 @@ type Monk struct {
 }
 
 type Chan struct {
-	ch      chan events.Event
+	ch      chan types.Event
 	reactCh chan monkreact.Event
 	name    string
 	event   string
@@ -85,11 +84,6 @@ func NewMonk(th *thelonious.Thelonious) *MonkModule {
 	m.started = false
 	mm.monk = m
 	return mm
-}
-
-// register the module with the decerver javascript vm
-func (mod *MonkModule) Register(fileIO core.FileIO, rm core.RuntimeManager, eReg events.EventRegistry) error {
-	return nil
 }
 
 // Configure the GenesisConfig struct
@@ -143,7 +137,6 @@ func (mod *MonkModule) Init() error {
 	// name > chainId > rootDir > default
 	mod.setRootDir()
 	logger.Infoln("Root directory ", mod.Config.RootDir)
-	mod.setLLLPath()
 	mod.ConfigureGenesis()
 	logger.Infoln("Loaded genesis configuration from: ", mod.Config.GenesisConfig)
 
@@ -209,6 +202,10 @@ func (mod *MonkModule) Shutdown() error {
 	return nil
 }
 
+func (mod *MonkModule) ChainId() (string, error) {
+	return mod.monk.ChainId()
+}
+
 func (mod *MonkModule) WaitForShutdown() {
 	mod.monk.thelonious.WaitForShutdown()
 }
@@ -224,19 +221,19 @@ func (mod *MonkModule) Name() string {
    Wrapper so module satisfies Blockchain
 */
 
-func (mod *MonkModule) WorldState() *modules.WorldState {
+func (mod *MonkModule) WorldState() *types.WorldState {
 	return mod.monk.WorldState()
 }
 
-func (mod *MonkModule) State() *modules.State {
+func (mod *MonkModule) State() *types.State {
 	return mod.monk.State()
 }
 
-func (mod *MonkModule) Storage(target string) *modules.Storage {
+func (mod *MonkModule) Storage(target string) *types.Storage {
 	return mod.monk.Storage(target)
 }
 
-func (mod *MonkModule) Account(target string) *modules.Account {
+func (mod *MonkModule) Account(target string) *types.Account {
 	return mod.monk.Account(target)
 }
 
@@ -252,7 +249,7 @@ func (mod *MonkModule) LatestBlock() string {
 	return mod.monk.LatestBlock()
 }
 
-func (mod *MonkModule) Block(hash string) *modules.Block {
+func (mod *MonkModule) Block(hash string) *types.Block {
 	return mod.monk.Block(hash)
 }
 
@@ -268,15 +265,15 @@ func (mod *MonkModule) Msg(addr string, data []string) (string, error) {
 	return mod.monk.Msg(addr, data)
 }
 
-func (mod *MonkModule) Script(file, lang string) (string, error) {
-	return mod.monk.Script(file, lang)
+func (mod *MonkModule) Script(code string) (string, error) {
+	return mod.monk.Script(code)
 }
 
 func (mod *MonkModule) Transact(addr, value, gas, gasprice, data string) (string, error) {
 	return mod.monk.Transact(addr, value, gas, gasprice, data)
 }
 
-func (mod *MonkModule) Subscribe(name, event, target string) chan events.Event {
+func (mod *MonkModule) Subscribe(name, event, target string) chan types.Event {
 	return mod.monk.Subscribe(name, event, target)
 }
 
@@ -359,9 +356,21 @@ func (mod *MonkModule) MonkState() *monkstate.State {
    Implement Blockchain
 */
 
-func (monk *Monk) WorldState() *modules.WorldState {
+func (monk *Monk) ChainId() (string, error) {
+	// get the chain id
+	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
+	if err != nil {
+		return "", err
+	} else if len(data) == 0 {
+		return "", fmt.Errorf("ChainID is empty!")
+	}
+	chainId := monkutil.Bytes2Hex(data)
+	return chainId, nil
+}
+
+func (monk *Monk) WorldState() *types.WorldState {
 	state := monk.pipe.World().State()
-	stateMap := &modules.WorldState{make(map[string]*modules.Account), []string{}}
+	stateMap := &types.WorldState{make(map[string]*types.Account), []string{}}
 
 	trieIterator := state.Trie.NewIterator()
 	trieIterator.Each(func(addr string, acct *monkutil.Value) {
@@ -373,9 +382,9 @@ func (monk *Monk) WorldState() *modules.WorldState {
 	return stateMap
 }
 
-func (monk *Monk) State() *modules.State {
+func (monk *Monk) State() *types.State {
 	state := monk.pipe.World().State()
-	stateMap := &modules.State{make(map[string]*modules.Storage), []string{}}
+	stateMap := &types.State{make(map[string]*types.Storage), []string{}}
 
 	trieIterator := state.Trie.NewIterator()
 	trieIterator.Each(func(addr string, acct *monkutil.Value) {
@@ -387,10 +396,10 @@ func (monk *Monk) State() *modules.State {
 	return stateMap
 }
 
-func (monk *Monk) Storage(addr string) *modules.Storage {
+func (monk *Monk) Storage(addr string) *types.Storage {
 	w := monk.pipe.World()
 	obj := w.SafeGet(monkutil.UserHex2Bytes(addr)).StateObject
-	ret := &modules.Storage{make(map[string]string), []string{}}
+	ret := &types.Storage{make(map[string]string), []string{}}
 	obj.EachStorage(func(k string, v *monkutil.Value) {
 		kk := monkutil.Bytes2Hex([]byte(k))
 		v.Decode()
@@ -401,7 +410,7 @@ func (monk *Monk) Storage(addr string) *modules.Storage {
 	return ret
 }
 
-func (monk *Monk) Account(target string) *modules.Account {
+func (monk *Monk) Account(target string) *types.Account {
 	w := monk.pipe.World()
 	obj := w.SafeGet(monkutil.UserHex2Bytes(target)).StateObject
 
@@ -411,7 +420,7 @@ func (monk *Monk) Account(target string) *modules.Account {
 	storage := monk.Storage(target)
 	isscript := len(storage.Order) > 0 || len(script) > 0
 
-	return &modules.Account{
+	return &types.Account{
 		Address:  target,
 		Balance:  bal,
 		Nonce:    strconv.Itoa(int(nonce)),
@@ -447,7 +456,7 @@ func (monk *Monk) LatestBlock() string {
 	return monkutil.Bytes2Hex(monk.thelonious.ChainManager().CurrentBlockHash())
 }
 
-func (monk *Monk) Block(hash string) *modules.Block {
+func (monk *Monk) Block(hash string) *types.Block {
 	hashBytes := monkutil.Hex2Bytes(hash)
 	block := monk.thelonious.ChainManager().GetBlock(hashBytes)
 	return convertBlock(block)
@@ -483,6 +492,10 @@ func (monk *Monk) Tx(addr, amt string) (string, error) {
 	return monkutil.Bytes2Hex(hash), nil
 }
 
+func (monk *MonkModule) Reactor() bool {
+	return monk.monk.reactor.Running()
+}
+
 // send a message to a contract
 func (monk *Monk) Msg(addr string, data []string) (string, error) {
 	packed := PackTxDataArgs(data...)
@@ -496,28 +509,13 @@ func (monk *Monk) Msg(addr string, data []string) (string, error) {
 	return monkutil.Bytes2Hex(hash), nil
 }
 
-func (monk *Monk) Script(file, lang string) (string, error) {
-	var script string
-	var err error
-	if lang == "lll-literal" {
-		script, err = CompileLLL(file, true)
-	}
-	if lang == "lll" {
-		script, err = CompileLLL(file, false) // if lll, compile and pass along
-	} else if lang == "serpent" {
-		// TODO ...
-	} else {
-		script = file
-	}
-
-	if err != nil {
-		return "", err
-	}
+func (monk *Monk) Script(code string) (string, error) {
+	code = monkutil.StripHex(code)
 
 	keys := monk.fetchKeyPair()
 
 	// well isn't this pretty! barf
-	contract_addr, err := monk.pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), script)
+	contract_addr, err := monk.pipe.Transact(keys, nil, monkutil.NewValue(monkutil.Big("0")), monkutil.NewValue(monkutil.Big("200000000000000")), monkutil.NewValue(monkutil.Big("0")), code)
 	if err != nil {
 		return "", err
 	}
@@ -536,7 +534,7 @@ func (monk *Monk) Transact(addr, amt, gas, gasprice, data string) (string, error
 }
 
 // returns a chanel that will fire when address is updated
-func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
+func (monk *Monk) Subscribe(name, event, target string) chan types.Event {
 	th_ch := make(chan monkreact.Event, 1)
 	if target != "" {
 		addr := string(monkutil.Hex2Bytes(target))
@@ -545,7 +543,7 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 		monk.reactor.Subscribe(event, th_ch)
 	}
 
-	ch := make(chan events.Event)
+	ch := make(chan types.Event)
 	c := Chan{
 		ch:      ch,
 		reactCh: th_ch,
@@ -564,7 +562,7 @@ func (monk *Monk) Subscribe(name, event, target string) chan events.Event {
 			if !more {
 				break
 			}
-			returnEvent := events.Event{
+			returnEvent := types.Event{
 				Event:     event,
 				Target:    target,
 				Source:    "monk",
@@ -778,28 +776,55 @@ func (monk *Monk) FetchPriv() string {
 	return monk.fetchPriv()
 }
 
+func (mod *MonkModule) Restart() error {
+	if err := mod.Shutdown(); err != nil {
+		return err
+	}
+
+	mk := mod.monk
+	mod = NewMonk(nil)
+	mod.monk = mk
+	mod.Config = mk.config
+
+	if err := mod.Init(); err != nil {
+		return err
+	}
+	if err := mod.Start(); err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (monk *Monk) Stop() {
 	if !monk.started {
 		logger.Infoln("can't stop: haven't even started...")
 		return
 	}
 	monk.StopMining()
+	for n, _ := range monk.chans {
+		monk.UnSubscribe(n)
+	}
 	monk.thelonious.Stop()
 	monk = &Monk{config: monk.config}
 	monklog.Reset()
+	monk.started = false
 }
 
+// Set the root. If it's already set, check if the
 func (mod *MonkModule) setRootDir() {
 	c := mod.Config
 	// if RootDir is set, we're done
 	if c.RootDir != "" {
-		if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
-			mod.ReadConfig(path.Join(c.RootDir, "config.json"))
-		}
+		/*
+			if _, err := os.Stat(path.Join(c.RootDir, "config.json")); err == nil {
+				mod.ReadConfig(path.Join(c.RootDir, "config.json"))
+			}*/
 		return
 	}
 
-	root, _ := utils.ResolveChain("thelonious", c.ChainName, c.ChainId)
+	root, _ := chains.ResolveChainDir("thelonious", c.ChainName, c.ChainId)
 	if root == "" {
 		c.RootDir = DefaultRoot
 	} else {

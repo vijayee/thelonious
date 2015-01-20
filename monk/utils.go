@@ -17,12 +17,13 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
-	"github.com/eris-ltd/decerver-interfaces/dapps"
-	"github.com/eris-ltd/decerver-interfaces/glue/genblock"
-	mutils "github.com/eris-ltd/decerver-interfaces/glue/monkutils"
-	"github.com/eris-ltd/decerver-interfaces/glue/utils"
-	"github.com/eris-ltd/decerver-interfaces/modules"
-	"github.com/eris-ltd/epm-go"
+	"github.com/eris-ltd/decerver/interfaces/dapps"
+	//"github.com/eris-ltd/modules/genblock"
+	"github.com/eris-ltd/epm-go/chains"
+	"github.com/eris-ltd/epm-go/epm"
+	"github.com/eris-ltd/epm-go/utils"
+	mutils "github.com/eris-ltd/modules/monkutils"
+	"github.com/eris-ltd/modules/types"
 
 	eth "github.com/eris-ltd/thelonious"
 	"github.com/eris-ltd/thelonious/monkchain"
@@ -274,32 +275,36 @@ func setEpmContractPath(p string) {
 // Deploy a pdx onto a block
 // This is used as a monkdoug deploy function
 func epmDeploy(block *monkchain.Block, pkgDef string) ([]byte, error) {
-	m := genblock.NewGenBlockModule(block)
-	m.Config.LogLevel = 5
-	err := m.Init()
-	if err != nil {
-		return nil, err
-	}
-	m.Start()
-	epm.ErrMode = epm.ReturnOnErr
-	e, err := epm.NewEPM(m, ".epm-log")
-	if err != nil {
-		return nil, err
-	}
-	err = e.Parse(pkgDef)
-	if err != nil {
-		return nil, err
-	}
-	err = e.ExecuteJobs()
-	if err != nil {
-		return nil, err
-	}
-	e.Commit()
-	chainId, err := m.ChainId()
-	if err != nil {
-		return nil, err
-	}
-	return chainId, nil
+	// TODO: use epm here
+	/*
+		m := genblock.NewGenBlockModule(block)
+		m.Config.LogLevel = 5
+		err := m.Init()
+		if err != nil {
+			return nil, err
+		}
+		m.Start()
+		epm.ErrMode = epm.ReturnOnErr
+		e, err := epm.NewEPM(m, ".epm-log")
+		if err != nil {
+			return nil, err
+		}
+		err = e.Parse(pkgDef)
+		if err != nil {
+			return nil, err
+		}
+		err = e.ExecuteJobs()
+		if err != nil {
+			return nil, err
+		}
+		e.Commit()
+		chainId, err := m.ChainId()
+		if err != nil {
+			return nil, err
+		}
+		return chainId, nil
+	*/
+	return nil, nil
 }
 
 // Deploy sequence (done through monk interface for simplicity):
@@ -314,7 +319,7 @@ func DeploySequence(name, genesis, config string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := InstallChain(root, name, genesis, config, chainId); err != nil {
+	if err := InstallChain(root, genesis, config, chainId); err != nil {
 		return "", err
 	}
 
@@ -340,7 +345,7 @@ func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJs
 	dappDir := path.Join(utils.Apps, dappName)
 	var err error
 
-	p, err := utils.CheckGetPackageFile(dappDir)
+	p, err := chains.CheckGetPackageFile(dappDir)
 	if err != nil {
 		return err
 	}
@@ -395,6 +400,8 @@ func FetchInstallChain(dappName string) error { //chainId, peerServer, genesisJs
 	return nil
 }
 
+// Read config, set deployment root, config genesis block,
+// init, return chainId
 func DeployChain(root, genesis, config string) (string, error) {
 	// startup and deploy
 	m := NewMonk(nil)
@@ -413,17 +420,11 @@ func DeployChain(root, genesis, config string) (string, error) {
 	}
 
 	// get the chain id
-	data, err := monkutil.Config.Db.Get([]byte("ChainID"))
-	if err != nil {
-		return "", err
-	} else if len(data) == 0 {
-		return "", fmt.Errorf("ChainID is empty!")
-	}
-	chainId := monkutil.Bytes2Hex(data)
-	return chainId, nil
+	return m.ChainId()
 }
 
-func InstallChain(root, name, genesis, config, chainId string) error {
+// Copy files and deploy directory into global tree. Set configuration values for root dir and chain id.
+func InstallChain(root, genesis, config, chainId string) error {
 	monkutil.Config.Db.Close()
 	home := path.Join(Thelonious, chainId)
 	logger.Infoln("Install directory ", home)
@@ -448,7 +449,7 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 	}
 
 	configT.ChainId = chainId
-	configT.ChainName = name
+	//configT.ChainName = name
 	configT.RootDir = home
 	configT.GenesisConfig = path.Join(home, "genesis.json")
 
@@ -460,18 +461,18 @@ func InstallChain(root, name, genesis, config, chainId string) error {
 		return err
 	}
 
-	if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
+	/*if err := rename(genesis, path.Join(home, "genesis.json")); err != nil {
 		return err
-	}
+	}*/
 
 	// update refs
-	if name != "" {
-		err := utils.AddRef(chainId, name)
+	/*if name != "" {
+		err := chains.AddRef("thelonious", chainId, name)
 		if err != nil {
 			return err
 		}
 		logger.Infof("Created ref %s to point to chain %s\n", name, chainId)
-	}
+	}*/
 
 	return nil
 }
@@ -496,16 +497,6 @@ func rename(oldpath, newpath string) error {
 
 func copy(oldpath, newpath string) error {
 	return utils.Copy(oldpath, newpath)
-}
-
-// compile LLL file into evm bytecode
-// returns hex
-func CompileLLL(filename string, literal bool) (string, error) {
-	code, err := monkutil.CompileLLL(filename, literal)
-	if err != nil {
-		return "", err
-	}
-	return "0x" + monkutil.Bytes2Hex(code), nil
 }
 
 // some convenience functions
@@ -557,11 +548,11 @@ func PackTxDataArgs(args ...string) string {
 }
 
 // convert thelonious block to modules block
-func convertBlock(block *monkchain.Block) *modules.Block {
+func convertBlock(block *monkchain.Block) *types.Block {
 	if block == nil {
 		return nil
 	}
-	b := &modules.Block{}
+	b := &types.Block{}
 	b.Coinbase = hex.EncodeToString(block.Coinbase)
 	b.Difficulty = block.Difficulty.String()
 	b.GasLimit = block.GasLimit.String()
@@ -572,7 +563,7 @@ func convertBlock(block *monkchain.Block) *modules.Block {
 	b.Number = block.Number.String()
 	b.PrevHash = hex.EncodeToString(block.PrevHash)
 	b.Time = int(block.Time)
-	txs := make([]*modules.Transaction, len(block.Transactions()))
+	txs := make([]*types.Transaction, len(block.Transactions()))
 	for idx, tx := range block.Transactions() {
 		txs[idx] = convertTx(tx)
 	}
@@ -587,8 +578,8 @@ func convertBlock(block *monkchain.Block) *modules.Block {
 }
 
 // convert thelonious tx to modules tx
-func convertTx(monkTx *monkchain.Transaction) *modules.Transaction {
-	tx := &modules.Transaction{}
+func convertTx(monkTx *monkchain.Transaction) *types.Transaction {
+	tx := &types.Transaction{}
 	tx.ContractCreation = monkTx.CreatesContract()
 	tx.Gas = monkTx.Gas.String()
 	tx.GasCost = monkTx.GasPrice.String()
