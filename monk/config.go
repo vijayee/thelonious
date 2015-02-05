@@ -23,7 +23,7 @@ var (
 
 	DefaultRoot          = path.Join(Thelonious, "default-chain")
 	DefaultGenesisConfig = path.Join(ErisLtd, "thelonious", "monk", "defaults", "genesis.json")
-	DefaultKeyFile       = path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt")
+	DefaultKeyFile       = "" //path.Join(ErisLtd, "thelonious", "monk", "defaults", "keys.txt")
 )
 
 // main configuration struct for
